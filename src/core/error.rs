@@ -25,3 +25,11 @@ pub enum GraphValidationError {
     /// An atom was defined to be bonded to itself.
     SelfBondingAtom { id: usize },
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssignmentError {
+    /// A list of unique identifiers of all atoms that remained untyped.
+    pub untyped_atom_ids: Vec<usize>,
+    /// The total number of iterative rounds completed before the engine stalled.
+    pub rounds_completed: u32,
+}
