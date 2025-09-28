@@ -81,3 +81,22 @@ impl Bond {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Angle {
+    pub atom_ids: (usize, usize, usize),
+}
+
+impl Angle {
+    pub fn new(id1: usize, center_id: usize, id2: usize) -> Self {
+        if id1 < id2 {
+            Self {
+                atom_ids: (id1, center_id, id2),
+            }
+        } else {
+            Self {
+                atom_ids: (id2, center_id, id1),
+            }
+        }
+    }
+}
