@@ -359,3 +359,52 @@ impl fmt::Display for Element {
         write!(f, "{}", symbol)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum BondOrder {
+    Single = 1,
+    Double = 2,
+    Triple = 3,
+    Aromatic = 4,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseBondOrderError {
+    invalid_string: String,
+}
+
+impl fmt::Display for ParseBondOrderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Invalid bond order string: '{}'", self.invalid_string)
+    }
+}
+impl std::error::Error for ParseBondOrderError {}
+
+impl FromStr for BondOrder {
+    type Err = ParseBondOrderError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Single" => Ok(BondOrder::Single),
+            "Double" => Ok(BondOrder::Double),
+            "Triple" => Ok(BondOrder::Triple),
+            "Aromatic" => Ok(BondOrder::Aromatic),
+            _ => Err(ParseBondOrderError {
+                invalid_string: s.to_owned(),
+            }),
+        }
+    }
+}
+
+impl fmt::Display for BondOrder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let order_str = match self {
+            BondOrder::Single => "Single",
+            BondOrder::Double => "Double",
+            BondOrder::Triple => "Triple",
+            BondOrder::Aromatic => "Aromatic",
+        };
+        write!(f, "{}", order_str)
+    }
+}
