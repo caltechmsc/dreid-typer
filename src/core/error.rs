@@ -57,3 +57,15 @@ impl fmt::Display for GraphValidationError {
         }
     }
 }
+
+impl fmt::Display for AssignmentError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "engine stalled after {} rounds with {} untyped atoms remaining. IDs: {:?}",
+            self.rounds_completed,
+            self.untyped_atom_ids.len(),
+            self.untyped_atom_ids
+        )
+    }
+}
