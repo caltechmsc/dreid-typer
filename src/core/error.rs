@@ -33,3 +33,13 @@ pub struct AssignmentError {
     /// The total number of iterative rounds completed before the engine stalled.
     pub rounds_completed: u32,
 }
+
+impl fmt::Display for TyperError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::RuleParse(msg) => write!(f, "Rule parsing error: {}", msg),
+            Self::InvalidInputGraph(err) => write!(f, "Invalid input graph: {}", err),
+            Self::AssignmentFailed(err) => write!(f, "Atom typing failed: {}", err),
+        }
+    }
+}
