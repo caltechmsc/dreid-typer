@@ -100,3 +100,20 @@ impl Angle {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ProperDihedral {
+    pub atom_ids: (usize, usize, usize, usize),
+}
+
+impl ProperDihedral {
+    pub fn new(id1: usize, id2: usize, id3: usize, id4: usize) -> Self {
+        let forward = (id1, id2, id3, id4);
+        let reverse = (id4, id3, id2, id1);
+        if forward <= reverse {
+            Self { atom_ids: forward }
+        } else {
+            Self { atom_ids: reverse }
+        }
+    }
+}
