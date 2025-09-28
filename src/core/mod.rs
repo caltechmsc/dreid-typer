@@ -1,6 +1,7 @@
 use std::fmt;
 use std::str::FromStr;
 
+pub mod error;
 pub mod graph;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
