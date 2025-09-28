@@ -15,3 +15,13 @@ pub enum TyperError {
     /// the provided rules are insufficient or ambiguous for the given molecule.
     AssignmentFailed(AssignmentError),
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GraphValidationError {
+    /// An atom ID was referenced (e.g., in a bond) but not defined in the atom list.
+    MissingAtom { id: usize },
+    /// Two or more atoms were defined with the same unique ID.
+    DuplicateAtomId { id: usize },
+    /// An atom was defined to be bonded to itself.
+    SelfBondingAtom { id: usize },
+}
