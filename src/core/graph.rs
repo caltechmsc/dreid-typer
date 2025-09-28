@@ -51,3 +51,11 @@ impl MolecularGraph {
         Ok(id)
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Atom {
+    pub id: usize,
+    pub element: Element,
+    pub atom_type: String,
+    pub hybridization: Hybridization,
+}
