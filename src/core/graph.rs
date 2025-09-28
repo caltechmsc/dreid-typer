@@ -132,3 +132,12 @@ impl ImproperDihedral {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct MolecularTopology {
+    pub atoms: Vec<Atom>,
+    pub bonds: Vec<Bond>,
+    pub angles: Vec<Angle>,
+    pub proper_dihedrals: Vec<ProperDihedral>,
+    pub improper_dihedrals: Vec<ImproperDihedral>,
+}
