@@ -117,3 +117,18 @@ impl ProperDihedral {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ImproperDihedral {
+    pub atom_ids: (usize, usize, usize, usize),
+}
+
+impl ImproperDihedral {
+    pub fn new(plane_id1: usize, plane_id2: usize, center_id: usize, plane_id3: usize) -> Self {
+        let mut plane_ids = [plane_id1, plane_id2, plane_id3];
+        plane_ids.sort_unstable();
+        Self {
+            atom_ids: (plane_ids[0], plane_ids[1], center_id, plane_ids[2]),
+        }
+    }
+}
