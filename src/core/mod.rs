@@ -408,3 +408,51 @@ impl fmt::Display for BondOrder {
         write!(f, "{}", order_str)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Hybridization {
+    SP,
+    SP2,
+    SP3,
+    Resonant,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseHybridizationError {
+    invalid_string: String,
+}
+
+impl fmt::Display for ParseHybridizationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Invalid hybridization string: '{}'", self.invalid_string)
+    }
+}
+impl std::error::Error for ParseHybridizationError {}
+
+impl FromStr for Hybridization {
+    type Err = ParseHybridizationError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "SP" => Ok(Hybridization::SP),
+            "SP2" => Ok(Hybridization::SP2),
+            "SP3" => Ok(Hybridization::SP3),
+            "Resonant" => Ok(Hybridization::Resonant),
+            _ => Err(ParseHybridizationError {
+                invalid_string: s.to_owned(),
+            }),
+        }
+    }
+}
+
+impl fmt::Display for Hybridization {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let hyb_str = match self {
+            Hybridization::SP => "SP",
+            Hybridization::SP2 => "SP2",
+            Hybridization::SP3 => "SP3",
+            Hybridization::Resonant => "Resonant",
+        };
+        write!(f, "{}", hyb_str)
+    }
+}
