@@ -59,3 +59,25 @@ pub struct Atom {
     pub atom_type: String,
     pub hybridization: Hybridization,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Bond {
+    pub atom_ids: (usize, usize),
+    pub order: BondOrder,
+}
+
+impl Bond {
+    pub fn new(id1: usize, id2: usize, order: BondOrder) -> Self {
+        if id1 < id2 {
+            Self {
+                atom_ids: (id1, id2),
+                order,
+            }
+        } else {
+            Self {
+                atom_ids: (id2, id1),
+                order,
+            }
+        }
+    }
+}
