@@ -69,3 +69,11 @@ impl fmt::Display for AssignmentError {
         )
     }
 }
+
+impl std::error::Error for TyperError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+impl std::error::Error for GraphValidationError {}
+impl std::error::Error for AssignmentError {}
