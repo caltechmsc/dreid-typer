@@ -43,3 +43,17 @@ impl fmt::Display for TyperError {
         }
     }
 }
+
+impl fmt::Display for GraphValidationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingAtom { id } => {
+                write!(f, "a bond references a non-existent atom with ID {}", id)
+            }
+            Self::DuplicateAtomId { id } => {
+                write!(f, "found duplicate definition for atom with ID {}", id)
+            }
+            Self::SelfBondingAtom { id } => write!(f, "atom with ID {} is bonded to itself", id),
+        }
+    }
+}
