@@ -1,0 +1,26 @@
+[package]
+name = "dreid-typer"
+version = "0.1.0"
+authors = [
+    "Tony Kan <tonykan@caltech.edu>",
+    "William A. Goddard III <wag@caltech.edu>",
+]
+license = "MIT"
+repository = "https://github.com/caltechmsc/dreid-typer"
+edition = "2024"
+description = "A pure Rust library for DREIDING atom typing and molecular topology perception."
+
+[dependencies]
+toml = "0.9.7"
+serde = { version = "1.0.188", features = ["derive"] }
+thiserror = "2.0.12"
+
+[lib]
+name = "dreid_typer"
+path = "src/lib.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
