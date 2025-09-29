@@ -68,3 +68,19 @@ where
         None => Ok(None),
     }
 }
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Rule {
+    pub name: String,
+    pub priority: i32,
+    #[serde(rename = "type")]
+    pub result_type: String,
+    pub conditions: Conditions,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct Ruleset {
+    #[serde(rename = "rule")]
+    rules: Vec<Rule>,
+}
