@@ -84,3 +84,21 @@ struct Ruleset {
     #[serde(rename = "rule")]
     rules: Vec<Rule>,
 }
+
+use once_cell::sync::Lazy;
+
+static DEFAULT_RULES: Lazy<Result<Vec<Rule>, TyperError>> =
+    Lazy::new(|| parse_rules(default::DEFAULT_RULES_TOML));
+
+pub fn parse_rules(content: &str) -> Result<Vec<Rule>, TyperError> {
+    let ruleset: Ruleset =
+        toml::from_str(content).map_err(|e| TyperError::RuleParse(e.to_string()))?;
+    Ok(ruleset.rules)
+}
+
+pub(crate) fn get_default_rules() -> Result<&'static [Rule], TyperError> {
+    DEFAULT_RULES
+        .as_ref()
+        .map(|vec| vec.as_slice())
+        .map_err(|e| e.clone())
+}
