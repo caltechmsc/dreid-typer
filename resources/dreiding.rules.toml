@@ -1,0 +1,297 @@
+# ==============================================================================
+#  Official DREIDING Atom Typing Ruleset for dreid-typer
+#  Version: 1.0.0
+#  Author: Tony Kan, William A. Goddard III
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# §1. Special Hydrogen Types (Highest Priority)
+#    These rules rely on iterative typing of their neighbors.
+# ------------------------------------------------------------------------------
+
+[[rule]]
+name = "H_Bridge_Diborane"
+priority = 210
+type = "H_b"
+conditions = { element = "H", degree = 2, neighbor_elements = { B = 2 } }
+
+[[rule]]
+name = "H_Acidic_On_Oxygen"
+priority = 200
+type = "H_HB"
+conditions = { element = "H", degree = 1, neighbor_types = { O_3 = 1 } }
+
+[[rule]]
+name = "H_Acidic_On_Nitrogen"
+priority = 199
+type = "H_HB"
+conditions = { element = "H", degree = 1, neighbor_types = { N_3 = 1 } }
+
+[[rule]]
+name = "H_Acidic_On_Aromatic_Nitrogen"
+priority = 198
+type = "H_HB"
+conditions = { element = "H", degree = 1, neighbor_types = { N_R = 1 } }
+
+# ------------------------------------------------------------------------------
+# §2. Aromatic Types (High Priority)
+#    Aromaticity is a strong, non-local feature that should be typed first.
+# ------------------------------------------------------------------------------
+
+[[rule]]
+name = "C_Aromatic"
+priority = 150
+type = "C_R"
+conditions = { element = "C", is_aromatic = true }
+
+[[rule]]
+name = "N_Aromatic"
+priority = 150
+type = "N_R"
+conditions = { element = "N", is_aromatic = true }
+
+[[rule]]
+name = "O_Aromatic"
+priority = 150
+type = "O_R"
+conditions = { element = "O", is_aromatic = true }
+
+[[rule]]
+name = "B_Aromatic"
+priority = 150
+type = "B_2"
+conditions = { element = "B", is_aromatic = true }
+
+# ------------------------------------------------------------------------------
+# §3. Specific Hybridization States (SP, SP2)
+# ------------------------------------------------------------------------------
+
+[[rule]]
+name = "C_Alkyne"
+priority = 140
+type = "C_1"
+conditions = { element = "C", hybridization = "SP" }
+
+[[rule]]
+name = "N_Nitrile"
+priority = 140
+type = "N_1"
+conditions = { element = "N", hybridization = "SP" }
+
+[[rule]]
+name = "O_Carbonyl_Or_Nitro"
+priority = 135
+type = "O_2"
+conditions = { element = "O", degree = 1, hybridization = "SP2" }
+
+[[rule]]
+name = "C_Alkene_Or_Carbonyl"
+priority = 130
+type = "C_2"
+conditions = { element = "C", hybridization = "SP2", is_aromatic = false }
+
+[[rule]]
+name = "N_Imine_Or_Amide"
+priority = 130
+type = "N_2"
+conditions = { element = "N", hybridization = "SP2", is_aromatic = false }
+
+[[rule]]
+name = "B_Trigonal"
+priority = 130
+type = "B_2"
+conditions = { element = "B", hybridization = "SP2", is_aromatic = false }
+
+[[rule]]
+name = "O_Linear_Special"
+priority = 120
+type = "O_1"
+conditions = { element = "O", hybridization = "SP" }
+
+# ------------------------------------------------------------------------------
+# §4. Default SP3 and Halogen Types (Lower Priority)
+# ------------------------------------------------------------------------------
+
+[[rule]]
+name = "C_Tetrahedral_Default"
+priority = 100
+type = "C_3"
+conditions = { element = "C", hybridization = "SP3" }
+
+[[rule]]
+name = "N_Amine_Default"
+priority = 100
+type = "N_3"
+conditions = { element = "N", hybridization = "SP3" }
+
+[[rule]]
+name = "O_Ether_Alcohol_Default"
+priority = 100
+type = "O_3"
+conditions = { element = "O", hybridization = "SP3" }
+
+[[rule]]
+name = "B_Tetrahedral_Default"
+priority = 100
+type = "B_3"
+conditions = { element = "B", hybridization = "SP3" }
+
+[[rule]]
+name = "Si_Tetrahedral_Default"
+priority = 100
+type = "Si3"
+conditions = { element = "Si", hybridization = "SP3" }
+
+[[rule]]
+name = "P_Phosphine_Default"
+priority = 100
+type = "P_3"
+conditions = { element = "P", hybridization = "SP3" }
+
+[[rule]]
+name = "S_Sulfide_Default"
+priority = 100
+type = "S_3"
+conditions = { element = "S", hybridization = "SP3" }
+
+[[rule]]
+name = "Al_Tetrahedral_Default"
+priority = 100
+type = "Al3"
+conditions = { element = "Al", hybridization = "SP3" }
+
+[[rule]]
+name = "Ge_Tetrahedral_Default"
+priority = 100
+type = "Ge3"
+conditions = { element = "Ge", hybridization = "SP3" }
+
+[[rule]]
+name = "As_Arsine_Default"
+priority = 100
+type = "As3"
+conditions = { element = "As", hybridization = "SP3" }
+
+[[rule]]
+name = "Se_Selenide_Default"
+priority = 100
+type = "Se3"
+conditions = { element = "Se", hybridization = "SP3" }
+
+[[rule]]
+name = "Sn_Stannane_Default"
+priority = 100
+type = "Sn3"
+conditions = { element = "Sn", hybridization = "SP3" }
+
+[[rule]]
+name = "Sb_Stibine_Default"
+priority = 100
+type = "Sb3"
+conditions = { element = "Sb", hybridization = "SP3" }
+
+[[rule]]
+name = "Te_Telluride_Default"
+priority = 100
+type = "Te3"
+conditions = { element = "Te", hybridization = "SP3" }
+
+[[rule]]
+name = "Halogen_F"
+priority = 90
+type = "F_"
+conditions = { element = "F" }
+
+[[rule]]
+name = "Halogen_Cl"
+priority = 90
+type = "Cl_"
+conditions = { element = "Cl" }
+
+[[rule]]
+name = "Halogen_Br"
+priority = 90
+type = "Br_"
+conditions = { element = "Br" }
+
+[[rule]]
+name = "Halogen_I"
+priority = 90
+type = "I_"
+conditions = { element = "I" }
+
+# ------------------------------------------------------------------------------
+# §5. Metals & Ions (Low Priority)
+#    These are typically isolated atoms (degree=0).
+# ------------------------------------------------------------------------------
+
+[[rule]]
+name = "Ion_Na"
+priority = 50
+type = "Na"
+conditions = { element = "Na" }
+
+[[rule]]
+name = "Ion_Ca"
+priority = 50
+type = "Ca"
+conditions = { element = "Ca" }
+
+[[rule]]
+name = "Ion_Fe"
+priority = 50
+type = "Fe"
+conditions = { element = "Fe" }
+
+[[rule]]
+name = "Ion_Zn"
+priority = 50
+type = "Zn"
+conditions = { element = "Zn" }
+
+[[rule]]
+name = "Ion_Mg"
+priority = 50
+type = "Mg"
+conditions = { element = "Mg" }
+
+[[rule]]
+name = "Ion_Mn"
+priority = 50
+type = "Mn"
+conditions = { element = "Mn" }
+
+[[rule]]
+name = "Ion_Ti"
+priority = 50
+type = "Ti"
+conditions = { element = "Ti" }
+
+[[rule]]
+name = "Ion_Tc"
+priority = 50
+type = "Tc"
+conditions = { element = "Tc" }
+
+[[rule]]
+name = "Ion_Ru"
+priority = 50
+type = "Ru"
+conditions = { element = "Ru" }
+
+[[rule]]
+name = "Ion_Hg"
+priority = 50
+type = "Hg"
+conditions = { element = "Hg" }
+
+# ------------------------------------------------------------------------------
+# §6. Standard Hydrogen Default (Lowest Priority)
+#    This rule catches any hydrogen atom not already typed as acidic or bridging.
+# ------------------------------------------------------------------------------
+
+[[rule]]
+name = "H_Standard_Default"
+priority = 1
+type = "H_"
+conditions = { element = "H" }
