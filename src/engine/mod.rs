@@ -27,8 +27,12 @@ pub struct AnnotatedGraph {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct PerceptionResult {
+pub struct GeometricPerception {
     pub atom_ring_info: HashMap<usize, Vec<usize>>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ChemicalPerception {
     pub aromatic_atoms: HashSet<usize>,
     pub aromatic_bonds: HashSet<(usize, usize)>,
 }
