@@ -1,0 +1,35 @@
+use crate::core::{Element, Hybridization, error::TyperError};
+use serde::{Deserialize, Deserializer, de};
+use std::collections::HashMap;
+use std::fmt;
+use std::str::FromStr;
+
+mod default;
+
+fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    T: FromStr,
+    T::Err: fmt::Display,
+    D: Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    T::from_str(&s).map_err(de::Error::custom)
+}
+
+fn hash_map_from_str_keys<'de, K, V, D>(deserializer: D) -> Result<HashMap<K, V>, D::Error>
+where
+    K: FromStr + Eq + std::hash::Hash,
+    K::Err: fmt::Display,
+    V: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    let string_map = HashMap::<String, V>::deserialize(deserializer)?;
+    string_map
+        .into_iter()
+        .map(|(k, v)| {
+            K::from_str(&k)
+                .map(|key| (key, v))
+                .map_err(de::Error::custom)
+        })
+        .collect()
+}
