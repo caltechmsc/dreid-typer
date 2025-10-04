@@ -55,3 +55,50 @@ pub(crate) fn infer_hybridization_for_all(graph: &mut ProcessingGraph) {
         "Hybridization inference failed: one or more atoms remain Unknown."
     );
 }
+
+fn infer_single_hybridization(atom: &AtomView, graph: &ProcessingGraph) -> Hybridization {
+    if atom.is_aromatic {
+        return Hybridization::Resonant;
+    }
+
+    if atom.degree == 0 {
+        match atom.element {
+            Element::Na | Element::Ca | Element::Fe | Element::Zn => return Hybridization::None,
+            _ => return Hybridization::None,
+        }
+    }
+
+    match atom.element {
+        Element::H
+        | Element::F
+        | Element::Cl
+        | Element::Br
+        | Element::I
+        | Element::He
+        | Element::Ne
+        | Element::Ar
+        | Element::Kr
+        | Element::Xe
+        | Element::Na
+        | Element::Ca
+        | Element::Fe
+        | Element::Zn => {
+            return Hybridization::None;
+        }
+        _ => {}
+    }
+
+    let pi_electrons_from_bonds = graph.adjacency[atom.id]
+        .iter()
+        .map(|(_, order)| order.pi_contribution())
+        .sum::<u8>();
+
+    match pi_electrons_from_bonds {
+        2.. => Hybridization::SP,
+        1 => Hybridization::SP2,
+        0 => match atom.element {
+            Element::B if atom.degree == 3 => Hybridization::SP2,
+            _ => Hybridization::SP3,
+        },
+    }
+}
