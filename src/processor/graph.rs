@@ -21,7 +21,7 @@ pub struct ProcessingGraph {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct RingInfo(pub HashSet<HashSet<usize>>);
+pub struct RingInfo(pub HashSet<Vec<usize>>);
 
 impl ProcessingGraph {
     pub fn new(graph: &MolecularGraph) -> Result<Self, GraphValidationError> {
