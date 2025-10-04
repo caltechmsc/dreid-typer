@@ -102,3 +102,14 @@ fn infer_single_hybridization(atom: &AtomView, graph: &ProcessingGraph) -> Hybri
         },
     }
 }
+
+impl BondOrder {
+    pub(super) fn pi_contribution(&self) -> u8 {
+        match self {
+            BondOrder::Single => 0,
+            BondOrder::Double => 1,
+            BondOrder::Triple => 2,
+            BondOrder::Aromatic => 1,
+        }
+    }
+}
