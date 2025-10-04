@@ -113,3 +113,240 @@ impl BondOrder {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+
+    fn setup_test_graph(
+        elements: Vec<Element>,
+        bonds: Vec<(usize, usize, BondOrder)>,
+    ) -> ProcessingGraph {
+        let mut mg = MolecularGraph::new();
+        for element in elements {
+            mg.add_atom(element);
+        }
+        for (u, v, order) in bonds {
+            mg.add_bond(u, v, order).unwrap();
+        }
+        ProcessingGraph::new(&mg).unwrap()
+    }
+
+    #[test]
+    fn pi_contribution_from_single_bond_is_zero() {
+        assert_eq!(BondOrder::Single.pi_contribution(), 0);
+    }
+
+    #[test]
+    fn pi_contribution_from_double_bond_is_one() {
+        assert_eq!(BondOrder::Double.pi_contribution(), 1);
+    }
+
+    #[test]
+    fn pi_contribution_from_triple_bond_is_two() {
+        assert_eq!(BondOrder::Triple.pi_contribution(), 2);
+    }
+
+    #[test]
+    fn pi_contribution_from_aromatic_bond_is_one() {
+        assert_eq!(BondOrder::Aromatic.pi_contribution(), 1);
+    }
+
+    #[test]
+    fn infer_hybridization_for_methane_carbon_is_sp3() {
+        let graph = setup_test_graph(
+            vec![Element::C, Element::H, Element::H, Element::H, Element::H],
+            vec![
+                (0, 1, BondOrder::Single),
+                (0, 2, BondOrder::Single),
+                (0, 3, BondOrder::Single),
+                (0, 4, BondOrder::Single),
+            ],
+        );
+        let carbon = &graph.atoms[0];
+        assert_eq!(
+            infer_single_hybridization(carbon, &graph),
+            Hybridization::SP3
+        );
+    }
+
+    #[test]
+    fn infer_hybridization_for_ethene_carbon_is_sp2() {
+        let graph = setup_test_graph(
+            vec![
+                Element::C,
+                Element::C,
+                Element::H,
+                Element::H,
+                Element::H,
+                Element::H,
+            ],
+            vec![
+                (0, 1, BondOrder::Double),
+                (0, 2, BondOrder::Single),
+                (0, 3, BondOrder::Single),
+                (1, 4, BondOrder::Single),
+                (1, 5, BondOrder::Single),
+            ],
+        );
+        let carbon = &graph.atoms[0];
+        assert_eq!(
+            infer_single_hybridization(carbon, &graph),
+            Hybridization::SP2
+        );
+    }
+
+    #[test]
+    fn infer_hybridization_for_ethyne_carbon_is_sp() {
+        let graph = setup_test_graph(
+            vec![Element::C, Element::C, Element::H, Element::H],
+            vec![
+                (0, 1, BondOrder::Triple),
+                (0, 2, BondOrder::Single),
+                (1, 3, BondOrder::Single),
+            ],
+        );
+        let carbon = &graph.atoms[0];
+        assert_eq!(
+            infer_single_hybridization(carbon, &graph),
+            Hybridization::SP
+        );
+    }
+
+    #[test]
+    fn infer_hybridization_for_boron_trifluoride_boron_is_sp2() {
+        let graph = setup_test_graph(
+            vec![Element::B, Element::F, Element::F, Element::F],
+            vec![
+                (0, 1, BondOrder::Single),
+                (0, 2, BondOrder::Single),
+                (0, 3, BondOrder::Single),
+            ],
+        );
+        let boron = &graph.atoms[0];
+        assert_eq!(
+            infer_single_hybridization(boron, &graph),
+            Hybridization::SP2
+        );
+    }
+
+    #[test]
+    fn infer_hybridization_for_aromatic_atom_is_resonant() {
+        let mut graph = setup_test_graph(vec![Element::C], vec![]);
+        graph.atoms[0].is_aromatic = true;
+        let carbon = &graph.atoms[0];
+        assert_eq!(
+            infer_single_hybridization(carbon, &graph),
+            Hybridization::Resonant
+        );
+    }
+
+    #[test]
+    fn infer_hybridization_for_halogen_is_none() {
+        let graph = setup_test_graph(
+            vec![Element::C, Element::F],
+            vec![(0, 1, BondOrder::Single)],
+        );
+        let fluorine = &graph.atoms[1];
+        assert_eq!(
+            infer_single_hybridization(fluorine, &graph),
+            Hybridization::None
+        );
+    }
+
+    #[test]
+    fn infer_hybridization_for_isolated_metal_is_none() {
+        let graph = setup_test_graph(vec![Element::Na], vec![]);
+        let sodium = &graph.atoms[0];
+        assert_eq!(
+            infer_single_hybridization(sodium, &graph),
+            Hybridization::None
+        );
+    }
+
+    #[test]
+    fn calculate_provisional_hybridization_for_sp3_nitrogen_is_sp2() {
+        let graph = setup_test_graph(
+            vec![Element::N, Element::H, Element::H, Element::H],
+            vec![
+                (0, 1, BondOrder::Single),
+                (0, 2, BondOrder::Single),
+                (0, 3, BondOrder::Single),
+            ],
+        );
+        let nitrogen = &graph.atoms[0];
+        assert_eq!(
+            calculate_provisional_hybridization(nitrogen, &graph),
+            ProvisionalHybridization::SP2
+        );
+    }
+
+    #[test]
+    fn calculate_provisional_hybridization_for_sp3_oxygen_is_sp2() {
+        let graph = setup_test_graph(
+            vec![Element::O, Element::H, Element::H],
+            vec![(0, 1, BondOrder::Single), (0, 2, BondOrder::Single)],
+        );
+        let oxygen = &graph.atoms[0];
+        assert_eq!(
+            calculate_provisional_hybridization(oxygen, &graph),
+            ProvisionalHybridization::SP2
+        );
+    }
+
+    #[test]
+    fn calculate_provisional_hybridization_for_sp3_boron_is_sp2() {
+        let graph = setup_test_graph(
+            vec![Element::B, Element::H, Element::H, Element::H],
+            vec![
+                (0, 1, BondOrder::Single),
+                (0, 2, BondOrder::Single),
+                (0, 3, BondOrder::Single),
+            ],
+        );
+        let boron = &graph.atoms[0];
+        assert_eq!(
+            calculate_provisional_hybridization(boron, &graph),
+            ProvisionalHybridization::SP2
+        );
+    }
+
+    #[test]
+    fn calculate_provisional_hybridization_for_double_bond_is_sp2() {
+        let graph = setup_test_graph(
+            vec![Element::C, Element::C],
+            vec![(0, 1, BondOrder::Double)],
+        );
+        let carbon = &graph.atoms[0];
+        assert_eq!(
+            calculate_provisional_hybridization(carbon, &graph),
+            ProvisionalHybridization::SP2
+        );
+    }
+
+    #[test]
+    fn calculate_provisional_hybridization_for_triple_bond_is_sp() {
+        let graph = setup_test_graph(
+            vec![Element::C, Element::C],
+            vec![(0, 1, BondOrder::Triple)],
+        );
+        let carbon = &graph.atoms[0];
+        assert_eq!(
+            calculate_provisional_hybridization(carbon, &graph),
+            ProvisionalHybridization::SP
+        );
+    }
+
+    #[test]
+    fn infer_hybridization_for_all_in_water() {
+        let mut graph = setup_test_graph(
+            vec![Element::O, Element::H, Element::H],
+            vec![(0, 1, BondOrder::Single), (0, 2, BondOrder::Single)],
+        );
+        infer_hybridization_for_all(&mut graph);
+        assert_eq!(graph.atoms[0].hybridization, Hybridization::SP3);
+        assert_eq!(graph.atoms[1].hybridization, Hybridization::None);
+        assert_eq!(graph.atoms[2].hybridization, Hybridization::None);
+    }
+}
