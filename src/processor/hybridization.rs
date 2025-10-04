@@ -40,3 +40,18 @@ pub(super) fn calculate_provisional_hybridization(
 
     prov_hyb
 }
+
+pub(crate) fn infer_hybridization_for_all(graph: &mut ProcessingGraph) {
+    for i in 0..graph.atoms.len() {
+        let final_hyb = infer_single_hybridization(&graph.atoms[i], graph);
+        graph.atoms[i].hybridization = final_hyb;
+    }
+
+    debug_assert!(
+        !graph
+            .atoms
+            .iter()
+            .any(|a| a.hybridization == Hybridization::Unknown),
+        "Hybridization inference failed: one or more atoms remain Unknown."
+    );
+}
