@@ -418,6 +418,8 @@ pub enum Hybridization {
     SP2,
     SP3,
     Resonant,
+    None,
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -441,6 +443,7 @@ impl FromStr for Hybridization {
             "SP2" => Ok(Hybridization::SP2),
             "SP3" => Ok(Hybridization::SP3),
             "Resonant" => Ok(Hybridization::Resonant),
+            "None" => Ok(Hybridization::None),
             _ => Err(ParseHybridizationError {
                 invalid_string: s.to_owned(),
             }),
@@ -455,6 +458,8 @@ impl fmt::Display for Hybridization {
             Hybridization::SP2 => "SP2",
             Hybridization::SP3 => "SP3",
             Hybridization::Resonant => "Resonant",
+            Hybridization::None => "None",
+            Hybridization::Unknown => "Unknown",
         };
         write!(f, "{}", hyb_str)
     }
