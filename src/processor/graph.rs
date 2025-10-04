@@ -1,3 +1,4 @@
+use crate::core::error::GraphValidationError;
 use crate::core::graph::MolecularGraph;
 use crate::core::{BondOrder, Element, Hybridization};
 use std::collections::HashSet;
@@ -19,17 +20,21 @@ pub struct ProcessingGraph {
     pub adjacency: Vec<Vec<(usize, BondOrder)>>,
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct RingInfo(pub HashSet<HashSet<usize>>);
 
 impl ProcessingGraph {
-    pub fn new(graph: &MolecularGraph) -> Result<Self, &'static str> {
+    pub fn new(graph: &MolecularGraph) -> Result<Self, GraphValidationError> {
         let num_atoms = graph.atoms.len();
         let mut adjacency = vec![vec![]; num_atoms];
+
         for bond in &graph.bonds {
             let (u, v) = bond.atom_ids;
             if u >= num_atoms || v >= num_atoms {
-                return Err("Bond references an out-of-bounds atom ID.");
+                let invalid_id = if u >= num_atoms { u } else { v };
+                return Err(GraphValidationError::MissingAtom { id: invalid_id });
             }
+
             adjacency[u].push((v, bond.order));
             adjacency[v].push((u, bond.order));
         }
@@ -37,14 +42,18 @@ impl ProcessingGraph {
         let atoms = graph
             .atoms
             .iter()
-            .map(|atom_node| AtomView {
-                id: atom_node.id,
-                element: atom_node.element,
-                degree: adjacency[atom_node.id].len() as u8,
-                hybridization: Hybridization::Unknown,
-                is_in_ring: false,
-                smallest_ring_size: None,
-                is_aromatic: false,
+            .map(|atom_node| {
+                let degree = adjacency[atom_node.id].len() as u8;
+
+                AtomView {
+                    id: atom_node.id,
+                    element: atom_node.element,
+                    degree,
+                    hybridization: Hybridization::Unknown,
+                    is_in_ring: false,
+                    smallest_ring_size: None,
+                    is_aromatic: false,
+                }
             })
             .collect();
 
