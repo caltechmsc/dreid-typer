@@ -173,3 +173,10 @@ impl<'a> TyperEngine<'a> {
         })
     }
 }
+
+pub(crate) fn assign_types(
+    graph: &ProcessingGraph,
+    rules: &[Rule],
+) -> Result<Vec<String>, AssignmentError> {
+    TyperEngine::new(graph, rules).run()
+}
