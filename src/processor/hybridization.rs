@@ -1,4 +1,5 @@
 use super::graph::{AtomView, ProcessingGraph};
+use crate::core::error::AnnotationError;
 use crate::core::{BondOrder, Element, Hybridization};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,19 +42,25 @@ pub(super) fn calculate_provisional_hybridization(
     prov_hyb
 }
 
-pub(crate) fn infer_hybridization_for_all(graph: &mut ProcessingGraph) {
+pub(crate) fn infer_hybridization_for_all(
+    graph: &mut ProcessingGraph,
+) -> Result<(), AnnotationError> {
     for i in 0..graph.atoms.len() {
         let final_hyb = infer_single_hybridization(&graph.atoms[i], graph);
         graph.atoms[i].hybridization = final_hyb;
     }
 
-    debug_assert!(
-        !graph
-            .atoms
-            .iter()
-            .any(|a| a.hybridization == Hybridization::Unknown),
-        "Hybridization inference failed: one or more atoms remain Unknown."
-    );
+    if let Some(failed_atom) = graph
+        .atoms
+        .iter()
+        .find(|a| a.hybridization == Hybridization::Unknown)
+    {
+        return Err(AnnotationError::HybridizationInference {
+            atom_id: failed_atom.id,
+        });
+    }
+
+    Ok(())
 }
 
 fn infer_single_hybridization(atom: &AtomView, graph: &ProcessingGraph) -> Hybridization {
