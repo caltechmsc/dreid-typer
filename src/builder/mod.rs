@@ -25,3 +25,16 @@ pub(crate) fn build_topology(
         improper_dihedrals: improper_dihedrals.into_iter().collect(),
     })
 }
+
+fn build_atoms(processing_graph: &ProcessingGraph, atom_types: &[String]) -> Vec<Atom> {
+    processing_graph
+        .atoms
+        .iter()
+        .map(|atom_view| Atom {
+            id: atom_view.id,
+            element: atom_view.element,
+            atom_type: atom_types[atom_view.id].clone(),
+            hybridization: atom_view.hybridization,
+        })
+        .collect()
+}
