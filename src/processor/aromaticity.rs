@@ -24,3 +24,26 @@ pub(crate) fn perceive_aromaticity(
 
     Ok(())
 }
+
+fn is_ring_aromatic(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> bool {
+    let ring_size = ring_atom_ids.len();
+    if !(5..=7).contains(&ring_size) {
+        return false;
+    }
+
+    let all_can_participate = ring_atom_ids.iter().all(|&id| {
+        let prov_hyb = calculate_provisional_hybridization(&graph.atoms[id], graph);
+        matches!(
+            prov_hyb,
+            ProvisionalHybridization::SP | ProvisionalHybridization::SP2
+        )
+    });
+
+    if !all_can_participate {
+        return false;
+    }
+
+    let pi_electron_count = count_pi_electrons(ring_atom_ids, graph);
+
+    pi_electron_count >= 2 && (pi_electron_count - 2) % 4 == 0
+}
