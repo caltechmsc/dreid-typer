@@ -38,3 +38,14 @@ fn build_atoms(processing_graph: &ProcessingGraph, atom_types: &[String]) -> Vec
         })
         .collect()
 }
+
+fn build_bonds(initial_graph: &MolecularGraph) -> HashSet<Bond> {
+    initial_graph
+        .bonds
+        .iter()
+        .map(|edge| {
+            let (u, v) = edge.atom_ids;
+            Bond::new(u, v, edge.order)
+        })
+        .collect()
+}
