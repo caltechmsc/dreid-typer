@@ -10,6 +10,10 @@ pub enum TyperError {
     /// This error occurs before any typing logic is applied.
     InvalidInputGraph(GraphValidationError),
 
+    /// The chemical feature perception pipeline failed for a specific reason.
+    /// This indicates a logic error in our perception rules or unhandled chemical environments.
+    AnnotationFailed(AnnotationError),
+
     /// The iterative typing engine failed to assign a DREIDING type to all atoms.
     /// This is the primary failure mode of the core algorithm, indicating that
     /// the provided rules are insufficient or ambiguous for the given molecule.
@@ -34,11 +38,20 @@ pub struct AssignmentError {
     pub rounds_completed: u32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AnnotationError {
+    /// The hybridization inference logic could not determine a state for an atom.
+    HybridizationInference { atom_id: usize },
+    /// A generic error message for other potential failures in the pipeline.
+    Other(String),
+}
+
 impl fmt::Display for TyperError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::RuleParse(msg) => write!(f, "Rule parsing error: {}", msg),
             Self::InvalidInputGraph(err) => write!(f, "Invalid input graph: {}", err),
+            Self::AnnotationFailed(err) => write!(f, "Chemical annotation failed: {}", err),
             Self::AssignmentFailed(err) => write!(f, "Atom typing failed: {}", err),
         }
     }
@@ -70,10 +83,31 @@ impl fmt::Display for AssignmentError {
     }
 }
 
+impl fmt::Display for AnnotationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::HybridizationInference { atom_id } => {
+                write!(
+                    f,
+                    "could not infer hybridization for atom with ID {}",
+                    atom_id
+                )
+            }
+            Self::Other(msg) => write!(f, "{}", msg),
+        }
+    }
+}
+
 impl std::error::Error for TyperError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
+        match self {
+            Self::InvalidInputGraph(e) => Some(e),
+            Self::AnnotationFailed(e) => Some(e),
+            Self::AssignmentFailed(e) => Some(e),
+            _ => None,
+        }
     }
 }
 impl std::error::Error for GraphValidationError {}
 impl std::error::Error for AssignmentError {}
+impl std::error::Error for AnnotationError {}
