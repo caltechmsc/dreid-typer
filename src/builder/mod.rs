@@ -94,3 +94,25 @@ fn build_proper_dihedrals(graph: &ProcessingGraph) -> HashSet<ProperDihedral> {
     }
     dihedrals
 }
+
+fn build_improper_dihedrals(graph: &ProcessingGraph) -> HashSet<ImproperDihedral> {
+    let mut dihedrals = HashSet::new();
+    for i in 0..graph.atoms.len() {
+        let atom = &graph.atoms[i];
+
+        if atom.degree == 3 {
+            if matches!(
+                atom.hybridization,
+                Hybridization::SP2 | Hybridization::Resonant
+            ) {
+                let neighbors = &graph.adjacency[i];
+                let j = neighbors[0].0;
+                let k = neighbors[1].0;
+                let l = neighbors[2].0;
+
+                dihedrals.insert(ImproperDihedral::new(j, k, i, l));
+            }
+        }
+    }
+    dihedrals
+}
