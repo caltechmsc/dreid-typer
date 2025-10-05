@@ -49,3 +49,22 @@ fn build_bonds(initial_graph: &MolecularGraph) -> HashSet<Bond> {
         })
         .collect()
 }
+
+fn build_angles(graph: &ProcessingGraph) -> HashSet<Angle> {
+    let mut angles = HashSet::new();
+    for j in 0..graph.atoms.len() {
+        let neighbors = &graph.adjacency[j];
+        if neighbors.len() < 2 {
+            continue;
+        }
+
+        for i_idx in 0..neighbors.len() {
+            for k_idx in (i_idx + 1)..neighbors.len() {
+                let i = neighbors[i_idx].0;
+                let k = neighbors[k_idx].0;
+                angles.insert(Angle::new(i, j, k));
+            }
+        }
+    }
+    angles
+}
