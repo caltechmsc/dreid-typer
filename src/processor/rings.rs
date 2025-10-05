@@ -39,7 +39,6 @@ impl<'a> JohnsonCycleFinder<'a> {
     }
 
     fn find_cycles_from_node(&mut self, start_node: usize) {
-        let _num_atoms = self.graph.atoms.len();
         let mut queue = VecDeque::new();
         queue.push_back(vec![start_node]);
 
