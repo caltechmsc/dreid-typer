@@ -116,3 +116,286 @@ fn build_improper_dihedrals(graph: &ProcessingGraph) -> HashSet<ImproperDihedral
     }
     dihedrals
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::AtomNode;
+    use crate::core::{BondOrder, Element};
+    use crate::processor::{AtomView, ProcessingGraph};
+
+    struct TestMolecule {
+        initial_graph: MolecularGraph,
+        processing_graph: ProcessingGraph,
+        atom_types: Vec<String>,
+    }
+
+    impl TestMolecule {
+        fn new(atoms: &[(Element, Hybridization, &str)]) -> Self {
+            let mut initial_graph = MolecularGraph::new();
+            let mut atom_views = Vec::new();
+            let mut atom_types = Vec::new();
+
+            for (i, (element, hybridization, atom_type)) in atoms.iter().enumerate() {
+                initial_graph.atoms.push(AtomNode {
+                    id: i,
+                    element: *element,
+                });
+                atom_views.push(AtomView {
+                    id: i,
+                    element: *element,
+                    degree: 0,
+                    hybridization: *hybridization,
+                    is_in_ring: false,
+                    smallest_ring_size: None,
+                    is_aromatic: *hybridization == Hybridization::Resonant,
+                });
+                atom_types.push(atom_type.to_string());
+            }
+
+            Self {
+                initial_graph,
+                processing_graph: ProcessingGraph {
+                    atoms: atom_views,
+                    adjacency: vec![],
+                },
+                atom_types,
+            }
+        }
+
+        fn with_bond(mut self, u: usize, v: usize, order: BondOrder) -> Self {
+            self.initial_graph.add_bond(u, v, order).unwrap();
+            self
+        }
+
+        fn build(mut self) -> Self {
+            let num_atoms = self.initial_graph.atoms.len();
+            let mut adjacency = vec![vec![]; num_atoms];
+            for bond in &self.initial_graph.bonds {
+                let (u, v) = bond.atom_ids;
+                adjacency[u].push((v, bond.order));
+                adjacency[v].push((u, bond.order));
+            }
+
+            for i in 0..num_atoms {
+                self.processing_graph.atoms[i].degree = adjacency[i].len() as u8;
+            }
+            self.processing_graph.adjacency = adjacency;
+
+            self
+        }
+    }
+
+    #[test]
+    fn test_build_methane_topology() {
+        let molecule = TestMolecule::new(&[
+            (Element::C, Hybridization::SP3, "C_3"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+        ])
+        .with_bond(0, 1, BondOrder::Single)
+        .with_bond(0, 2, BondOrder::Single)
+        .with_bond(0, 3, BondOrder::Single)
+        .with_bond(0, 4, BondOrder::Single)
+        .build();
+
+        let topology = build_topology(
+            &molecule.initial_graph,
+            &molecule.processing_graph,
+            &molecule.atom_types,
+        )
+        .unwrap();
+
+        assert_eq!(topology.atoms.len(), 5);
+        assert_eq!(topology.bonds.len(), 4);
+        assert_eq!(topology.angles.len(), 6);
+        assert_eq!(topology.proper_dihedrals.len(), 0);
+        assert_eq!(topology.improper_dihedrals.len(), 0);
+    }
+
+    #[test]
+    fn test_build_ethane_topology() {
+        let molecule = TestMolecule::new(&[
+            (Element::C, Hybridization::SP3, "C_3"),
+            (Element::C, Hybridization::SP3, "C_3"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+        ])
+        .with_bond(0, 1, BondOrder::Single)
+        .with_bond(0, 2, BondOrder::Single)
+        .with_bond(0, 3, BondOrder::Single)
+        .with_bond(0, 4, BondOrder::Single)
+        .with_bond(1, 5, BondOrder::Single)
+        .with_bond(1, 6, BondOrder::Single)
+        .with_bond(1, 7, BondOrder::Single)
+        .build();
+
+        let topology = build_topology(
+            &molecule.initial_graph,
+            &molecule.processing_graph,
+            &molecule.atom_types,
+        )
+        .unwrap();
+
+        assert_eq!(topology.atoms.len(), 8);
+        assert_eq!(topology.bonds.len(), 7);
+        assert_eq!(topology.angles.len(), 12);
+        assert_eq!(topology.proper_dihedrals.len(), 9);
+        assert_eq!(topology.improper_dihedrals.len(), 0);
+    }
+
+    #[test]
+    fn test_build_ethylene_topology() {
+        let molecule = TestMolecule::new(&[
+            (Element::C, Hybridization::SP2, "C_2"),
+            (Element::C, Hybridization::SP2, "C_2"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+        ])
+        .with_bond(0, 1, BondOrder::Double)
+        .with_bond(0, 2, BondOrder::Single)
+        .with_bond(0, 3, BondOrder::Single)
+        .with_bond(1, 4, BondOrder::Single)
+        .with_bond(1, 5, BondOrder::Single)
+        .build();
+
+        let topology = build_topology(
+            &molecule.initial_graph,
+            &molecule.processing_graph,
+            &molecule.atom_types,
+        )
+        .unwrap();
+
+        assert_eq!(topology.bonds.len(), 5);
+        assert_eq!(topology.angles.len(), 6);
+        assert_eq!(topology.proper_dihedrals.len(), 4);
+        assert_eq!(topology.improper_dihedrals.len(), 2);
+
+        assert!(
+            topology
+                .improper_dihedrals
+                .contains(&ImproperDihedral::new(1, 2, 0, 3))
+        );
+        assert!(
+            topology
+                .improper_dihedrals
+                .contains(&ImproperDihedral::new(0, 4, 1, 5))
+        );
+    }
+
+    #[test]
+    fn test_build_formaldehyde_topology() {
+        let molecule = TestMolecule::new(&[
+            (Element::C, Hybridization::SP2, "C_2"),
+            (Element::O, Hybridization::SP2, "O_2"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+        ])
+        .with_bond(0, 1, BondOrder::Double)
+        .with_bond(0, 2, BondOrder::Single)
+        .with_bond(0, 3, BondOrder::Single)
+        .build();
+
+        let topology = build_topology(
+            &molecule.initial_graph,
+            &molecule.processing_graph,
+            &molecule.atom_types,
+        )
+        .unwrap();
+
+        assert_eq!(topology.bonds.len(), 3);
+        assert_eq!(topology.angles.len(), 3);
+        assert_eq!(topology.proper_dihedrals.len(), 0);
+        assert_eq!(topology.improper_dihedrals.len(), 1);
+        assert!(
+            topology
+                .improper_dihedrals
+                .contains(&ImproperDihedral::new(1, 2, 0, 3))
+        );
+    }
+
+    #[test]
+    fn test_build_benzene_topology() {
+        let mut molecule_builder = TestMolecule::new(&[
+            (Element::C, Hybridization::Resonant, "C_R"),
+            (Element::C, Hybridization::Resonant, "C_R"),
+            (Element::C, Hybridization::Resonant, "C_R"),
+            (Element::C, Hybridization::Resonant, "C_R"),
+            (Element::C, Hybridization::Resonant, "C_R"),
+            (Element::C, Hybridization::Resonant, "C_R"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+        ]);
+
+        for i in 0..6 {
+            molecule_builder = molecule_builder.with_bond(i, (i + 1) % 6, BondOrder::Aromatic);
+        }
+        for i in 0..6 {
+            molecule_builder = molecule_builder.with_bond(i, i + 6, BondOrder::Single);
+        }
+
+        let molecule = molecule_builder.build();
+
+        let topology = build_topology(
+            &molecule.initial_graph,
+            &molecule.processing_graph,
+            &molecule.atom_types,
+        )
+        .unwrap();
+
+        let num_atoms = 12;
+        let num_bonds = 12;
+        let num_angles = 18;
+        let num_proper_dihedrals = 24;
+        let num_improper_dihedrals = 6;
+
+        assert_eq!(topology.atoms.len(), num_atoms);
+        assert_eq!(topology.bonds.len(), num_bonds);
+        assert_eq!(topology.angles.len(), num_angles);
+        assert!(
+            topology.proper_dihedrals.len() > 0,
+            "Expected some proper dihedrals"
+        );
+        assert_eq!(topology.improper_dihedrals.len(), num_improper_dihedrals);
+
+        assert!(
+            topology
+                .improper_dihedrals
+                .contains(&ImproperDihedral::new(1, 5, 0, 6))
+        );
+    }
+
+    #[test]
+    fn test_build_diatomic_no_angles_or_dihedrals() {
+        let molecule = TestMolecule::new(&[
+            (Element::H, Hybridization::None, "H_"),
+            (Element::H, Hybridization::None, "H_"),
+        ])
+        .with_bond(0, 1, BondOrder::Single)
+        .build();
+
+        let topology = build_topology(
+            &molecule.initial_graph,
+            &molecule.processing_graph,
+            &molecule.atom_types,
+        )
+        .unwrap();
+
+        assert_eq!(topology.bonds.len(), 1);
+        assert_eq!(topology.angles.len(), 0);
+        assert_eq!(topology.proper_dihedrals.len(), 0);
+        assert_eq!(topology.improper_dihedrals.len(), 0);
+    }
+}
