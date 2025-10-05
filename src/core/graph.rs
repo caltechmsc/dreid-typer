@@ -141,3 +141,108 @@ pub struct MolecularTopology {
     pub proper_dihedrals: Vec<ProperDihedral>,
     pub improper_dihedrals: Vec<ImproperDihedral>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::{BondOrder, Element};
+
+    #[test]
+    fn molecular_graph_new_is_empty() {
+        let graph = MolecularGraph::new();
+        assert!(graph.atoms.is_empty());
+        assert!(graph.bonds.is_empty());
+    }
+
+    #[test]
+    fn molecular_graph_add_atom() {
+        let mut graph = MolecularGraph::new();
+        let atom_id_1 = graph.add_atom(Element::C);
+        assert_eq!(atom_id_1, 0);
+        assert_eq!(graph.atoms.len(), 1);
+        assert_eq!(graph.atoms[0].id, 0);
+        assert_eq!(graph.atoms[0].element, Element::C);
+
+        let atom_id_2 = graph.add_atom(Element::H);
+        assert_eq!(atom_id_2, 1);
+        assert_eq!(graph.atoms.len(), 2);
+        assert_eq!(graph.atoms[1].id, 1);
+        assert_eq!(graph.atoms[1].element, Element::H);
+    }
+
+    #[test]
+    fn molecular_graph_add_bond_succeeds() {
+        let mut graph = MolecularGraph::new();
+        graph.add_atom(Element::C);
+        graph.add_atom(Element::C);
+        let bond_id = graph.add_bond(0, 1, BondOrder::Single).unwrap();
+        assert_eq!(bond_id, 0);
+        assert_eq!(graph.bonds.len(), 1);
+        assert_eq!(graph.bonds[0].atom_ids, (0, 1));
+        assert_eq!(graph.bonds[0].order, BondOrder::Single);
+    }
+
+    #[test]
+    fn molecular_graph_add_bond_with_out_of_bounds_atom_id() {
+        let mut graph = MolecularGraph::new();
+        graph.add_atom(Element::C);
+        let result = graph.add_bond(0, 1, BondOrder::Single);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn molecular_graph_add_bond_to_itself() {
+        let mut graph = MolecularGraph::new();
+        graph.add_atom(Element::C);
+        let result = graph.add_bond(0, 0, BondOrder::Single);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn bond_new_sorts_atom_ids() {
+        let bond = Bond::new(2, 1, BondOrder::Single);
+        assert_eq!(bond.atom_ids, (1, 2));
+    }
+
+    #[test]
+    fn bond_new_with_pre_sorted_atom_ids() {
+        let bond = Bond::new(1, 2, BondOrder::Single);
+        assert_eq!(bond.atom_ids, (1, 2));
+    }
+
+    #[test]
+    fn angle_new_sorts_outer_atom_ids() {
+        let angle = Angle::new(3, 1, 2);
+        assert_eq!(angle.atom_ids, (2, 1, 3));
+    }
+
+    #[test]
+    fn angle_new_with_pre_sorted_outer_atom_ids() {
+        let angle = Angle::new(2, 1, 3);
+        assert_eq!(angle.atom_ids, (2, 1, 3));
+    }
+
+    #[test]
+    fn proper_dihedral_new_chooses_lexicographically_smallest_representation() {
+        let dihedral = ProperDihedral::new(4, 3, 2, 1);
+        assert_eq!(dihedral.atom_ids, (1, 2, 3, 4));
+    }
+
+    #[test]
+    fn proper_dihedral_new_with_lexicographically_smallest_representation() {
+        let dihedral = ProperDihedral::new(1, 2, 3, 4);
+        assert_eq!(dihedral.atom_ids, (1, 2, 3, 4));
+    }
+
+    #[test]
+    fn improper_dihedral_new_sorts_plane_ids() {
+        let dihedral = ImproperDihedral::new(4, 2, 1, 3);
+        assert_eq!(dihedral.atom_ids, (2, 3, 1, 4));
+    }
+
+    #[test]
+    fn improper_dihedral_new_with_sorted_plane_ids() {
+        let dihedral = ImproperDihedral::new(1, 2, 3, 4);
+        assert_eq!(dihedral.atom_ids, (1, 2, 3, 4));
+    }
+}
