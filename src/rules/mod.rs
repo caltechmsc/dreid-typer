@@ -85,10 +85,10 @@ struct Ruleset {
     rules: Vec<Rule>,
 }
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
-static DEFAULT_RULES: Lazy<Result<Vec<Rule>, TyperError>> =
-    Lazy::new(|| parse_rules(default::DEFAULT_RULES_TOML));
+static DEFAULT_RULES: LazyLock<Result<Vec<Rule>, TyperError>> =
+    LazyLock::new(|| parse_rules(default::DEFAULT_RULES_TOML));
 
 pub fn parse_rules(content: &str) -> Result<Vec<Rule>, TyperError> {
     let ruleset: Ruleset =
