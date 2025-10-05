@@ -26,10 +26,10 @@ pub(super) fn calculate_provisional_hybridization(
 
     if prov_hyb == ProvisionalHybridization::SP3 {
         match atom.element {
-            Element::N | Element::P | Element::As if atom.degree == 3 => {
+            Element::N | Element::P | Element::As if atom.degree == 3 || atom.degree == 2 => {
                 prov_hyb = ProvisionalHybridization::SP2;
             }
-            Element::O | Element::S | Element::Se if atom.degree == 2 => {
+            Element::O | Element::S | Element::Se if atom.degree == 2 || atom.degree == 1 => {
                 prov_hyb = ProvisionalHybridization::SP2;
             }
             Element::B if atom.degree == 3 => {
