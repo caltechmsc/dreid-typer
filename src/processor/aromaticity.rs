@@ -65,8 +65,8 @@ fn count_atom_pi_contribution(atom: &AtomView, graph: &ProcessingGraph) -> u8 {
     }
 
     match atom.element {
-        Element::N | Element::P | Element::As if atom.degree == 3 => 2,
-        Element::O | Element::S | Element::Se if atom.degree == 2 => 2,
+        Element::N | Element::P | Element::As if atom.degree <= 3 => 2,
+        Element::O | Element::S | Element::Se if atom.degree <= 2 => 2,
         Element::B if atom.degree == 3 => 0,
         _ => 0,
     }
