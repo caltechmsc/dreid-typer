@@ -71,3 +71,13 @@ fn count_atom_pi_contribution(atom: &AtomView, graph: &ProcessingGraph) -> u8 {
         _ => 0,
     }
 }
+
+use crate::core::BondOrder;
+impl BondOrder {
+    fn is_pi_bond(&self) -> bool {
+        matches!(
+            self,
+            BondOrder::Double | BondOrder::Triple | BondOrder::Aromatic
+        )
+    }
+}
