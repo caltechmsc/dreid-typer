@@ -61,13 +61,6 @@ fn infer_single_hybridization(atom: &AtomView, graph: &ProcessingGraph) -> Hybri
         return Hybridization::Resonant;
     }
 
-    if atom.degree == 0 {
-        match atom.element {
-            Element::Na | Element::Ca | Element::Fe | Element::Zn => return Hybridization::None,
-            _ => return Hybridization::None,
-        }
-    }
-
     match atom.element {
         Element::H
         | Element::F
@@ -84,6 +77,27 @@ fn infer_single_hybridization(atom: &AtomView, graph: &ProcessingGraph) -> Hybri
         | Element::Fe
         | Element::Zn => {
             return Hybridization::None;
+        }
+        _ => {
+            if atom.degree == 0 {
+                return Hybridization::None;
+            }
+        }
+    }
+
+    match atom.element {
+        Element::Si
+        | Element::P
+        | Element::S
+        | Element::Ge
+        | Element::As
+        | Element::Se
+        | Element::Sn
+        | Element::Sb
+        | Element::Te => {
+            if atom.degree >= 4 {
+                return Hybridization::SP3;
+            }
         }
         _ => {}
     }
