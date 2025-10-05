@@ -81,3 +81,149 @@ impl BondOrder {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+    use crate::core::{BondOrder, Element};
+
+    fn setup(
+        edges: &[(usize, usize)],
+        elements: &[(usize, Element)],
+    ) -> (ProcessingGraph, RingInfo) {
+        let mut mg = MolecularGraph::new();
+        let max_node = edges
+            .iter()
+            .flat_map(|(u, v)| vec![*u, *v])
+            .max()
+            .unwrap_or(0)
+            .max(elements.iter().map(|(i, _)| *i).max().unwrap_or(0));
+
+        for _ in 0..=max_node {
+            mg.add_atom(Element::C);
+        }
+        for (i, el) in elements {
+            mg.atoms[*i].element = *el;
+        }
+
+        for (u, v) in edges {
+            mg.add_bond(*u, *v, BondOrder::Aromatic).unwrap();
+        }
+
+        let mut pg = ProcessingGraph::new(&mg).unwrap();
+        let ring_info = crate::processor::rings::perceive_rings(&pg);
+        for (id, atom) in pg.atoms.iter_mut().enumerate() {
+            if ring_info.0.iter().any(|r| r.contains(&id)) {
+                atom.is_in_ring = true;
+            }
+        }
+        (pg, ring_info)
+    }
+
+    #[test]
+    fn test_benzene_is_aromatic() {
+        let edges = &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)];
+        let (mut pg, ring_info) = setup(edges, &[]);
+
+        perceive_aromaticity(&mut pg, &ring_info).unwrap();
+
+        for atom in pg.atoms {
+            assert!(
+                atom.is_aromatic,
+                "Atom {} in benzene should be aromatic",
+                atom.id
+            );
+        }
+    }
+
+    #[test]
+    fn test_cyclohexane_is_not_aromatic() {
+        let mut mg = MolecularGraph::new();
+        for _ in 0..6 {
+            mg.add_atom(Element::C);
+        }
+        for i in 0..6 {
+            mg.add_bond(i, (i + 1) % 6, BondOrder::Single).unwrap();
+        }
+
+        let mut pg = ProcessingGraph::new(&mg).unwrap();
+        let ring_info = crate::processor::rings::perceive_rings(&pg);
+        for (id, atom) in pg.atoms.iter_mut().enumerate() {
+            if ring_info.0.iter().any(|r| r.contains(&id)) {
+                atom.is_in_ring = true;
+            }
+        }
+
+        perceive_aromaticity(&mut pg, &ring_info).unwrap();
+
+        for atom in pg.atoms {
+            assert!(
+                !atom.is_aromatic,
+                "Atom {} in cyclohexane should not be aromatic",
+                atom.id
+            );
+        }
+    }
+
+    #[test]
+    fn test_pyridine_is_aromatic() {
+        let edges = &[(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)];
+        let elements = &[(0, Element::N)];
+        let (mut pg, ring_info) = setup(edges, elements);
+
+        perceive_aromaticity(&mut pg, &ring_info).unwrap();
+
+        assert!(pg.atoms.iter().all(|a| a.is_aromatic));
+    }
+
+    #[test]
+    fn test_pyrrole_is_aromatic() {
+        let mut mg = MolecularGraph::new();
+        mg.add_atom(Element::N);
+        mg.add_atom(Element::C);
+        mg.add_atom(Element::C);
+        mg.add_atom(Element::C);
+        mg.add_atom(Element::C);
+        mg.add_atom(Element::H);
+        mg.add_atom(Element::H);
+        mg.add_atom(Element::H);
+        mg.add_atom(Element::H);
+        mg.add_atom(Element::H);
+        mg.add_bond(0, 1, BondOrder::Single).unwrap();
+        mg.add_bond(1, 2, BondOrder::Double).unwrap();
+        mg.add_bond(2, 3, BondOrder::Single).unwrap();
+        mg.add_bond(3, 4, BondOrder::Double).unwrap();
+        mg.add_bond(4, 0, BondOrder::Single).unwrap();
+        mg.add_bond(0, 5, BondOrder::Single).unwrap();
+        mg.add_bond(1, 6, BondOrder::Single).unwrap();
+        mg.add_bond(2, 7, BondOrder::Single).unwrap();
+        mg.add_bond(3, 8, BondOrder::Single).unwrap();
+        mg.add_bond(4, 9, BondOrder::Single).unwrap();
+
+        let mut pg = ProcessingGraph::new(&mg).unwrap();
+        let ring_info = crate::processor::rings::perceive_rings(&pg);
+        for (id, atom) in pg.atoms.iter_mut().enumerate() {
+            if ring_info.0.iter().any(|r| r.contains(&id)) {
+                atom.is_in_ring = true;
+            }
+        }
+
+        perceive_aromaticity(&mut pg, &ring_info).unwrap();
+
+        for atom in pg.atoms.iter().take(5) {
+            assert!(
+                atom.is_aromatic,
+                "Atom {} in pyrrole ring should be aromatic",
+                atom.id
+            );
+        }
+        for atom in pg.atoms.iter().skip(5) {
+            assert!(
+                !atom.is_aromatic,
+                "Atom {} (H) in pyrrole should not be aromatic",
+                atom.id
+            );
+        }
+    }
+}
