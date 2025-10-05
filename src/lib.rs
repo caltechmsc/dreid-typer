@@ -20,10 +20,9 @@ pub fn assign_topology(graph: &MolecularGraph) -> Result<MolecularTopology, Type
 
 pub fn assign_topology_with_rules(
     graph: &MolecularGraph,
-    custom_rules_toml: &str,
+    rules: &[rules::Rule],
 ) -> Result<MolecularTopology, TyperError> {
-    let custom_rules = rules::parse_rules(custom_rules_toml)?;
-    assign_topology_internal(graph, &custom_rules)
+    assign_topology_internal(graph, rules)
 }
 
 fn assign_topology_internal(
