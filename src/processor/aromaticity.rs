@@ -47,3 +47,10 @@ fn is_ring_aromatic(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> bool {
 
     pi_electron_count >= 2 && (pi_electron_count - 2) % 4 == 0
 }
+
+fn count_pi_electrons(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> u8 {
+    ring_atom_ids
+        .iter()
+        .map(|&id| count_atom_pi_contribution(&graph.atoms[id], graph))
+        .sum()
+}
