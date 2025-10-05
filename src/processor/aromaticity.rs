@@ -54,3 +54,20 @@ fn count_pi_electrons(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> u8 {
         .map(|&id| count_atom_pi_contribution(&graph.atoms[id], graph))
         .sum()
 }
+
+fn count_atom_pi_contribution(atom: &AtomView, graph: &ProcessingGraph) -> u8 {
+    let has_pi_bond = graph.adjacency[atom.id]
+        .iter()
+        .any(|(_, order)| order.is_pi_bond());
+
+    if has_pi_bond {
+        return 1;
+    }
+
+    match atom.element {
+        Element::N | Element::P | Element::As if atom.degree == 3 => 2,
+        Element::O | Element::S | Element::Se if atom.degree == 2 => 2,
+        Element::B if atom.degree == 3 => 0,
+        _ => 0,
+    }
+}
