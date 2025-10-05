@@ -68,3 +68,29 @@ fn build_angles(graph: &ProcessingGraph) -> HashSet<Angle> {
     }
     angles
 }
+
+fn build_proper_dihedrals(graph: &ProcessingGraph) -> HashSet<ProperDihedral> {
+    let mut dihedrals = HashSet::new();
+    for j in 0..graph.atoms.len() {
+        for &(k, _) in &graph.adjacency[j] {
+            if j >= k {
+                continue;
+            }
+
+            for &(i, _) in &graph.adjacency[j] {
+                if i == k {
+                    continue;
+                }
+
+                for &(l, _) in &graph.adjacency[k] {
+                    if l == j {
+                        continue;
+                    }
+
+                    dihedrals.insert(ProperDihedral::new(i, j, k, l));
+                }
+            }
+        }
+    }
+    dihedrals
+}
