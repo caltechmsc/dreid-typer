@@ -214,3 +214,33 @@ fn is_ring_aromatic(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> bool {
 
     (total_pi_electrons - 2) % 4 == 0
 }
+
+fn count_atom_pi_contribution(
+    atom_id: usize,
+    ring_atoms: &HashSet<usize>,
+    graph: &ProcessingGraph,
+) -> Option<u8> {
+    let atom = &graph.atoms[atom_id];
+    let steric = match atom.perception_source {
+        Some(PerceptionSource::Template) => atom.steric_number,
+        _ => atom.degree + atom.lone_pairs,
+    };
+
+    if steric >= 4 && atom.lone_pairs == 0 {
+        return None;
+    }
+
+    let has_exocyclic_pi_bond = graph.adjacency[atom_id].iter().any(|(neighbor, order)| {
+        !ring_atoms.contains(neighbor) && matches!(order, BondOrder::Double | BondOrder::Triple)
+    });
+
+    if has_exocyclic_pi_bond {
+        return Some(1);
+    }
+
+    match steric {
+        2 | 3 => Some(1),
+        4 if atom.lone_pairs > 0 => Some(2),
+        _ => None,
+    }
+}
