@@ -140,15 +140,22 @@ mod tests {
                 initial_graph.atoms.push(AtomNode {
                     id: i,
                     element: *element,
+                    formal_charge: 0,
                 });
                 atom_views.push(AtomView {
                     id: i,
                     element: *element,
+                    formal_charge: 0,
                     degree: 0,
+                    valence_electrons: 0,
+                    bonding_electrons: 0,
+                    lone_pairs: 0,
+                    steric_number: 0,
                     hybridization: *hybridization,
                     is_in_ring: false,
                     smallest_ring_size: None,
                     is_aromatic: *hybridization == Hybridization::Resonant,
+                    perception_source: None,
                 });
                 atom_types.push(atom_type.to_string());
             }
