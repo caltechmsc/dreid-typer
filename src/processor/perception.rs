@@ -44,3 +44,20 @@ pub(crate) fn perceive_rings(graph: &ProcessingGraph) -> RingInfo {
     let sorted_vec_cycles = finder.find_cycles_internal();
     RingInfo(sorted_vec_cycles)
 }
+
+pub(crate) fn apply_ring_annotations(graph: &mut ProcessingGraph, ring_info: &RingInfo) {
+    let mut atom_ring_sizes: Vec<Vec<u8>> = vec![vec![]; graph.atoms.len()];
+    for ring in &ring_info.0 {
+        let ring_len = ring.len() as u8;
+        for &atom_id in ring {
+            atom_ring_sizes[atom_id].push(ring_len);
+        }
+    }
+
+    for (atom_id, atom) in graph.atoms.iter_mut().enumerate() {
+        if !atom_ring_sizes[atom_id].is_empty() {
+            atom.is_in_ring = true;
+            atom.smallest_ring_size = atom_ring_sizes[atom_id].iter().min().copied();
+        }
+    }
+}
