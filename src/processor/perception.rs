@@ -284,3 +284,20 @@ fn is_special_non_hybridized(element: Element) -> bool {
             | Element::Zn
     )
 }
+
+fn get_valence_electrons(element: Element) -> Option<u8> {
+    use Element::*;
+    match element {
+        H => Some(1),
+        He => Some(2),
+        Li | Na | K | Rb | Cs | Fr => Some(1),
+        Be | Mg | Ca | Sr | Ba | Ra => Some(2),
+        B | Al | Ga | In | Tl => Some(3),
+        C | Si | Ge | Sn | Pb => Some(4),
+        N | P | As | Sb | Bi => Some(5),
+        O | S | Se | Te | Po => Some(6),
+        F | Cl | Br | I | At => Some(7),
+        Ne | Ar | Kr | Xe | Rn => Some(8),
+        _ => None,
+    }
+}
