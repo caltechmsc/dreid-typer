@@ -350,3 +350,288 @@ impl<'a> JohnsonCycleFinder<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+    use crate::core::{BondOrder, Element};
+    use crate::processor::templates;
+    use std::collections::HashSet;
+
+    #[test]
+    fn electron_counts_assign_lone_pairs() {
+        let mut mg = MolecularGraph::new();
+        let o = mg.add_atom(Element::O, 0);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
+
+        mg.add_bond(o, h1, BondOrder::Single).unwrap();
+        mg.add_bond(o, h2, BondOrder::Single).unwrap();
+
+        let graph = perceive_electron_counts(&mg).unwrap();
+        let oxygen = &graph.atoms[o];
+        assert_eq!(oxygen.valence_electrons, 6);
+        assert_eq!(oxygen.bonding_electrons, 2);
+        assert_eq!(oxygen.lone_pairs, 2);
+        assert_eq!(oxygen.steric_number, 0);
+    }
+
+    #[test]
+    fn ring_detection_identifies_simple_cycle() {
+        let mut mg = MolecularGraph::new();
+        let a = mg.add_atom(Element::C, 0);
+        let b = mg.add_atom(Element::C, 0);
+        let c = mg.add_atom(Element::C, 0);
+
+        mg.add_bond(a, b, BondOrder::Single).unwrap();
+        mg.add_bond(b, c, BondOrder::Single).unwrap();
+        mg.add_bond(c, a, BondOrder::Single).unwrap();
+
+        let graph = perceive_electron_counts(&mg).unwrap();
+        let rings = perceive_rings(&graph);
+        assert_eq!(rings.0.len(), 1);
+    }
+
+    #[test]
+    fn aromaticity_flags_benzene() {
+        let mut mg = MolecularGraph::new();
+        let mut atoms = vec![];
+        for _ in 0..6 {
+            atoms.push(mg.add_atom(Element::C, 0));
+        }
+        for i in 0..6 {
+            mg.add_bond(atoms[i], atoms[(i + 1) % 6], BondOrder::Aromatic)
+                .unwrap();
+        }
+
+        let mut graph = perceive_electron_counts(&mg).unwrap();
+        let rings = perceive_rings(&graph);
+        apply_ring_annotations(&mut graph, &rings);
+        perceive_generic_aromaticity(&mut graph, &rings).unwrap();
+
+        assert!(graph.atoms.iter().all(|a| a.is_aromatic));
+    }
+
+    #[test]
+    fn hybridization_assigns_resonant_for_aromatic_atoms() {
+        let mut mg = MolecularGraph::new();
+        let mut atoms = vec![];
+        for _ in 0..6 {
+            atoms.push(mg.add_atom(Element::C, 0));
+        }
+        for i in 0..6 {
+            mg.add_bond(atoms[i], atoms[(i + 1) % 6], BondOrder::Aromatic)
+                .unwrap();
+        }
+
+        let mut graph = perceive_electron_counts(&mg).unwrap();
+        let rings = perceive_rings(&graph);
+        apply_ring_annotations(&mut graph, &rings);
+        perceive_generic_aromaticity(&mut graph, &rings).unwrap();
+        perceive_generic_hybridization(&mut graph).unwrap();
+
+        assert!(
+            graph
+                .atoms
+                .iter()
+                .all(|a| a.hybridization == Hybridization::Resonant)
+        );
+    }
+
+    #[test]
+    fn test_ammonium_ion_perception() {
+        let mut mg = MolecularGraph::new();
+        let n = mg.add_atom(Element::N, 1);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
+        let h3 = mg.add_atom(Element::H, 0);
+        let h4 = mg.add_atom(Element::H, 0);
+
+        mg.add_bond(n, h1, BondOrder::Single).unwrap();
+        mg.add_bond(n, h2, BondOrder::Single).unwrap();
+        mg.add_bond(n, h3, BondOrder::Single).unwrap();
+        mg.add_bond(n, h4, BondOrder::Single).unwrap();
+
+        let mut graph = perceive_electron_counts(&mg).unwrap();
+        let nitrogen = &graph.atoms[n];
+        assert_eq!(nitrogen.formal_charge, 1);
+        assert_eq!(nitrogen.lone_pairs, 0);
+        assert_eq!(nitrogen.steric_number, 0);
+
+        perceive_generic_hybridization(&mut graph).unwrap();
+        let nitrogen = &graph.atoms[n];
+        assert_eq!(nitrogen.steric_number, 4);
+        assert_eq!(graph.atoms[n].hybridization, Hybridization::SP3);
+    }
+
+    #[test]
+    fn test_acetate_ion_perception() {
+        let mut mg = MolecularGraph::new();
+        let c_methyl = mg.add_atom(Element::C, 0);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
+        let h3 = mg.add_atom(Element::H, 0);
+        let c_carboxyl = mg.add_atom(Element::C, 0);
+        let o_double = mg.add_atom(Element::O, 0);
+        let o_single = mg.add_atom(Element::O, -1);
+
+        mg.add_bond(c_methyl, h1, BondOrder::Single).unwrap();
+        mg.add_bond(c_methyl, h2, BondOrder::Single).unwrap();
+        mg.add_bond(c_methyl, h3, BondOrder::Single).unwrap();
+        mg.add_bond(c_methyl, c_carboxyl, BondOrder::Single)
+            .unwrap();
+        mg.add_bond(c_carboxyl, o_double, BondOrder::Double)
+            .unwrap();
+        mg.add_bond(c_carboxyl, o_single, BondOrder::Single)
+            .unwrap();
+
+        let mut graph = perceive_electron_counts(&mg).unwrap();
+        let carbonyl_oxygen = &graph.atoms[o_double];
+        assert_eq!(carbonyl_oxygen.formal_charge, 0);
+        assert_eq!(carbonyl_oxygen.lone_pairs, 2);
+        assert_eq!(carbonyl_oxygen.steric_number, 0);
+
+        let alkoxide_oxygen = &graph.atoms[o_single];
+        assert_eq!(alkoxide_oxygen.formal_charge, -1);
+        assert_eq!(alkoxide_oxygen.lone_pairs, 3);
+        assert_eq!(alkoxide_oxygen.steric_number, 0);
+
+        templates::apply_functional_group_templates(&mut graph).unwrap();
+        assert_eq!(graph.atoms[o_double].steric_number, 3);
+        assert_eq!(graph.atoms[o_single].steric_number, 3);
+
+        perceive_generic_hybridization(&mut graph).unwrap();
+        assert_eq!(graph.atoms[o_double].hybridization, Hybridization::SP2);
+        assert_eq!(graph.atoms[o_single].hybridization, Hybridization::SP2);
+    }
+
+    #[test]
+    fn test_boron_trifluoride_hybridization() {
+        let mut mg = MolecularGraph::new();
+        let b = mg.add_atom(Element::B, 0);
+        let f1 = mg.add_atom(Element::F, 0);
+        let f2 = mg.add_atom(Element::F, 0);
+        let f3 = mg.add_atom(Element::F, 0);
+
+        mg.add_bond(b, f1, BondOrder::Single).unwrap();
+        mg.add_bond(b, f2, BondOrder::Single).unwrap();
+        mg.add_bond(b, f3, BondOrder::Single).unwrap();
+
+        let mut graph = perceive_electron_counts(&mg).unwrap();
+        perceive_generic_hybridization(&mut graph).unwrap();
+        assert_eq!(graph.atoms[b].steric_number, 3);
+        assert_eq!(graph.atoms[b].hybridization, Hybridization::SP2);
+    }
+
+    #[test]
+    fn test_pyrrole_aromatic_pi_contribution() {
+        let mut mg = MolecularGraph::new();
+        let n = mg.add_atom(Element::N, 0);
+        let c1 = mg.add_atom(Element::C, 0);
+        let c2 = mg.add_atom(Element::C, 0);
+        let c3 = mg.add_atom(Element::C, 0);
+        let c4 = mg.add_atom(Element::C, 0);
+        let h_n = mg.add_atom(Element::H, 0);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
+        let h3 = mg.add_atom(Element::H, 0);
+        let h4 = mg.add_atom(Element::H, 0);
+
+        mg.add_bond(n, c1, BondOrder::Single).unwrap();
+        mg.add_bond(c1, c2, BondOrder::Double).unwrap();
+        mg.add_bond(c2, c3, BondOrder::Single).unwrap();
+        mg.add_bond(c3, c4, BondOrder::Double).unwrap();
+        mg.add_bond(c4, n, BondOrder::Single).unwrap();
+        mg.add_bond(n, h_n, BondOrder::Single).unwrap();
+        mg.add_bond(c1, h1, BondOrder::Single).unwrap();
+        mg.add_bond(c2, h2, BondOrder::Single).unwrap();
+        mg.add_bond(c3, h3, BondOrder::Single).unwrap();
+        mg.add_bond(c4, h4, BondOrder::Single).unwrap();
+
+        let mut graph = perceive_electron_counts(&mg).unwrap();
+        let rings = perceive_rings(&graph);
+        apply_ring_annotations(&mut graph, &rings);
+        perceive_generic_properties(&mut graph, &rings).unwrap();
+
+        let ring_atoms = rings.0.iter().next().unwrap();
+        let ring_set: HashSet<usize> = ring_atoms.iter().copied().collect();
+
+        assert!(ring_atoms.iter().all(|&idx| graph.atoms[idx].is_aromatic));
+        assert_eq!(count_atom_pi_contribution(n, &ring_set, &graph), Some(2));
+    }
+
+    #[test]
+    fn test_furan_aromatic_pi_contribution() {
+        let mut mg = MolecularGraph::new();
+        let o = mg.add_atom(Element::O, 0);
+        let c1 = mg.add_atom(Element::C, 0);
+        let c2 = mg.add_atom(Element::C, 0);
+        let c3 = mg.add_atom(Element::C, 0);
+        let c4 = mg.add_atom(Element::C, 0);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
+        let h3 = mg.add_atom(Element::H, 0);
+        let h4 = mg.add_atom(Element::H, 0);
+
+        mg.add_bond(o, c1, BondOrder::Single).unwrap();
+        mg.add_bond(c1, c2, BondOrder::Double).unwrap();
+        mg.add_bond(c2, c3, BondOrder::Single).unwrap();
+        mg.add_bond(c3, c4, BondOrder::Double).unwrap();
+        mg.add_bond(c4, o, BondOrder::Single).unwrap();
+        mg.add_bond(c1, h1, BondOrder::Single).unwrap();
+        mg.add_bond(c2, h2, BondOrder::Single).unwrap();
+        mg.add_bond(c3, h3, BondOrder::Single).unwrap();
+        mg.add_bond(c4, h4, BondOrder::Single).unwrap();
+
+        let mut graph = perceive_electron_counts(&mg).unwrap();
+        let rings = perceive_rings(&graph);
+        apply_ring_annotations(&mut graph, &rings);
+        perceive_generic_properties(&mut graph, &rings).unwrap();
+
+        let ring_atoms = rings.0.iter().next().unwrap();
+        let ring_set: HashSet<usize> = ring_atoms.iter().copied().collect();
+
+        assert!(ring_atoms.iter().all(|&idx| graph.atoms[idx].is_aromatic));
+        assert_eq!(count_atom_pi_contribution(o, &ring_set, &graph), Some(2));
+    }
+
+    #[test]
+    fn test_pyridine_aromatic_pi_contribution() {
+        let mut mg = MolecularGraph::new();
+        let n = mg.add_atom(Element::N, 0);
+        let c1 = mg.add_atom(Element::C, 0);
+        let c2 = mg.add_atom(Element::C, 0);
+        let c3 = mg.add_atom(Element::C, 0);
+        let c4 = mg.add_atom(Element::C, 0);
+        let c5 = mg.add_atom(Element::C, 0);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
+        let h3 = mg.add_atom(Element::H, 0);
+        let h4 = mg.add_atom(Element::H, 0);
+        let h5 = mg.add_atom(Element::H, 0);
+
+        mg.add_bond(n, c1, BondOrder::Double).unwrap();
+        mg.add_bond(c1, c2, BondOrder::Single).unwrap();
+        mg.add_bond(c2, c3, BondOrder::Double).unwrap();
+        mg.add_bond(c3, c4, BondOrder::Single).unwrap();
+        mg.add_bond(c4, c5, BondOrder::Double).unwrap();
+        mg.add_bond(c5, n, BondOrder::Single).unwrap();
+        mg.add_bond(c1, h1, BondOrder::Single).unwrap();
+        mg.add_bond(c2, h2, BondOrder::Single).unwrap();
+        mg.add_bond(c3, h3, BondOrder::Single).unwrap();
+        mg.add_bond(c4, h4, BondOrder::Single).unwrap();
+        mg.add_bond(c5, h5, BondOrder::Single).unwrap();
+
+        let mut graph = perceive_electron_counts(&mg).unwrap();
+        let rings = perceive_rings(&graph);
+        apply_ring_annotations(&mut graph, &rings);
+        perceive_generic_properties(&mut graph, &rings).unwrap();
+
+        let ring_atoms = rings.0.iter().next().unwrap();
+        let ring_set: HashSet<usize> = ring_atoms.iter().copied().collect();
+
+        assert!(ring_atoms.iter().all(|&idx| graph.atoms[idx].is_aromatic));
+        assert_eq!(count_atom_pi_contribution(n, &ring_set, &graph), Some(1));
+    }
+}
