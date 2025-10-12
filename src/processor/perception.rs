@@ -301,3 +301,52 @@ fn get_valence_electrons(element: Element) -> Option<u8> {
         _ => None,
     }
 }
+
+struct JohnsonCycleFinder<'a> {
+    graph: &'a ProcessingGraph,
+    all_cycles: HashSet<Vec<usize>>,
+}
+
+impl<'a> JohnsonCycleFinder<'a> {
+    fn new(graph: &'a ProcessingGraph) -> Self {
+        Self {
+            graph,
+            all_cycles: HashSet::new(),
+        }
+    }
+
+    fn find_cycles_internal(&mut self) -> HashSet<Vec<usize>> {
+        let num_atoms = self.graph.atoms.len();
+        for i in 0..num_atoms {
+            self.find_cycles_from_node(i);
+        }
+        self.all_cycles.clone()
+    }
+
+    fn find_cycles_from_node(&mut self, start_node: usize) {
+        let mut queue = VecDeque::new();
+        queue.push_back(vec![start_node]);
+
+        while let Some(path) = queue.pop_front() {
+            let last_node = *path.last().unwrap();
+
+            for (neighbor, _) in &self.graph.adjacency[last_node] {
+                if *neighbor < start_node {
+                    continue;
+                }
+                if path.contains(neighbor) {
+                    if *neighbor == start_node && path.len() > 2 {
+                        let mut cycle = path.clone();
+                        cycle.sort_unstable();
+                        self.all_cycles.insert(cycle);
+                    }
+                    continue;
+                }
+
+                let mut new_path = path.clone();
+                new_path.push(*neighbor);
+                queue.push_back(new_path);
+            }
+        }
+    }
+}
