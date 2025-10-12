@@ -40,7 +40,13 @@ pub struct Conditions {
     #[serde(default, deserialize_with = "from_str_optional")]
     pub element: Option<Element>,
     #[serde(default)]
+    pub formal_charge: Option<i8>,
+    #[serde(default)]
     pub degree: Option<u8>,
+    #[serde(default)]
+    pub lone_pairs: Option<u8>,
+    #[serde(default)]
+    pub steric_number: Option<u8>,
     #[serde(default, deserialize_with = "from_str_optional")]
     pub hybridization: Option<Hybridization>,
     #[serde(default)]
