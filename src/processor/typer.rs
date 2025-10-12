@@ -201,14 +201,15 @@ mod tests {
     use super::*;
     use crate::core::graph::MolecularGraph;
     use crate::core::{BondOrder, Element};
-    use crate::processor::process_graph;
+    use crate::processor::perceive;
     use crate::rules::{Rule, parse_rules};
 
     fn run_typing_test(
         mg: &MolecularGraph,
         custom_rules: Option<&[Rule]>,
     ) -> Result<Vec<String>, AssignmentError> {
-        let pg = process_graph(mg).expect("Annotation failed during test setup");
+        let perception = perceive(mg).expect("Annotation failed during test setup");
+        let pg = perception.processing_graph;
         let default_rules_storage;
         let rules_to_use = match custom_rules {
             Some(r) => r,
@@ -223,44 +224,69 @@ mod tests {
     #[test]
     fn test_methane_typing() {
         let mut mg = MolecularGraph::new();
-        let c1 = mg.add_atom(Element::C);
-        let h1 = mg.add_atom(Element::H);
-        mg.add_bond(c1, h1, BondOrder::Single).unwrap();
+        let c1 = mg.add_atom(Element::C, 0);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
+        let h3 = mg.add_atom(Element::H, 0);
+        let h4 = mg.add_atom(Element::H, 0);
+
+        for &hydrogen in &[h1, h2, h3, h4] {
+            mg.add_bond(c1, hydrogen, BondOrder::Single).unwrap();
+        }
 
         let types = run_typing_test(&mg, None).unwrap();
         assert_eq!(types[c1], "C_3");
-        assert_eq!(types[h1], "H_");
+        for &hydrogen in &[h1, h2, h3, h4] {
+            assert_eq!(types[hydrogen], "H_");
+        }
     }
 
     #[test]
     fn test_ethylene_typing() {
         let mut mg = MolecularGraph::new();
-        let c1 = mg.add_atom(Element::C);
-        let c2 = mg.add_atom(Element::C);
+        let c1 = mg.add_atom(Element::C, 0);
+        let c2 = mg.add_atom(Element::C, 0);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
+        let h3 = mg.add_atom(Element::H, 0);
+        let h4 = mg.add_atom(Element::H, 0);
         mg.add_bond(c1, c2, BondOrder::Double).unwrap();
+        mg.add_bond(c1, h1, BondOrder::Single).unwrap();
+        mg.add_bond(c1, h2, BondOrder::Single).unwrap();
+        mg.add_bond(c2, h3, BondOrder::Single).unwrap();
+        mg.add_bond(c2, h4, BondOrder::Single).unwrap();
 
         let types = run_typing_test(&mg, None).unwrap();
         assert_eq!(types[c1], "C_2");
         assert_eq!(types[c2], "C_2");
+        for &hydrogen in &[h1, h2, h3, h4] {
+            assert_eq!(types[hydrogen], "H_");
+        }
     }
 
     #[test]
     fn test_acetylene_typing() {
         let mut mg = MolecularGraph::new();
-        let c1 = mg.add_atom(Element::C);
-        let c2 = mg.add_atom(Element::C);
+        let c1 = mg.add_atom(Element::C, 0);
+        let c2 = mg.add_atom(Element::C, 0);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
         mg.add_bond(c1, c2, BondOrder::Triple).unwrap();
+        mg.add_bond(c1, h1, BondOrder::Single).unwrap();
+        mg.add_bond(c2, h2, BondOrder::Single).unwrap();
 
         let types = run_typing_test(&mg, None).unwrap();
         assert_eq!(types[c1], "C_1");
         assert_eq!(types[c2], "C_1");
+        assert_eq!(types[h1], "H_");
+        assert_eq!(types[h2], "H_");
     }
 
     #[test]
     fn test_benzene_aromatic_typing() {
         let mut mg = MolecularGraph::new();
         for _ in 0..6 {
-            mg.add_atom(Element::C);
+            mg.add_atom(Element::C, 0);
         }
         for i in 0..6 {
             mg.add_bond(i, (i + 1) % 6, BondOrder::Aromatic).unwrap();
@@ -275,10 +301,10 @@ mod tests {
     #[test]
     fn test_halogens_and_ions_typing() {
         let mut mg = MolecularGraph::new();
-        let f = mg.add_atom(Element::F);
-        let cl = mg.add_atom(Element::Cl);
-        let br = mg.add_atom(Element::Br);
-        let na = mg.add_atom(Element::Na);
+        let f = mg.add_atom(Element::F, 0);
+        let cl = mg.add_atom(Element::Cl, 0);
+        let br = mg.add_atom(Element::Br, 0);
+        let na = mg.add_atom(Element::Na, 0);
 
         let types = run_typing_test(&mg, None).unwrap();
         assert_eq!(types[f], "F_");
@@ -297,17 +323,16 @@ mod tests {
     #[test]
     fn test_single_atom() {
         let mut mg = MolecularGraph::new();
-        mg.add_atom(Element::C);
-        let result = run_typing_test(&mg, None);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().untyped_atom_ids, vec![0]);
+        let c = mg.add_atom(Element::C, 0);
+        let types = run_typing_test(&mg, None).unwrap();
+        assert_eq!(types[c], "C_1");
     }
 
     #[test]
     fn test_diatomic_oxygen() {
         let mut mg = MolecularGraph::new();
-        let o1 = mg.add_atom(Element::O);
-        let o2 = mg.add_atom(Element::O);
+        let o1 = mg.add_atom(Element::O, 0);
+        let o2 = mg.add_atom(Element::O, 0);
         mg.add_bond(o1, o2, BondOrder::Double).unwrap();
 
         let types = run_typing_test(&mg, None).unwrap();
@@ -318,15 +343,19 @@ mod tests {
     #[test]
     fn test_acetic_acid_relaxation_logic() {
         let mut mg = MolecularGraph::new();
-        let c_me = mg.add_atom(Element::C);
-        let c_co = mg.add_atom(Element::C);
-        let o_co = mg.add_atom(Element::O);
-        let o_oh = mg.add_atom(Element::O);
-        let h_oh = mg.add_atom(Element::H);
-        let h_me = mg.add_atom(Element::H);
+        let c_me = mg.add_atom(Element::C, 0);
+        let c_co = mg.add_atom(Element::C, 0);
+        let o_co = mg.add_atom(Element::O, 0);
+        let o_oh = mg.add_atom(Element::O, 0);
+        let h_oh = mg.add_atom(Element::H, 0);
+        let h_me1 = mg.add_atom(Element::H, 0);
+        let h_me2 = mg.add_atom(Element::H, 0);
+        let h_me3 = mg.add_atom(Element::H, 0);
 
         mg.add_bond(c_me, c_co, BondOrder::Single).unwrap();
-        mg.add_bond(c_me, h_me, BondOrder::Single).unwrap();
+        mg.add_bond(c_me, h_me1, BondOrder::Single).unwrap();
+        mg.add_bond(c_me, h_me2, BondOrder::Single).unwrap();
+        mg.add_bond(c_me, h_me3, BondOrder::Single).unwrap();
         mg.add_bond(c_co, o_co, BondOrder::Double).unwrap();
         mg.add_bond(c_co, o_oh, BondOrder::Single).unwrap();
         mg.add_bond(o_oh, h_oh, BondOrder::Single).unwrap();
@@ -338,20 +367,22 @@ mod tests {
         assert_eq!(types[o_co], "O_2");
         assert_eq!(types[o_oh], "O_3");
         assert_eq!(types[h_oh], "H_HB");
-        assert_eq!(types[h_me], "H_");
+        for &hydrogen in &[h_me1, h_me2, h_me3] {
+            assert_eq!(types[hydrogen], "H_");
+        }
     }
 
     #[test]
     fn test_diborane_special_hydrogen() {
         let mut mg = MolecularGraph::new();
-        let b1 = mg.add_atom(Element::B);
-        let b2 = mg.add_atom(Element::B);
-        let h_bridge1 = mg.add_atom(Element::H);
-        let h_bridge2 = mg.add_atom(Element::H);
-        let h_term1a = mg.add_atom(Element::H);
-        let h_term1b = mg.add_atom(Element::H);
-        let h_term2a = mg.add_atom(Element::H);
-        let h_term2b = mg.add_atom(Element::H);
+        let b1 = mg.add_atom(Element::B, 0);
+        let b2 = mg.add_atom(Element::B, 0);
+        let h_bridge1 = mg.add_atom(Element::H, 0);
+        let h_bridge2 = mg.add_atom(Element::H, 0);
+        let h_term1a = mg.add_atom(Element::H, 0);
+        let h_term1b = mg.add_atom(Element::H, 0);
+        let h_term2a = mg.add_atom(Element::H, 0);
+        let h_term2b = mg.add_atom(Element::H, 0);
 
         mg.add_bond(b1, h_bridge1, BondOrder::Single).unwrap();
         mg.add_bond(b2, h_bridge1, BondOrder::Single).unwrap();
@@ -380,7 +411,7 @@ mod tests {
     #[test]
     fn test_untypable_element_fails_gracefully() {
         let mut mg = MolecularGraph::new();
-        mg.add_atom(Element::Lr);
+        mg.add_atom(Element::Lr, 0);
 
         let result = run_typing_test(&mg, None);
         assert!(result.is_err());
@@ -396,8 +427,8 @@ mod tests {
     #[test]
     fn test_priority_logic_chooses_higher_priority_rule() {
         let mut mg = MolecularGraph::new();
-        let c1 = mg.add_atom(Element::C);
-        mg.add_atom(Element::H);
+        let c1 = mg.add_atom(Element::C, 0);
+        mg.add_atom(Element::H, 0);
         mg.add_bond(c1, 1, BondOrder::Single).unwrap();
 
         let custom_rules_toml = r#"
