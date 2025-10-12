@@ -3,15 +3,27 @@ use crate::core::graph::MolecularGraph;
 use crate::core::{BondOrder, Element, Hybridization};
 use std::collections::HashSet;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PerceptionSource {
+    Generic,
+    Template,
+}
+
 #[derive(Debug, Clone)]
 pub struct AtomView {
     pub id: usize,
     pub element: Element,
+    pub formal_charge: i8,
     pub degree: u8,
+    pub valence_electrons: u8,
+    pub bonding_electrons: u8,
+    pub lone_pairs: u8,
+    pub steric_number: u8,
     pub hybridization: Hybridization,
     pub is_in_ring: bool,
     pub smallest_ring_size: Option<u8>,
     pub is_aromatic: bool,
+    pub perception_source: Option<PerceptionSource>,
 }
 
 #[derive(Debug, Clone)]
@@ -48,11 +60,17 @@ impl ProcessingGraph {
                 AtomView {
                     id: atom_node.id,
                     element: atom_node.element,
+                    formal_charge: atom_node.formal_charge,
                     degree,
+                    valence_electrons: 0,
+                    bonding_electrons: 0,
+                    lone_pairs: 0,
+                    steric_number: 0,
                     hybridization: Hybridization::Unknown,
                     is_in_ring: false,
                     smallest_ring_size: None,
                     is_aromatic: false,
+                    perception_source: None,
                 }
             })
             .collect();
