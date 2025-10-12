@@ -350,3 +350,131 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
         },
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+
+    #[test]
+    fn guanidinium_template_sets_planar_states_on_all_atoms() {
+        let mut mg = MolecularGraph::new();
+        let carbon = mg.add_atom(Element::C, 0);
+        let n1 = mg.add_atom(Element::N, 1);
+        let n2 = mg.add_atom(Element::N, 1);
+        let n3 = mg.add_atom(Element::N, 1);
+
+        mg.add_bond(carbon, n1, BondOrder::Single).expect("C-N1");
+        mg.add_bond(carbon, n2, BondOrder::Single).expect("C-N2");
+        mg.add_bond(carbon, n3, BondOrder::Single).expect("C-N3");
+
+        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        apply_functional_group_templates(&mut pg).expect("template application failed");
+
+        for &idx in [carbon, n1, n2, n3].iter() {
+            let atom = &pg.atoms[idx];
+            assert_eq!(atom.hybridization, Hybridization::SP2);
+            assert_eq!(atom.steric_number, 3);
+            assert_eq!(atom.perception_source, Some(PerceptionSource::Template));
+        }
+    }
+
+    #[test]
+    fn amide_template_sets_planar_carbon_and_nitrogen() {
+        let mut mg = MolecularGraph::new();
+        let carbon = mg.add_atom(Element::C, 0);
+        let oxygen = mg.add_atom(Element::O, 0);
+        let nitrogen = mg.add_atom(Element::N, 0);
+
+        mg.add_bond(carbon, oxygen, BondOrder::Double).expect("C=O");
+        mg.add_bond(carbon, nitrogen, BondOrder::Single)
+            .expect("C-N");
+
+        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        apply_functional_group_templates(&mut pg).expect("template application failed");
+
+        for &idx in [carbon, nitrogen].iter() {
+            let atom = &pg.atoms[idx];
+            assert_eq!(atom.hybridization, Hybridization::SP2);
+            assert_eq!(atom.steric_number, 3);
+            assert_eq!(atom.perception_source, Some(PerceptionSource::Template));
+        }
+
+        let oxygen_atom = &pg.atoms[oxygen];
+        assert_ne!(
+            oxygen_atom.perception_source,
+            Some(PerceptionSource::Template)
+        );
+    }
+
+    #[test]
+    fn carboxylate_template_sets_planar_states_for_carbon_and_oxygens() {
+        let mut mg = MolecularGraph::new();
+        let carbon = mg.add_atom(Element::C, 0);
+        let oxygen_double = mg.add_atom(Element::O, 0);
+        let oxygen_single = mg.add_atom(Element::O, -1);
+
+        mg.add_bond(carbon, oxygen_double, BondOrder::Double)
+            .expect("C=O");
+        mg.add_bond(carbon, oxygen_single, BondOrder::Single)
+            .expect("C-O");
+
+        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        apply_functional_group_templates(&mut pg).expect("template application failed");
+
+        for &idx in [carbon, oxygen_double, oxygen_single].iter() {
+            let atom = &pg.atoms[idx];
+            assert_eq!(atom.hybridization, Hybridization::SP2);
+            assert_eq!(atom.steric_number, 3);
+            assert_eq!(atom.perception_source, Some(PerceptionSource::Template));
+        }
+    }
+
+    #[test]
+    fn phenol_enol_template_marks_oxygen_aromatic() {
+        let mut mg = MolecularGraph::new();
+        let oxygen = mg.add_atom(Element::O, 0);
+        let c1 = mg.add_atom(Element::C, 0);
+        let c2 = mg.add_atom(Element::C, 0);
+        let hydrogen = mg.add_atom(Element::H, 0);
+
+        mg.add_bond(oxygen, c1, BondOrder::Single).expect("O-C1");
+        mg.add_bond(c1, c2, BondOrder::Aromatic).expect("C1=C2");
+        mg.add_bond(oxygen, hydrogen, BondOrder::Single)
+            .expect("O-H");
+
+        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        apply_functional_group_templates(&mut pg).expect("template application failed");
+
+        let oxygen_atom = &pg.atoms[oxygen];
+        assert!(oxygen_atom.is_aromatic);
+        assert_eq!(oxygen_atom.hybridization, Hybridization::Resonant);
+        assert_eq!(oxygen_atom.steric_number, 3);
+        assert_eq!(
+            oxygen_atom.perception_source,
+            Some(PerceptionSource::Template)
+        );
+    }
+
+    #[test]
+    fn nitro_template_sets_trigonal_planar_states() {
+        let mut mg = MolecularGraph::new();
+        let nitrogen = mg.add_atom(Element::N, 1);
+        let oxygen_neutral = mg.add_atom(Element::O, 0);
+        let oxygen_anion = mg.add_atom(Element::O, -1);
+        mg.add_bond(nitrogen, oxygen_neutral, BondOrder::Double)
+            .expect("double bond");
+        mg.add_bond(nitrogen, oxygen_anion, BondOrder::Single)
+            .expect("single bond");
+
+        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        apply_functional_group_templates(&mut pg).expect("template application failed");
+
+        for &idx in [nitrogen, oxygen_neutral, oxygen_anion].iter() {
+            let atom = &pg.atoms[idx];
+            assert_eq!(atom.hybridization, Hybridization::SP2);
+            assert_eq!(atom.steric_number, 3);
+            assert_eq!(atom.perception_source, Some(PerceptionSource::Template));
+        }
+    }
+}
