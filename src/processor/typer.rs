@@ -100,8 +100,23 @@ impl<'a> TyperEngine<'a> {
                 return false;
             }
         }
+        if let Some(expected) = conditions.formal_charge {
+            if expected != atom.formal_charge {
+                return false;
+            }
+        }
         if let Some(expected) = conditions.degree {
             if expected != atom.degree {
+                return false;
+            }
+        }
+        if let Some(expected) = conditions.lone_pairs {
+            if expected != atom.lone_pairs {
+                return false;
+            }
+        }
+        if let Some(expected) = conditions.steric_number {
+            if expected != atom.steric_number {
                 return false;
             }
         }
