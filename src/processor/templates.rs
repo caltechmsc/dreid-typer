@@ -125,3 +125,20 @@ fn verify_edges(
             .any(|(neighbor_id, order)| *neighbor_id == id2 && (edge.predicate)(*order))
     })
 }
+
+fn apply_actions(
+    graph: &mut ProcessingGraph,
+    a_match: &Match,
+    actions: &HashMap<&'static str, Action>,
+) {
+    for (label, atom_id) in a_match.iter() {
+        if let Some(action) = actions.get(label) {
+            let atom = &mut graph.atoms[*atom_id];
+            atom.perception_source = Some(PerceptionSource::Template);
+
+            match action {
+                Action::SetState(state) => apply_state_change(atom, *state),
+            }
+        }
+    }
+}
