@@ -25,9 +25,13 @@ impl MolecularGraph {
         Self::default()
     }
 
-    pub fn add_atom(&mut self, element: Element) -> usize {
+    pub fn add_atom(&mut self, element: Element, formal_charge: i8) -> usize {
         let id = self.atoms.len();
-        self.atoms.push(AtomNode { id, element });
+        self.atoms.push(AtomNode {
+            id,
+            element,
+            formal_charge,
+        });
         id
     }
 
