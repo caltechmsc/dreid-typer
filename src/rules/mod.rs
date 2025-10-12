@@ -183,7 +183,10 @@ mod tests {
             type = "X_0"
             [rule.conditions]
             element = "C"
+            formal_charge = 0
             degree = 4
+            lone_pairs = 0
+            steric_number = 4
             hybridization = "SP3"
             is_in_ring = true
             is_aromatic = false
@@ -202,7 +205,10 @@ mod tests {
             rules[0].conditions,
             Conditions {
                 element: Some(Element::C),
+                formal_charge: Some(0),
                 degree: Some(4),
+                lone_pairs: Some(0),
+                steric_number: Some(4),
                 hybridization: Some(Hybridization::SP3),
                 is_in_ring: Some(true),
                 is_aromatic: Some(false),
@@ -256,6 +262,6 @@ mod tests {
     fn get_default_rules_succeeds_and_is_not_empty() {
         let rules = get_default_rules().unwrap();
         assert!(!rules.is_empty());
-        assert_eq!(rules.len(), 44);
+        assert_eq!(rules.len(), 43);
     }
 }
