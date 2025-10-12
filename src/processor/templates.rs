@@ -46,3 +46,30 @@ struct FunctionalGroupTemplate {
     edges: Vec<QueryEdge>,
     actions: HashMap<&'static str, Action>,
 }
+
+type Match = HashMap<&'static str, usize>;
+
+fn find_non_overlapping_matches(
+    graph: &ProcessingGraph,
+    template: &FunctionalGroupTemplate,
+) -> Vec<Match> {
+    let mut all_matches = Vec::new();
+    let mut matched_graph_atoms = vec![false; graph.atoms.len()];
+
+    for i in 0..graph.atoms.len() {
+        if matched_graph_atoms[i] {
+            continue;
+        }
+
+        let mut current_match = HashMap::new();
+
+        if find_first_match_recursive(graph, template, &mut current_match, 0, &matched_graph_atoms)
+        {
+            for &atom_id in current_match.values() {
+                matched_graph_atoms[atom_id] = true;
+            }
+            all_matches.push(current_match);
+        }
+    }
+    all_matches
+}
