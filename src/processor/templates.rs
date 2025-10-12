@@ -162,3 +162,191 @@ fn apply_state_change(atom: &mut AtomView, state: ChemicalState) {
         }
     }
 }
+
+static TEMPLATES: LazyLock<Vec<FunctionalGroupTemplate>> = LazyLock::new(define_templates);
+
+fn define_templates() -> Vec<FunctionalGroupTemplate> {
+    vec![
+        // --- 1. Guanidinium ---
+        FunctionalGroupTemplate {
+            name: "Guanidinium",
+            nodes: vec![
+                QueryNode {
+                    label: "C",
+                    predicate: |a| a.element == Element::C && a.degree == 3,
+                },
+                QueryNode {
+                    label: "N1",
+                    predicate: |a| a.element == Element::N,
+                },
+                QueryNode {
+                    label: "N2",
+                    predicate: |a| a.element == Element::N,
+                },
+                QueryNode {
+                    label: "N3",
+                    predicate: |a| a.element == Element::N,
+                },
+            ],
+            edges: vec![
+                QueryEdge {
+                    labels: ("C", "N1"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("C", "N2"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("C", "N3"),
+                    predicate: |_| true,
+                },
+            ],
+            actions: {
+                let mut map = HashMap::new();
+                map.insert("C", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("N1", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("N2", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("N3", Action::SetState(ChemicalState::TrigonalPlanar));
+                map
+            },
+        },
+        // --- 2. Amide ---
+        FunctionalGroupTemplate {
+            name: "Amide",
+            nodes: vec![
+                QueryNode {
+                    label: "C",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "O",
+                    predicate: |a| a.element == Element::O,
+                },
+                QueryNode {
+                    label: "N",
+                    predicate: |a| a.element == Element::N,
+                },
+            ],
+            edges: vec![
+                QueryEdge {
+                    labels: ("C", "O"),
+                    predicate: |o| o == BondOrder::Double,
+                },
+                QueryEdge {
+                    labels: ("C", "N"),
+                    predicate: |o| o == BondOrder::Single,
+                },
+            ],
+            actions: {
+                let mut map = HashMap::new();
+                map.insert("C", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("N", Action::SetState(ChemicalState::TrigonalPlanar));
+                map
+            },
+        },
+        // --- 3. Carboxylate ---
+        FunctionalGroupTemplate {
+            name: "Carboxylate",
+            nodes: vec![
+                QueryNode {
+                    label: "C",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "O1",
+                    predicate: |a| a.element == Element::O && a.formal_charge == 0,
+                },
+                QueryNode {
+                    label: "O2",
+                    predicate: |a| a.element == Element::O && a.formal_charge == -1,
+                },
+            ],
+            edges: vec![
+                QueryEdge {
+                    labels: ("C", "O1"),
+                    predicate: |o| o == BondOrder::Double,
+                },
+                QueryEdge {
+                    labels: ("C", "O2"),
+                    predicate: |o| o == BondOrder::Single,
+                },
+            ],
+            actions: {
+                let mut map = HashMap::new();
+                map.insert("C", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("O1", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("O2", Action::SetState(ChemicalState::TrigonalPlanar));
+                map
+            },
+        },
+        // --- 4. Nitro ---
+        FunctionalGroupTemplate {
+            name: "Nitro",
+            nodes: vec![
+                QueryNode {
+                    label: "N",
+                    predicate: |a| a.element == Element::N && a.formal_charge == 1,
+                },
+                QueryNode {
+                    label: "O1",
+                    predicate: |a| a.element == Element::O && a.formal_charge == 0,
+                },
+                QueryNode {
+                    label: "O2",
+                    predicate: |a| a.element == Element::O && a.formal_charge == -1,
+                },
+            ],
+            edges: vec![
+                QueryEdge {
+                    labels: ("N", "O1"),
+                    predicate: |o| o == BondOrder::Double,
+                },
+                QueryEdge {
+                    labels: ("N", "O2"),
+                    predicate: |o| o == BondOrder::Single,
+                },
+            ],
+            actions: {
+                let mut map = HashMap::new();
+                map.insert("N", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("O1", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("O2", Action::SetState(ChemicalState::TrigonalPlanar));
+                map
+            },
+        },
+        // --- 5. Phenol/Enol ---
+        FunctionalGroupTemplate {
+            name: "Phenol/Enol",
+            nodes: vec![
+                QueryNode {
+                    label: "O",
+                    predicate: |a| a.element == Element::O && a.degree == 2,
+                },
+                QueryNode {
+                    label: "C1",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "C2",
+                    predicate: |a| a.element == Element::C,
+                },
+            ],
+            edges: vec![
+                QueryEdge {
+                    labels: ("O", "C1"),
+                    predicate: |o| o == BondOrder::Single,
+                },
+                QueryEdge {
+                    labels: ("C1", "C2"),
+                    predicate: |o| o == BondOrder::Double || o == BondOrder::Aromatic,
+                },
+            ],
+            actions: {
+                let mut map = HashMap::new();
+                map.insert("O", Action::SetState(ChemicalState::Aromatic));
+                map
+            },
+        },
+    ]
+}
