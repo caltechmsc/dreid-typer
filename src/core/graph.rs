@@ -4,6 +4,7 @@ use super::{BondOrder, Element, Hybridization};
 pub struct AtomNode {
     pub id: usize,
     pub element: Element,
+    pub formal_charge: i8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
