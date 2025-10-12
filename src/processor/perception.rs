@@ -244,3 +244,12 @@ fn count_atom_pi_contribution(
         _ => None,
     }
 }
+
+fn bond_order_contribution(order: BondOrder) -> u8 {
+    match order {
+        BondOrder::Single => 1,
+        BondOrder::Double => 2,
+        BondOrder::Triple => 3,
+        BondOrder::Aromatic => 1,
+    }
+}
