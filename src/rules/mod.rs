@@ -262,6 +262,6 @@ mod tests {
     fn get_default_rules_succeeds_and_is_not_empty() {
         let rules = get_default_rules().unwrap();
         assert!(!rules.is_empty());
-        assert_eq!(rules.len(), 43);
+        assert_eq!(rules.len(), 44);
     }
 }
