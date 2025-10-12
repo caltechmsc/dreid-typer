@@ -177,3 +177,40 @@ pub(crate) fn perceive_generic_hybridization(
 
     Ok(())
 }
+
+fn is_ring_aromatic(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> bool {
+    if ring_atom_ids.len() < 3 {
+        return false;
+    }
+
+    let ring_atoms: HashSet<usize> = ring_atom_ids.iter().copied().collect();
+
+    let all_bonds_aromatic = ring_atom_ids.iter().all(|&atom_id| {
+        graph.adjacency[atom_id].iter().all(|(neighbor, order)| {
+            if ring_atoms.contains(neighbor) {
+                matches!(order, BondOrder::Aromatic)
+            } else {
+                true
+            }
+        })
+    });
+
+    if all_bonds_aromatic {
+        return true;
+    }
+
+    let mut total_pi_electrons = 0u8;
+
+    for &atom_id in ring_atom_ids {
+        match count_atom_pi_contribution(atom_id, &ring_atoms, graph) {
+            Some(contribution) => total_pi_electrons += contribution,
+            None => return false,
+        }
+    }
+
+    if total_pi_electrons < 2 {
+        return false;
+    }
+
+    (total_pi_electrons - 2) % 4 == 0
+}
