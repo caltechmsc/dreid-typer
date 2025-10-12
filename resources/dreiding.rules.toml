@@ -192,6 +192,12 @@ priority = 248
 type = "H_HB"
 conditions = { element = "H", degree = 1, neighbor_types = { N_R = 1 } }
 
+[[rule]]
+name = "H_Hydrogen_Bond_Donor_On_SP2_N"
+priority = 247
+type = "H_HB"
+conditions = { element = "H", degree = 1, neighbor_types = { N_2 = 1 } }
+
 # ------------------------------------------------------------------------------
 # §5. Fallback Rules (Low Priority)
 #    Generic rules to ensure all atoms are typed.
