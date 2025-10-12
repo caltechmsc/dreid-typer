@@ -70,3 +70,25 @@ pub(crate) fn perceive_generic_properties(
     perceive_generic_hybridization(graph)?;
     Ok(())
 }
+
+pub(crate) fn perceive_generic_aromaticity(
+    graph: &mut ProcessingGraph,
+    ring_info: &RingInfo,
+) -> Result<(), AnnotationError> {
+    let mut aromatic_atoms = HashSet::new();
+
+    for ring_atom_ids in &ring_info.0 {
+        if is_ring_aromatic(ring_atom_ids, graph) {
+            aromatic_atoms.extend(ring_atom_ids.iter().copied());
+        }
+    }
+
+    for atom_id in aromatic_atoms {
+        if graph.atoms[atom_id].perception_source == Some(PerceptionSource::Template) {
+            continue;
+        }
+        graph.atoms[atom_id].is_aromatic = true;
+    }
+
+    Ok(())
+}
