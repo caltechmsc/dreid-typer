@@ -29,7 +29,8 @@ fn assign_topology_internal(
     graph: &MolecularGraph,
     rules: &[rules::Rule],
 ) -> Result<MolecularTopology, TyperError> {
-    let processing_graph = processor::process_graph(graph)?;
+    let perception = processor::perceive(graph)?;
+    let processing_graph = perception.processing_graph;
 
     let atom_types =
         processor::assign_types(&processing_graph, rules).map_err(TyperError::AssignmentFailed)?;
