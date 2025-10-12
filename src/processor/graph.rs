@@ -88,11 +88,11 @@ mod tests {
     #[test]
     fn new_processing_graph_for_methane_is_correct() {
         let mut mg = MolecularGraph::new();
-        let c1 = mg.add_atom(Element::C);
-        let h1 = mg.add_atom(Element::H);
-        let h2 = mg.add_atom(Element::H);
-        let h3 = mg.add_atom(Element::H);
-        let h4 = mg.add_atom(Element::H);
+        let c1 = mg.add_atom(Element::C, 0);
+        let h1 = mg.add_atom(Element::H, 0);
+        let h2 = mg.add_atom(Element::H, 0);
+        let h3 = mg.add_atom(Element::H, 0);
+        let h4 = mg.add_atom(Element::H, 0);
         mg.add_bond(c1, h1, BondOrder::Single).unwrap();
         mg.add_bond(c1, h2, BondOrder::Single).unwrap();
         mg.add_bond(c1, h3, BondOrder::Single).unwrap();
@@ -106,6 +106,7 @@ mod tests {
         let carbon = &pg.atoms[c1];
         assert_eq!(carbon.id, c1);
         assert_eq!(carbon.element, Element::C);
+        assert_eq!(carbon.formal_charge, 0);
         assert_eq!(carbon.degree, 4);
         assert_eq!(carbon.hybridization, Hybridization::Unknown);
         assert!(!carbon.is_in_ring);
@@ -114,6 +115,7 @@ mod tests {
 
         let hydrogen = &pg.atoms[h1];
         assert_eq!(hydrogen.degree, 1);
+        assert_eq!(hydrogen.formal_charge, 0);
 
         assert_eq!(pg.adjacency[c1].len(), 4);
         assert_eq!(pg.adjacency[h1].len(), 1);
@@ -123,8 +125,8 @@ mod tests {
     #[test]
     fn new_processing_graph_for_ethene_is_correct() {
         let mut mg = MolecularGraph::new();
-        let c1 = mg.add_atom(Element::C);
-        let c2 = mg.add_atom(Element::C);
+        let c1 = mg.add_atom(Element::C, 0);
+        let c2 = mg.add_atom(Element::C, 0);
         mg.add_bond(c1, c2, BondOrder::Double).unwrap();
 
         let pg = ProcessingGraph::new(&mg).unwrap();
@@ -140,13 +142,14 @@ mod tests {
     #[test]
     fn new_processing_graph_with_invalid_bond_returns_error() {
         let mut mg = MolecularGraph::new();
-        mg.add_atom(Element::C);
+        mg.add_atom(Element::C, 0);
         mg.add_bond(0, 1, BondOrder::Single).unwrap_err();
 
         let bad_mg = MolecularGraph {
             atoms: vec![crate::core::graph::AtomNode {
                 id: 0,
                 element: Element::C,
+                formal_charge: 0,
             }],
             bonds: vec![crate::core::graph::BondEdge {
                 id: 0,
