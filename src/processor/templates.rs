@@ -111,3 +111,17 @@ fn find_first_match_recursive(
 
     false
 }
+
+fn verify_edges(
+    graph: &ProcessingGraph,
+    template: &FunctionalGroupTemplate,
+    a_match: &Match,
+) -> bool {
+    template.edges.iter().all(|edge| {
+        let id1 = a_match[edge.labels.0];
+        let id2 = a_match[edge.labels.1];
+        graph.adjacency[id1]
+            .iter()
+            .any(|(neighbor_id, order)| *neighbor_id == id2 && (edge.predicate)(*order))
+    })
+}
