@@ -142,3 +142,23 @@ fn apply_actions(
         }
     }
 }
+
+fn apply_state_change(atom: &mut AtomView, state: ChemicalState) {
+    match state {
+        ChemicalState::Aromatic => {
+            atom.is_aromatic = true;
+            atom.hybridization = Hybridization::Resonant;
+            atom.steric_number = 3;
+        }
+        ChemicalState::TrigonalPlanar => {
+            atom.is_aromatic = false;
+            atom.hybridization = Hybridization::SP2;
+            atom.steric_number = 3;
+        }
+        ChemicalState::Tetrahedral => {
+            atom.is_aromatic = false;
+            atom.hybridization = Hybridization::SP3;
+            atom.steric_number = 4;
+        }
+    }
+}
