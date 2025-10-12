@@ -253,3 +253,34 @@ fn bond_order_contribution(order: BondOrder) -> u8 {
         BondOrder::Aromatic => 1,
     }
 }
+
+fn is_special_non_hybridized(element: Element) -> bool {
+    matches!(
+        element,
+        Element::H
+            | Element::F
+            | Element::Cl
+            | Element::Br
+            | Element::I
+            | Element::He
+            | Element::Ne
+            | Element::Ar
+            | Element::Kr
+            | Element::Xe
+            | Element::Rn
+            | Element::Li
+            | Element::Na
+            | Element::K
+            | Element::Rb
+            | Element::Cs
+            | Element::Fr
+            | Element::Be
+            | Element::Mg
+            | Element::Ca
+            | Element::Sr
+            | Element::Ba
+            | Element::Ra
+            | Element::Fe
+            | Element::Zn
+    )
+}
