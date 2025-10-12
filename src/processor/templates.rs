@@ -73,3 +73,41 @@ fn find_non_overlapping_matches(
     }
     all_matches
 }
+
+fn find_first_match_recursive(
+    graph: &ProcessingGraph,
+    template: &FunctionalGroupTemplate,
+    current_match: &mut Match,
+    query_node_idx: usize,
+    used_atoms: &[bool],
+) -> bool {
+    if query_node_idx == template.nodes.len() {
+        return verify_edges(graph, template, current_match);
+    }
+
+    let query_node = &template.nodes[query_node_idx];
+
+    for atom in &graph.atoms {
+        if used_atoms[atom.id] || current_match.values().any(|&id| id == atom.id) {
+            continue;
+        }
+
+        if (query_node.predicate)(atom) {
+            current_match.insert(query_node.label, atom.id);
+
+            if find_first_match_recursive(
+                graph,
+                template,
+                current_match,
+                query_node_idx + 1,
+                used_atoms,
+            ) {
+                return true;
+            }
+
+            current_match.remove(query_node.label);
+        }
+    }
+
+    false
+}
