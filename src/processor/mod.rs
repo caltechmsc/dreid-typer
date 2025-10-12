@@ -1,11 +1,9 @@
-mod annotate;
-mod aromaticity;
 mod graph;
-mod hybridization;
-mod rings;
+mod perception;
+mod pipeline;
+mod templates;
 mod typer;
 
-pub(crate) use annotate::process_graph;
-pub(crate) use graph::AtomView;
 pub(crate) use graph::ProcessingGraph;
+pub(crate) use pipeline::perceive;
 pub(crate) use typer::assign_types;
