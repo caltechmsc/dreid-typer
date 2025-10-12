@@ -61,3 +61,12 @@ pub(crate) fn apply_ring_annotations(graph: &mut ProcessingGraph, ring_info: &Ri
         }
     }
 }
+
+pub(crate) fn perceive_generic_properties(
+    graph: &mut ProcessingGraph,
+    ring_info: &RingInfo,
+) -> Result<(), AnnotationError> {
+    perceive_generic_aromaticity(graph, ring_info)?;
+    perceive_generic_hybridization(graph)?;
+    Ok(())
+}
