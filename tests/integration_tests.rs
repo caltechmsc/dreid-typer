@@ -70,3 +70,7 @@ generate_molecule_test!(cytosine_is_typed_correctly, CYTOSINE);
 generate_molecule_test!(adenine_is_typed_correctly, ADENINE);
 generate_molecule_test!(guanine_is_typed_correctly, GUANINE);
 generate_molecule_test!(deoxyadenosine_is_typed_correctly, DEOXYADENOSINE);
+generate_molecule_test!(
+    dinucleotide_backbone_fragment_is_typed_correctly,
+    DINUCLEOTIDE_BACKBONE
+);
