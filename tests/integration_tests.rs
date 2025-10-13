@@ -92,3 +92,4 @@ generate_molecule_test!(
     chloroacetyl_chloride_is_typed_correctly,
     CHLOROACETYL_CHLORIDE
 );
+generate_molecule_test!(adenosine_is_typed_correctly, ADENOSINE);
