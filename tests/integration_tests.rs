@@ -49,3 +49,7 @@ generate_molecule_test!(
 );
 generate_molecule_test!(lysine_zwitterion_is_typed_correctly, LYSINE_ZWITTERION);
 generate_molecule_test!(arginine_zwitterion_is_typed_correctly, ARGININE_ZWITTERION);
+generate_molecule_test!(
+    phenylalanine_zwitterion_is_typed_correctly,
+    PHENYLALANINE_ZWITTERION
+);
