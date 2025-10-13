@@ -47,3 +47,4 @@ generate_molecule_test!(
     glutamine_zwitterion_is_typed_correctly,
     GLUTAMINE_ZWITTERION
 );
+generate_molecule_test!(lysine_zwitterion_is_typed_correctly, LYSINE_ZWITTERION);
