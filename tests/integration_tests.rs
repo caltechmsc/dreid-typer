@@ -27,3 +27,7 @@ generate_molecule_test!(
     THREONINE_ZWITTERION
 );
 generate_molecule_test!(cysteine_zwitterion_is_typed_correctly, CYSTEINE_ZWITTERION);
+generate_molecule_test!(
+    methionine_zwitterion_is_typed_correctly,
+    METHIONINE_ZWITTERION
+);
