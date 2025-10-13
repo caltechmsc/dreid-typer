@@ -80,3 +80,4 @@ generate_molecule_test!(cyclobutane_lactone_is_typed_correctly, ACBUOL);
 generate_molecule_test!(cage_ether_is_typed_correctly, AFURPO10);
 generate_molecule_test!(adamantane_is_typed_correctly, ADAMANTANE);
 generate_molecule_test!(decalin_is_typed_correctly, DECALIN);
+generate_molecule_test!(dithiacyclohexene_is_typed_correctly, ABAXES);
