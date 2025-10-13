@@ -60,7 +60,12 @@ fn find_non_overlapping_matches(
     let mut matched_graph_atoms = vec![false; graph.atoms.len()];
 
     for i in 0..graph.atoms.len() {
-        if matched_graph_atoms[i] {
+        if matched_graph_atoms[i]
+            || matches!(
+                graph.atoms[i].perception_source,
+                Some(PerceptionSource::Template)
+            )
+        {
             continue;
         }
 
