@@ -54,3 +54,7 @@ generate_molecule_test!(
     PHENYLALANINE_ZWITTERION
 );
 generate_molecule_test!(tyrosine_zwitterion_is_typed_correctly, TYROSINE_ZWITTERION);
+generate_molecule_test!(
+    histidine_zwitterion_is_typed_correctly,
+    HISTIDINE_ZWITTERION
+);
