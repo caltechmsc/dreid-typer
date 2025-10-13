@@ -1,6 +1,7 @@
 mod harness;
 
 use harness::cases::amino_acids::*;
+use harness::cases::dreiding_paper::*;
 use harness::cases::nucleic_acids::*;
 use harness::run_molecule_test_case;
 
@@ -74,3 +75,5 @@ generate_molecule_test!(
     dinucleotide_backbone_fragment_is_typed_correctly,
     DINUCLEOTIDE_BACKBONE
 );
+
+generate_molecule_test!(cyclobutane_lactone_is_typed_correctly, ACBUOL);
