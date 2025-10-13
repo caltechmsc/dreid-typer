@@ -58,3 +58,7 @@ generate_molecule_test!(
     histidine_zwitterion_is_typed_correctly,
     HISTIDINE_ZWITTERION
 );
+generate_molecule_test!(
+    tryptophan_zwitterion_is_typed_correctly,
+    TRYPTOPHAN_ZWITTERION
+);
