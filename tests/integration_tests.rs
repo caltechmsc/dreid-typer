@@ -31,3 +31,7 @@ generate_molecule_test!(
     methionine_zwitterion_is_typed_correctly,
     METHIONINE_ZWITTERION
 );
+generate_molecule_test!(
+    aspartate_zwitterion_is_typed_correctly,
+    ASPARTATE_ZWITTERION
+);
