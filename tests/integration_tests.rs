@@ -26,3 +26,4 @@ generate_molecule_test!(
     threonine_zwitterion_is_typed_correctly,
     THREONINE_ZWITTERION
 );
+generate_molecule_test!(cysteine_zwitterion_is_typed_correctly, CYSTEINE_ZWITTERION);
