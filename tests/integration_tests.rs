@@ -66,3 +66,4 @@ generate_molecule_test!(
 
 generate_molecule_test!(uracil_is_typed_correctly, URACIL);
 generate_molecule_test!(thymine_is_typed_correctly, THYMINE);
+generate_molecule_test!(cytosine_is_typed_correctly, CYTOSINE);
