@@ -43,3 +43,7 @@ generate_molecule_test!(
     glutamate_zwitterion_is_typed_correctly,
     GLUTAMATE_ZWITTERION
 );
+generate_molecule_test!(
+    glutamine_zwitterion_is_typed_correctly,
+    GLUTAMINE_ZWITTERION
+);
