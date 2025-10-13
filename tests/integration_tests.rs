@@ -53,3 +53,4 @@ generate_molecule_test!(
     phenylalanine_zwitterion_is_typed_correctly,
     PHENYLALANINE_ZWITTERION
 );
+generate_molecule_test!(tyrosine_zwitterion_is_typed_correctly, TYROSINE_ZWITTERION);
