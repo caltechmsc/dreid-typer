@@ -96,82 +96,39 @@ pub(crate) fn perceive_generic_aromaticity(
 pub(crate) fn perceive_generic_hybridization(
     graph: &mut ProcessingGraph,
 ) -> Result<(), AnnotationError> {
-    let mut initial_hybs = Vec::with_capacity(graph.atoms.len());
-    for i in 0..graph.atoms.len() {
-        if graph.atoms[i].perception_source == Some(PerceptionSource::Template) {
-            initial_hybs.push(graph.atoms[i].hybridization);
+    for atom in &mut graph.atoms {
+        if atom.perception_source.is_some() {
             continue;
         }
 
-        let atom = &mut graph.atoms[i];
-        let steric = atom.degree + atom.lone_pairs;
-        atom.steric_number = steric;
+        atom.steric_number = atom.degree + atom.lone_pairs;
 
         let hyb = if atom.is_aromatic {
             Hybridization::Resonant
         } else if is_special_non_hybridized(atom.element) || atom.degree == 0 {
             Hybridization::None
         } else {
-            match steric {
+            match atom.steric_number {
                 4 => Hybridization::SP3,
                 3 => Hybridization::SP2,
                 2 => Hybridization::SP,
                 _ => Hybridization::Unknown,
             }
         };
-        initial_hybs.push(hyb);
-    }
 
-    for i in 0..graph.atoms.len() {
-        if graph.atoms[i].perception_source == Some(PerceptionSource::Template) {
-            continue;
+        if hyb == Hybridization::Unknown {
+            return Err(AnnotationError::HybridizationInference { atom_id: atom.id });
         }
 
-        let mut final_hyb = initial_hybs[i];
+        atom.hybridization = hyb;
+        atom.perception_source = Some(PerceptionSource::Generic);
 
-        if final_hyb == Hybridization::SP3 && graph.atoms[i].lone_pairs > 0 {
-            let atom_view = &graph.atoms[i];
-            let hydrogen_neighbors = graph.adjacency[atom_view.id]
-                .iter()
-                .filter(|(neighbor_id, _)| graph.atoms[*neighbor_id].element == Element::H)
-                .count();
-            let has_protective_hydrogen = atom_view.element == Element::O && hydrogen_neighbors > 0;
-            let is_multihydrogen = hydrogen_neighbors >= 2;
-            let is_anion = atom_view.formal_charge < 0;
-
-            if !has_protective_hydrogen && !is_anion && !is_multihydrogen {
-                let has_pi_system_neighbor =
-                    graph.adjacency[atom_view.id]
-                        .iter()
-                        .any(|(neighbor_id, _)| {
-                            let neighbor_hyb = initial_hybs[*neighbor_id];
-                            matches!(
-                                neighbor_hyb,
-                                Hybridization::SP2 | Hybridization::SP | Hybridization::Resonant
-                            )
-                        });
-
-                if has_pi_system_neighbor {
-                    final_hyb = Hybridization::SP2;
-                }
-            }
-        }
-
-        if final_hyb == Hybridization::Unknown {
-            return Err(AnnotationError::HybridizationInference {
-                atom_id: graph.atoms[i].id,
-            });
-        }
-
-        graph.atoms[i].hybridization = final_hyb;
-        graph.atoms[i].perception_source = Some(PerceptionSource::Generic);
-
-        graph.atoms[i].steric_number = match final_hyb {
+        atom.steric_number = match hyb {
             Hybridization::Resonant | Hybridization::SP2 => 3,
             Hybridization::SP3 => 4,
             Hybridization::SP => 2,
-            Hybridization::None => graph.atoms[i].degree + graph.atoms[i].lone_pairs,
-            Hybridization::Unknown => graph.atoms[i].steric_number,
+            Hybridization::None => atom.degree + atom.lone_pairs,
+            Hybridization::Unknown => atom.steric_number,
         };
     }
 
