@@ -88,3 +88,7 @@ generate_molecule_test!(trinitrobenzene_is_typed_correctly, TRINITROBENZENE);
 generate_molecule_test!(tetramethylthiourea_is_typed_correctly, TETRAMETHYLTHIOUREA);
 generate_molecule_test!(dimethyl_sulfoxide_is_typed_correctly, DIMETHYL_SULFOXIDE);
 generate_molecule_test!(methanesulfonamide_is_typed_correctly, METHANESULFONAMIDE);
+generate_molecule_test!(
+    chloroacetyl_chloride_is_typed_correctly,
+    CHLOROACETYL_CHLORIDE
+);
