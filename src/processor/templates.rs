@@ -626,6 +626,53 @@ mod tests {
     }
 
     #[test]
+    fn thioamide_bis_template_sets_trigonal_planar_states() {
+        let mut mg = MolecularGraph::new();
+        let carbon = mg.add_atom(Element::C, 0);
+        let sulfur = mg.add_atom(Element::S, 0);
+        let nitrogen1 = mg.add_atom(Element::N, 0);
+        let nitrogen2 = mg.add_atom(Element::N, 0);
+
+        mg.add_bond(carbon, sulfur, BondOrder::Double).expect("C=S");
+        mg.add_bond(carbon, nitrogen1, BondOrder::Single)
+            .expect("C-N1");
+        mg.add_bond(carbon, nitrogen2, BondOrder::Single)
+            .expect("C-N2");
+
+        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        apply_functional_group_templates(&mut pg).expect("template application failed");
+
+        for &idx in [carbon, sulfur, nitrogen1, nitrogen2].iter() {
+            let atom = &pg.atoms[idx];
+            assert_eq!(atom.hybridization, Hybridization::SP2);
+            assert_eq!(atom.steric_number, 3);
+            assert_eq!(atom.perception_source, Some(PerceptionSource::Template));
+        }
+    }
+
+    #[test]
+    fn thioamide_template_sets_trigonal_planar_states() {
+        let mut mg = MolecularGraph::new();
+        let carbon = mg.add_atom(Element::C, 0);
+        let sulfur = mg.add_atom(Element::S, 0);
+        let nitrogen = mg.add_atom(Element::N, 0);
+
+        mg.add_bond(carbon, sulfur, BondOrder::Double).expect("C=S");
+        mg.add_bond(carbon, nitrogen, BondOrder::Single)
+            .expect("C-N");
+
+        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        apply_functional_group_templates(&mut pg).expect("template application failed");
+
+        for &idx in [carbon, sulfur, nitrogen].iter() {
+            let atom = &pg.atoms[idx];
+            assert_eq!(atom.hybridization, Hybridization::SP2);
+            assert_eq!(atom.steric_number, 3);
+            assert_eq!(atom.perception_source, Some(PerceptionSource::Template));
+        }
+    }
+
+    #[test]
     fn carboxylate_template_sets_planar_states_for_carbon_and_oxygens() {
         let mut mg = MolecularGraph::new();
         let carbon = mg.add_atom(Element::C, 0);
