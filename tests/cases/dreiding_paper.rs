@@ -3093,3 +3093,138 @@ pub const PHOSPHATE_ESTER: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const ZINC_COMPLEX: MoleculeTestCase = MoleculeTestCase {
+    name: "AGLUAM10 - Zinc Complex",
+    atoms: &[
+        AtomBlueprint {
+            label: "ZN",
+            element: Element::Zn,
+            charge: 2,
+            expected_type: "Zn",
+        },
+        AtomBlueprint {
+            label: "N1",
+            element: Element::N,
+            charge: 0,
+            expected_type: "N_3",
+        },
+        AtomBlueprint {
+            label: "O1",
+            element: Element::O,
+            charge: -1,
+            expected_type: "O_2",
+        },
+        AtomBlueprint {
+            label: "O2",
+            element: Element::O,
+            charge: 0,
+            expected_type: "O_2",
+        },
+        AtomBlueprint {
+            label: "C2",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_2",
+        },
+        AtomBlueprint {
+            label: "C3",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "H_N1a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_HB",
+        },
+        AtomBlueprint {
+            label: "H_N1b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_HB",
+        },
+        AtomBlueprint {
+            label: "H_N1c",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_HB",
+        },
+        AtomBlueprint {
+            label: "H_C3a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C3b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C3c",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "ZN",
+            atom2_label: "N1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "ZN",
+            atom2_label: "O1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "H_N1a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "H_N1b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "H_N1c",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "O1",
+            atom2_label: "C2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "O2",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "C3",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "H_C3a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "H_C3b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "H_C3c",
+            order: BondOrder::Single,
+        },
+    ],
+};
