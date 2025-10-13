@@ -77,3 +77,4 @@ generate_molecule_test!(
 );
 
 generate_molecule_test!(cyclobutane_lactone_is_typed_correctly, ACBUOL);
+generate_molecule_test!(cage_ether_is_typed_correctly, AFURPO10);
