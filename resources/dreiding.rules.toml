@@ -175,28 +175,22 @@ type = "O_R"
 conditions = { element = "O", hybridization = "Resonant" }
 
 [[rule]]
-name = "H_Hydrogen_Bond_Donor_On_O"
+name = "H_Donor_On_Oxygen"
 priority = 250
 type = "H_HB"
-conditions = { element = "H", degree = 1, neighbor_types = { O_3 = 1 } }
+conditions = { element = "H", degree = 1, neighbor_elements = { O = 1 } }
 
 [[rule]]
-name = "H_Hydrogen_Bond_Donor_On_N"
+name = "H_Donor_On_Nitrogen"
 priority = 249
 type = "H_HB"
-conditions = { element = "H", degree = 1, neighbor_types = { N_3 = 1 } }
+conditions = { element = "H", degree = 1, neighbor_elements = { N = 1 } }
 
 [[rule]]
-name = "H_Hydrogen_Bond_Donor_On_Aromatic_N"
-priority = 248
+name = "H_Donor_On_Sulfur"
+priority = 240
 type = "H_HB"
-conditions = { element = "H", degree = 1, neighbor_types = { N_R = 1 } }
-
-[[rule]]
-name = "H_Hydrogen_Bond_Donor_On_SP2_N"
-priority = 247
-type = "H_HB"
-conditions = { element = "H", degree = 1, neighbor_types = { N_2 = 1 } }
+conditions = { element = "H", degree = 1, neighbor_elements = { S = 1 } }
 
 # ------------------------------------------------------------------------------
 # §5. Fallback Rules (Low Priority)
