@@ -95,3 +95,4 @@ generate_molecule_test!(
 generate_molecule_test!(adenosine_is_typed_correctly, ADENOSINE);
 generate_molecule_test!(phosphate_ester_is_typed_correctly, PHOSPHATE_ESTER);
 generate_molecule_test!(zinc_complex_is_typed_correctly, ZINC_COMPLEX);
+generate_molecule_test!(choline_cation_is_typed_correctly, CHOLINE_CATION);
