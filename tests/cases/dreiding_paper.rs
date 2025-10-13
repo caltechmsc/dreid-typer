@@ -438,3 +438,307 @@ pub const AFURPO10: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const ADAMANTANE: MoleculeTestCase = MoleculeTestCase {
+    name: "Adamantane",
+    atoms: &[
+        AtomBlueprint {
+            label: "C1",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C2",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C3",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C4",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C5",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C6",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C7",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C8",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C9",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C10",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "H_C1",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C3",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C5",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C7",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C2a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C2b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C4a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C4b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C6a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C6b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C8a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C8b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C9a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C9b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C10a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C10b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "C2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "C4",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "C6",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "C2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "C8",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "C10",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C4",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C8",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C9",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "C6",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "C9",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "C10",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "H_C1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "H_C3",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "H_C5",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "H_C7",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "H_C2a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "H_C2b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "H_C4a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "H_C4b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "H_C6a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "H_C6b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C8",
+            atom2_label: "H_C8a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C8",
+            atom2_label: "H_C8b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C9",
+            atom2_label: "H_C9a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C9",
+            atom2_label: "H_C9b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C10",
+            atom2_label: "H_C10a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C10",
+            atom2_label: "H_C10b",
+            order: BondOrder::Single,
+        },
+    ],
+};
