@@ -11,3 +11,5 @@ macro_rules! generate_molecule_test {
         }
     };
 }
+
+generate_molecule_test!(glycine_zwitterion_is_typed_correctly, GLYCINE_ZWITTERION);
