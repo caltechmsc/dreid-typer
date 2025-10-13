@@ -39,3 +39,7 @@ generate_molecule_test!(
     asparagine_zwitterion_is_typed_correctly,
     ASPARAGINE_ZWITTERION
 );
+generate_molecule_test!(
+    glutamate_zwitterion_is_typed_correctly,
+    GLUTAMATE_ZWITTERION
+);
