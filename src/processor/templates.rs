@@ -6,7 +6,10 @@ use std::sync::LazyLock;
 pub(crate) fn apply_functional_group_templates(
     graph: &mut ProcessingGraph,
 ) -> Result<(), crate::core::error::AnnotationError> {
-    for template in TEMPLATES.iter() {
+    let mut sorted_templates = TEMPLATES.clone();
+    sorted_templates.sort_by(|a, b| b.nodes.len().cmp(&a.nodes.len()));
+
+    for template in sorted_templates.iter() {
         let matches = find_non_overlapping_matches(graph, template);
         for a_match in matches {
             apply_actions(graph, &a_match, &template.actions);
