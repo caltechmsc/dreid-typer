@@ -618,6 +618,37 @@ mod tests {
     }
 
     #[test]
+    fn phosphate_template_sets_expected_states() {
+        let mut mg = MolecularGraph::new();
+        let phosphorus = mg.add_atom(Element::P, 0);
+        let oxygen_double = mg.add_atom(Element::O, 0);
+        let oxygen_single = mg.add_atom(Element::O, -1);
+
+        mg.add_bond(phosphorus, oxygen_double, BondOrder::Double)
+            .expect("P=O");
+        mg.add_bond(phosphorus, oxygen_single, BondOrder::Single)
+            .expect("P-O");
+
+        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        apply_functional_group_templates(&mut pg).expect("template application failed");
+
+        let phosphorus_atom = &pg.atoms[phosphorus];
+        assert_eq!(
+            phosphorus_atom.perception_source,
+            Some(PerceptionSource::Template)
+        );
+        assert_eq!(phosphorus_atom.hybridization, Hybridization::SP3);
+        assert_eq!(phosphorus_atom.steric_number, 4);
+
+        for &idx in [oxygen_double, oxygen_single].iter() {
+            let atom = &pg.atoms[idx];
+            assert_eq!(atom.perception_source, Some(PerceptionSource::Template));
+            assert_eq!(atom.hybridization, Hybridization::SP2);
+            assert_eq!(atom.steric_number, 3);
+        }
+    }
+
+    #[test]
     fn purine_skeleton_template_marks_fused_ring_atoms_aromatic() {
         let mut mg = MolecularGraph::new();
         let n1 = mg.add_atom(Element::N, 0);
