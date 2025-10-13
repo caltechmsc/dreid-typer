@@ -300,6 +300,41 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
                 map
             },
         },
+        // --- 3b. Thioamide ---
+        FunctionalGroupTemplate {
+            name: "Thioamide",
+            nodes: vec![
+                QueryNode {
+                    label: "C",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "S",
+                    predicate: |a| a.element == Element::S,
+                },
+                QueryNode {
+                    label: "N",
+                    predicate: |a| a.element == Element::N,
+                },
+            ],
+            edges: vec![
+                QueryEdge {
+                    labels: ("C", "S"),
+                    predicate: |o| o == BondOrder::Double,
+                },
+                QueryEdge {
+                    labels: ("C", "N"),
+                    predicate: |o| o == BondOrder::Single,
+                },
+            ],
+            actions: {
+                let mut map = HashMap::new();
+                map.insert("C", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("S", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("N", Action::SetState(ChemicalState::TrigonalPlanar));
+                map
+            },
+        },
         // --- 4. Carboxylate ---
         FunctionalGroupTemplate {
             name: "Carboxylate",
