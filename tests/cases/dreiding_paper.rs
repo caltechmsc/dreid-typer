@@ -2048,3 +2048,226 @@ pub const TRINITROBENZENE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const TETRAMETHYLTHIOUREA: MoleculeTestCase = MoleculeTestCase {
+    name: "ACPRET03 - Tetramethylthiourea",
+    atoms: &[
+        AtomBlueprint {
+            label: "CS",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_2",
+        },
+        AtomBlueprint {
+            label: "S",
+            element: Element::S,
+            charge: 0,
+            expected_type: "S_2",
+        },
+        AtomBlueprint {
+            label: "N1",
+            element: Element::N,
+            charge: 0,
+            expected_type: "N_2",
+        },
+        AtomBlueprint {
+            label: "N2",
+            element: Element::N,
+            charge: 0,
+            expected_type: "N_2",
+        },
+        AtomBlueprint {
+            label: "C11",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C12",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C21",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C22",
+            element: Element::C,
+            charge: 0,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "H_C11a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C11b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C11c",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C12a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C12b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C12c",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C21a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C21b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C21c",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C22a",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C22b",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C22c",
+            element: Element::H,
+            charge: 0,
+            expected_type: "H_",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "CS",
+            atom2_label: "S",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "CS",
+            atom2_label: "N1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CS",
+            atom2_label: "N2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "C11",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "C12",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N2",
+            atom2_label: "C21",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N2",
+            atom2_label: "C22",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C11",
+            atom2_label: "H_C11a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C11",
+            atom2_label: "H_C11b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C11",
+            atom2_label: "H_C11c",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C12",
+            atom2_label: "H_C12a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C12",
+            atom2_label: "H_C12b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C12",
+            atom2_label: "H_C12c",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C21",
+            atom2_label: "H_C21a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C21",
+            atom2_label: "H_C21b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C21",
+            atom2_label: "H_C21c",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C22",
+            atom2_label: "H_C22a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C22",
+            atom2_label: "H_C22b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C22",
+            atom2_label: "H_C22c",
+            order: BondOrder::Single,
+        },
+    ],
+};
