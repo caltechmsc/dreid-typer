@@ -93,3 +93,4 @@ generate_molecule_test!(
     CHLOROACETYL_CHLORIDE
 );
 generate_molecule_test!(adenosine_is_typed_correctly, ADENOSINE);
+generate_molecule_test!(phosphate_ester_is_typed_correctly, PHOSPHATE_ESTER);
