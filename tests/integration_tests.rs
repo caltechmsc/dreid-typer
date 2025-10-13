@@ -82,3 +82,4 @@ generate_molecule_test!(adamantane_is_typed_correctly, ADAMANTANE);
 generate_molecule_test!(decalin_is_typed_correctly, DECALIN);
 generate_molecule_test!(dithiacyclohexene_is_typed_correctly, ABAXES);
 generate_molecule_test!(methyl_pyridine_is_typed_correctly, METHYL_PYRIDINE);
+generate_molecule_test!(acridine_is_typed_correctly, ACRIDINE);
