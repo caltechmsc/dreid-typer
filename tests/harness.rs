@@ -1,9 +1,30 @@
 #[path = "cases/mod.rs"]
 pub mod cases;
 
-use self::cases::amino_acids::MoleculeTestCase;
-use dreid_typer::{Element, MolecularGraph, MolecularTopology, assign_topology};
+use dreid_typer::{BondOrder, Element, MolecularGraph, MolecularTopology, assign_topology};
 use std::collections::HashMap;
+
+#[derive(Debug)]
+pub struct AtomBlueprint {
+    pub label: &'static str,
+    pub element: Element,
+    pub charge: i8,
+    pub expected_type: &'static str,
+}
+
+#[derive(Debug)]
+pub struct BondBlueprint {
+    pub atom1_label: &'static str,
+    pub atom2_label: &'static str,
+    pub order: BondOrder,
+}
+
+#[derive(Debug)]
+pub struct MoleculeTestCase {
+    pub name: &'static str,
+    pub atoms: &'static [AtomBlueprint],
+    pub bonds: &'static [BondBlueprint],
+}
 
 pub struct LabeledMolecule {
     graph: MolecularGraph,
