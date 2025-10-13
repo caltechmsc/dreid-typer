@@ -1,6 +1,7 @@
 mod harness;
 
 use harness::cases::amino_acids::*;
+use harness::cases::nucleic_acids::*;
 use harness::run_molecule_test_case;
 
 macro_rules! generate_molecule_test {
@@ -62,3 +63,5 @@ generate_molecule_test!(
     tryptophan_zwitterion_is_typed_correctly,
     TRYPTOPHAN_ZWITTERION
 );
+
+generate_molecule_test!(uracil_is_typed_correctly, URACIL);
