@@ -359,6 +359,97 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
                 map
             },
         },
+        // --- 6. Purine Skeleton ---
+        FunctionalGroupTemplate {
+            name: "PurineSkeleton",
+            nodes: vec![
+                QueryNode {
+                    label: "N1",
+                    predicate: |a| a.element == Element::N,
+                },
+                QueryNode {
+                    label: "C2",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "N3",
+                    predicate: |a| a.element == Element::N,
+                },
+                QueryNode {
+                    label: "C4",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "C5",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "C6",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "N7",
+                    predicate: |a| a.element == Element::N,
+                },
+                QueryNode {
+                    label: "C8",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "N9",
+                    predicate: |a| a.element == Element::N,
+                },
+            ],
+            edges: vec![
+                QueryEdge {
+                    labels: ("N1", "C2"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("C2", "N3"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("N3", "C4"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("C4", "C5"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("C5", "C6"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("C6", "N1"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("C4", "N9"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("N9", "C8"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("C8", "N7"),
+                    predicate: |_| true,
+                },
+                QueryEdge {
+                    labels: ("N7", "C5"),
+                    predicate: |_| true,
+                },
+            ],
+            actions: {
+                let mut map = HashMap::new();
+                for label in ["N1", "C2", "N3", "C4", "C5", "C6", "N7", "C8", "N9"] {
+                    map.insert(label, Action::SetState(ChemicalState::Aromatic));
+                }
+                map
+            },
+        },
     ]
 }
 
