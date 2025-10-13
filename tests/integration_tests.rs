@@ -22,3 +22,7 @@ generate_molecule_test!(
 );
 generate_molecule_test!(proline_zwitterion_is_typed_correctly, PROLINE_ZWITTERION);
 generate_molecule_test!(serine_zwitterion_is_typed_correctly, SERINE_ZWITTERION);
+generate_molecule_test!(
+    threonine_zwitterion_is_typed_correctly,
+    THREONINE_ZWITTERION
+);
