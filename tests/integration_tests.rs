@@ -21,3 +21,4 @@ generate_molecule_test!(
     ISOLEUCINE_ZWITTERION
 );
 generate_molecule_test!(proline_zwitterion_is_typed_correctly, PROLINE_ZWITTERION);
+generate_molecule_test!(serine_zwitterion_is_typed_correctly, SERINE_ZWITTERION);
