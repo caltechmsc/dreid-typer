@@ -359,7 +359,42 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
                 map
             },
         },
-        // --- 6. Purine Skeleton ---
+        // --- 6. Phosphate ---
+        FunctionalGroupTemplate {
+            name: "Phosphate",
+            nodes: vec![
+                QueryNode {
+                    label: "P",
+                    predicate: |a| a.element == Element::P,
+                },
+                QueryNode {
+                    label: "O_double",
+                    predicate: |a| a.element == Element::O && a.formal_charge == 0,
+                },
+                QueryNode {
+                    label: "O_single",
+                    predicate: |a| a.element == Element::O && a.formal_charge == -1,
+                },
+            ],
+            edges: vec![
+                QueryEdge {
+                    labels: ("P", "O_double"),
+                    predicate: |o| o == BondOrder::Double,
+                },
+                QueryEdge {
+                    labels: ("P", "O_single"),
+                    predicate: |o| o == BondOrder::Single,
+                },
+            ],
+            actions: {
+                let mut map = HashMap::new();
+                map.insert("P", Action::SetState(ChemicalState::Tetrahedral));
+                map.insert("O_double", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("O_single", Action::SetState(ChemicalState::TrigonalPlanar));
+                map
+            },
+        },
+        // --- 7. Purine Skeleton ---
         FunctionalGroupTemplate {
             name: "PurineSkeleton",
             nodes: vec![
