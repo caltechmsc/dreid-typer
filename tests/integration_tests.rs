@@ -84,3 +84,4 @@ generate_molecule_test!(dithiacyclohexene_is_typed_correctly, ABAXES);
 generate_molecule_test!(methyl_pyridine_is_typed_correctly, METHYL_PYRIDINE);
 generate_molecule_test!(acridine_is_typed_correctly, ACRIDINE);
 generate_molecule_test!(phosphinane_is_typed_correctly, PHOSPHINANE);
+generate_molecule_test!(trinitrobenzene_is_typed_correctly, TRINITROBENZENE);
