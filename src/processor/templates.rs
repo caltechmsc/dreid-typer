@@ -96,7 +96,10 @@ fn find_first_match_recursive(
     let query_node = &template.nodes[query_node_idx];
 
     for atom in &graph.atoms {
-        if used_atoms[atom.id] || current_match.values().any(|&id| id == atom.id) {
+        if used_atoms[atom.id]
+            || current_match.values().any(|&id| id == atom.id)
+            || matches!(atom.perception_source, Some(PerceptionSource::Template))
+        {
             continue;
         }
 
