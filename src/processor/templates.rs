@@ -256,7 +256,51 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
                 map
             },
         },
-        // --- 3. Carboxylate ---
+        // --- 3a. Thioamide (bis-amide) ---
+        FunctionalGroupTemplate {
+            name: "ThioamideBis",
+            nodes: vec![
+                QueryNode {
+                    label: "C",
+                    predicate: |a| a.element == Element::C,
+                },
+                QueryNode {
+                    label: "S",
+                    predicate: |a| a.element == Element::S,
+                },
+                QueryNode {
+                    label: "N1",
+                    predicate: |a| a.element == Element::N,
+                },
+                QueryNode {
+                    label: "N2",
+                    predicate: |a| a.element == Element::N,
+                },
+            ],
+            edges: vec![
+                QueryEdge {
+                    labels: ("C", "S"),
+                    predicate: |o| o == BondOrder::Double,
+                },
+                QueryEdge {
+                    labels: ("C", "N1"),
+                    predicate: |o| o == BondOrder::Single,
+                },
+                QueryEdge {
+                    labels: ("C", "N2"),
+                    predicate: |o| o == BondOrder::Single,
+                },
+            ],
+            actions: {
+                let mut map = HashMap::new();
+                map.insert("C", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("S", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("N1", Action::SetState(ChemicalState::TrigonalPlanar));
+                map.insert("N2", Action::SetState(ChemicalState::TrigonalPlanar));
+                map
+            },
+        },
+        // --- 4. Carboxylate ---
         FunctionalGroupTemplate {
             name: "Carboxylate",
             nodes: vec![
@@ -291,7 +335,7 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
                 map
             },
         },
-        // --- 4. Nitro ---
+        // --- 5. Nitro ---
         FunctionalGroupTemplate {
             name: "Nitro",
             nodes: vec![
@@ -326,7 +370,7 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
                 map
             },
         },
-        // --- 5. Phenol/Enol ---
+        // --- 6. Phenol/Enol ---
         FunctionalGroupTemplate {
             name: "Phenol/Enol",
             nodes: vec![
@@ -359,7 +403,7 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
                 map
             },
         },
-        // --- 6. Phosphate ---
+        // --- 7. Phosphate ---
         FunctionalGroupTemplate {
             name: "Phosphate",
             nodes: vec![
@@ -394,7 +438,7 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
                 map
             },
         },
-        // --- 7. Purine Skeleton ---
+        // --- 8. Purine Skeleton ---
         FunctionalGroupTemplate {
             name: "PurineSkeleton",
             nodes: vec![
