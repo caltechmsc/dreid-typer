@@ -48,3 +48,4 @@ generate_molecule_test!(
     GLUTAMINE_ZWITTERION
 );
 generate_molecule_test!(lysine_zwitterion_is_typed_correctly, LYSINE_ZWITTERION);
+generate_molecule_test!(arginine_zwitterion_is_typed_correctly, ARGININE_ZWITTERION);
