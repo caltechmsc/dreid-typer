@@ -455,8 +455,10 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::graph::PerceptionSource;
     use super::*;
     use crate::core::graph::MolecularGraph;
+    use crate::core::{BondOrder, Element, Hybridization};
 
     #[test]
     fn guanidinium_template_sets_planar_states_on_all_atoms() {
@@ -577,6 +579,42 @@ mod tests {
             assert_eq!(atom.hybridization, Hybridization::SP2);
             assert_eq!(atom.steric_number, 3);
             assert_eq!(atom.perception_source, Some(PerceptionSource::Template));
+        }
+    }
+
+    #[test]
+    fn purine_skeleton_template_marks_fused_ring_atoms_aromatic() {
+        let mut mg = MolecularGraph::new();
+        let n1 = mg.add_atom(Element::N, 0);
+        let c2 = mg.add_atom(Element::C, 0);
+        let n3 = mg.add_atom(Element::N, 0);
+        let c4 = mg.add_atom(Element::C, 0);
+        let c5 = mg.add_atom(Element::C, 0);
+        let c6 = mg.add_atom(Element::C, 0);
+        let n7 = mg.add_atom(Element::N, 0);
+        let c8 = mg.add_atom(Element::C, 0);
+        let n9 = mg.add_atom(Element::N, 0);
+
+        mg.add_bond(n1, c2, BondOrder::Aromatic).unwrap();
+        mg.add_bond(c2, n3, BondOrder::Aromatic).unwrap();
+        mg.add_bond(n3, c4, BondOrder::Aromatic).unwrap();
+        mg.add_bond(c4, c5, BondOrder::Aromatic).unwrap();
+        mg.add_bond(c5, c6, BondOrder::Aromatic).unwrap();
+        mg.add_bond(c6, n1, BondOrder::Aromatic).unwrap();
+
+        mg.add_bond(c4, n9, BondOrder::Aromatic).unwrap();
+        mg.add_bond(n9, c8, BondOrder::Aromatic).unwrap();
+        mg.add_bond(c8, n7, BondOrder::Aromatic).unwrap();
+        mg.add_bond(n7, c5, BondOrder::Aromatic).unwrap();
+
+        let mut pg = ProcessingGraph::new(&mg).expect("processing graph");
+        apply_functional_group_templates(&mut pg).expect("apply templates");
+
+        for &idx in &[n1, c2, n3, c4, c5, c6, n7, c8, n9] {
+            let atom = &pg.atoms[idx];
+            assert_eq!(atom.perception_source, Some(PerceptionSource::Template));
+            assert!(atom.is_aromatic, "atom {} not aromatic", idx);
+            assert_eq!(atom.hybridization, Hybridization::Resonant);
         }
     }
 }
