@@ -15,3 +15,4 @@ macro_rules! generate_molecule_test {
 generate_molecule_test!(glycine_zwitterion_is_typed_correctly, GLYCINE_ZWITTERION);
 generate_molecule_test!(alanine_zwitterion_is_typed_correctly, ALANINE_ZWITTERION);
 generate_molecule_test!(valine_zwitterion_is_typed_correctly, VALINE_ZWITTERION);
+generate_molecule_test!(leucine_zwitterion_is_typed_correctly, LEUCINE_ZWITTERION);
