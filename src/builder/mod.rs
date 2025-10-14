@@ -1,3 +1,9 @@
+//! Topology construction from processed molecular graphs.
+//!
+//! This module implements the building phase of the dreid-typer pipeline, converting a
+//! `ProcessingGraph` with assigned atom types into a complete `MolecularTopology` containing
+//! atoms, bonds, angles, and dihedrals for molecular simulation.
+
 use crate::core::Hybridization;
 use crate::core::error::TyperError;
 use crate::core::graph::{
@@ -6,6 +12,21 @@ use crate::core::graph::{
 use crate::processor::ProcessingGraph;
 use std::collections::HashSet;
 
+/// Constructs a complete molecular topology from processed graphs and atom types.
+///
+/// This function orchestrates the final building phase, combining information from the
+/// initial molecular graph and the processed graph with assigned types to create all
+/// topological elements needed for force field calculations.
+///
+/// # Arguments
+///
+/// * `initial_graph` - The original molecular graph with basic connectivity.
+/// * `processing_graph` - The annotated processing graph with chemical properties.
+/// * `atom_types` - The assigned DREIDING atom types for each atom.
+///
+/// # Returns
+///
+/// A complete `MolecularTopology` with atoms, bonds, angles, and dihedrals.
 pub(crate) fn build_topology(
     initial_graph: &MolecularGraph,
     processing_graph: &ProcessingGraph,
@@ -26,6 +47,19 @@ pub(crate) fn build_topology(
     })
 }
 
+/// Creates topology atoms from processing graph atoms and assigned types.
+///
+/// Maps each atom view to a topology atom, incorporating the assigned DREIDING type
+/// and hybridization information for force field calculations.
+///
+/// # Arguments
+///
+/// * `processing_graph` - The graph containing atom properties.
+/// * `atom_types` - The assigned atom types corresponding to each atom.
+///
+/// # Returns
+///
+/// A vector of topology atoms.
 fn build_atoms(processing_graph: &ProcessingGraph, atom_types: &[String]) -> Vec<Atom> {
     processing_graph
         .atoms
@@ -39,6 +73,18 @@ fn build_atoms(processing_graph: &ProcessingGraph, atom_types: &[String]) -> Vec
         .collect()
 }
 
+/// Extracts bond topology from the initial molecular graph.
+///
+/// Converts the graph's edge list into a set of topology bonds, preserving
+/// bond orders for force field parameterization.
+///
+/// # Arguments
+///
+/// * `initial_graph` - The molecular graph with bond connectivity.
+///
+/// # Returns
+///
+/// A set of topology bonds.
 fn build_bonds(initial_graph: &MolecularGraph) -> HashSet<Bond> {
     initial_graph
         .bonds
@@ -50,6 +96,18 @@ fn build_bonds(initial_graph: &MolecularGraph) -> HashSet<Bond> {
         .collect()
 }
 
+/// Generates all three-atom angles from the molecular connectivity.
+///
+/// For each atom with multiple neighbors, creates angles between all pairs of neighbors.
+/// This ensures complete angle coverage for force field calculations.
+///
+/// # Arguments
+///
+/// * `graph` - The processing graph with adjacency information.
+///
+/// # Returns
+///
+/// A set of topology angles.
 fn build_angles(graph: &ProcessingGraph) -> HashSet<Angle> {
     let mut angles = HashSet::new();
     for j in 0..graph.atoms.len() {
@@ -58,6 +116,7 @@ fn build_angles(graph: &ProcessingGraph) -> HashSet<Angle> {
             continue;
         }
 
+        // Generate angles between all pairs of neighbors around atom j.
         for i_idx in 0..neighbors.len() {
             for k_idx in (i_idx + 1)..neighbors.len() {
                 let i = neighbors[i_idx].0;
@@ -69,6 +128,18 @@ fn build_angles(graph: &ProcessingGraph) -> HashSet<Angle> {
     angles
 }
 
+/// Generates all four-atom proper dihedrals from molecular connectivity.
+///
+/// Enumerates all paths of length 3 (i-j-k-l) where j and k are connected,
+/// ensuring each dihedral is represented in canonical order to avoid duplicates.
+///
+/// # Arguments
+///
+/// * `graph` - The processing graph with adjacency information.
+///
+/// # Returns
+///
+/// A set of topology proper dihedrals.
 fn build_proper_dihedrals(graph: &ProcessingGraph) -> HashSet<ProperDihedral> {
     let mut dihedrals = HashSet::new();
     for j in 0..graph.atoms.len() {
@@ -77,6 +148,7 @@ fn build_proper_dihedrals(graph: &ProcessingGraph) -> HashSet<ProperDihedral> {
                 continue;
             }
 
+            // Avoid duplicate dihedrals by canonical ordering.
             for &(i, _) in &graph.adjacency[j] {
                 if i == k {
                     continue;
@@ -95,12 +167,25 @@ fn build_proper_dihedrals(graph: &ProcessingGraph) -> HashSet<ProperDihedral> {
     dihedrals
 }
 
+/// Generates improper dihedrals for planar atoms in DREIDING force field.
+///
+/// Creates improper dihedrals for atoms with three neighbors and SP2 or resonant hybridization,
+/// which require planarity constraints in molecular mechanics.
+///
+/// # Arguments
+///
+/// * `graph` - The processing graph with hybridization information.
+///
+/// # Returns
+///
+/// A set of topology improper dihedrals.
 fn build_improper_dihedrals(graph: &ProcessingGraph) -> HashSet<ImproperDihedral> {
     let mut dihedrals = HashSet::new();
     for i in 0..graph.atoms.len() {
         let atom = &graph.atoms[i];
 
         if atom.degree == 3 {
+            // Only planar atoms (SP2 or resonant) need improper dihedrals for planarity.
             if matches!(
                 atom.hybridization,
                 Hybridization::SP2 | Hybridization::Resonant
@@ -140,15 +225,22 @@ mod tests {
                 initial_graph.atoms.push(AtomNode {
                     id: i,
                     element: *element,
+                    formal_charge: 0,
                 });
                 atom_views.push(AtomView {
                     id: i,
                     element: *element,
+                    formal_charge: 0,
                     degree: 0,
+                    valence_electrons: 0,
+                    bonding_electrons: 0,
+                    lone_pairs: 0,
+                    steric_number: 0,
                     hybridization: *hybridization,
                     is_in_ring: false,
                     smallest_ring_size: None,
                     is_aromatic: *hybridization == Hybridization::Resonant,
+                    perception_source: None,
                 });
                 atom_types.push(atom_type.to_string());
             }
@@ -364,10 +456,7 @@ mod tests {
         assert_eq!(topology.atoms.len(), num_atoms);
         assert_eq!(topology.bonds.len(), num_bonds);
         assert_eq!(topology.angles.len(), num_angles);
-        assert!(
-            topology.proper_dihedrals.len() > 0,
-            "Expected some proper dihedrals"
-        );
+        assert_eq!(topology.proper_dihedrals.len(), num_proper_dihedrals);
         assert_eq!(topology.improper_dihedrals.len(), num_improper_dihedrals);
 
         assert!(

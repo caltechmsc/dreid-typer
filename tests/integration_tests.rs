@@ -1,0 +1,99 @@
+mod harness;
+
+use harness::cases::amino_acids::*;
+use harness::cases::dreiding_paper::*;
+use harness::cases::nucleic_acids::*;
+use harness::run_molecule_test_case;
+
+macro_rules! generate_molecule_test {
+    ($test_name:ident, $molecule_case:expr) => {
+        #[test]
+        fn $test_name() {
+            run_molecule_test_case(&$molecule_case);
+        }
+    };
+}
+
+generate_molecule_test!(glycine_zwitterion_is_typed_correctly, GLYCINE_ZWITTERION);
+generate_molecule_test!(alanine_zwitterion_is_typed_correctly, ALANINE_ZWITTERION);
+generate_molecule_test!(valine_zwitterion_is_typed_correctly, VALINE_ZWITTERION);
+generate_molecule_test!(leucine_zwitterion_is_typed_correctly, LEUCINE_ZWITTERION);
+generate_molecule_test!(
+    isoleucine_zwitterion_is_typed_correctly,
+    ISOLEUCINE_ZWITTERION
+);
+generate_molecule_test!(proline_zwitterion_is_typed_correctly, PROLINE_ZWITTERION);
+generate_molecule_test!(serine_zwitterion_is_typed_correctly, SERINE_ZWITTERION);
+generate_molecule_test!(
+    threonine_zwitterion_is_typed_correctly,
+    THREONINE_ZWITTERION
+);
+generate_molecule_test!(cysteine_zwitterion_is_typed_correctly, CYSTEINE_ZWITTERION);
+generate_molecule_test!(
+    methionine_zwitterion_is_typed_correctly,
+    METHIONINE_ZWITTERION
+);
+generate_molecule_test!(
+    aspartate_zwitterion_is_typed_correctly,
+    ASPARTATE_ZWITTERION
+);
+generate_molecule_test!(
+    asparagine_zwitterion_is_typed_correctly,
+    ASPARAGINE_ZWITTERION
+);
+generate_molecule_test!(
+    glutamate_zwitterion_is_typed_correctly,
+    GLUTAMATE_ZWITTERION
+);
+generate_molecule_test!(
+    glutamine_zwitterion_is_typed_correctly,
+    GLUTAMINE_ZWITTERION
+);
+generate_molecule_test!(lysine_zwitterion_is_typed_correctly, LYSINE_ZWITTERION);
+generate_molecule_test!(arginine_zwitterion_is_typed_correctly, ARGININE_ZWITTERION);
+generate_molecule_test!(
+    phenylalanine_zwitterion_is_typed_correctly,
+    PHENYLALANINE_ZWITTERION
+);
+generate_molecule_test!(tyrosine_zwitterion_is_typed_correctly, TYROSINE_ZWITTERION);
+generate_molecule_test!(
+    histidine_zwitterion_is_typed_correctly,
+    HISTIDINE_ZWITTERION
+);
+generate_molecule_test!(
+    tryptophan_zwitterion_is_typed_correctly,
+    TRYPTOPHAN_ZWITTERION
+);
+
+generate_molecule_test!(uracil_is_typed_correctly, URACIL);
+generate_molecule_test!(thymine_is_typed_correctly, THYMINE);
+generate_molecule_test!(cytosine_is_typed_correctly, CYTOSINE);
+generate_molecule_test!(adenine_is_typed_correctly, ADENINE);
+generate_molecule_test!(guanine_is_typed_correctly, GUANINE);
+generate_molecule_test!(deoxyadenosine_is_typed_correctly, DEOXYADENOSINE);
+generate_molecule_test!(
+    dinucleotide_backbone_fragment_is_typed_correctly,
+    DINUCLEOTIDE_BACKBONE
+);
+
+generate_molecule_test!(cyclobutane_lactone_is_typed_correctly, ACBUOL);
+generate_molecule_test!(cage_ether_is_typed_correctly, AFURPO10);
+generate_molecule_test!(adamantane_is_typed_correctly, ADAMANTANE);
+generate_molecule_test!(decalin_is_typed_correctly, DECALIN);
+generate_molecule_test!(dithiacyclohexene_is_typed_correctly, ABAXES);
+generate_molecule_test!(methyl_pyridine_is_typed_correctly, METHYL_PYRIDINE);
+generate_molecule_test!(acridine_is_typed_correctly, ACRIDINE);
+generate_molecule_test!(phosphinane_is_typed_correctly, PHOSPHINANE);
+generate_molecule_test!(trinitrobenzene_is_typed_correctly, TRINITROBENZENE);
+generate_molecule_test!(tetramethylthiourea_is_typed_correctly, TETRAMETHYLTHIOUREA);
+generate_molecule_test!(dimethyl_sulfoxide_is_typed_correctly, DIMETHYL_SULFOXIDE);
+generate_molecule_test!(methanesulfonamide_is_typed_correctly, METHANESULFONAMIDE);
+generate_molecule_test!(
+    chloroacetyl_chloride_is_typed_correctly,
+    CHLOROACETYL_CHLORIDE
+);
+generate_molecule_test!(adenosine_is_typed_correctly, ADENOSINE);
+generate_molecule_test!(phosphate_ester_is_typed_correctly, PHOSPHATE_ESTER);
+generate_molecule_test!(zinc_complex_is_typed_correctly, ZINC_COMPLEX);
+generate_molecule_test!(choline_cation_is_typed_correctly, CHOLINE_CATION);
+generate_molecule_test!(perchlorate_anion_is_typed_correctly, PERCHLORATE_ANION);
