@@ -76,10 +76,10 @@ graph LR
     B -- "<b>Phase 2 & 3: Typing & Building</b><br>Information is queried and transformed" --> C
 ```
 
-1.  **Input to Workspace (`MolecularGraph` -> `ProcessingGraph`):**
-    The `perceive` function acts as the constructor for the `ProcessingGraph`. It takes the minimal `MolecularGraph` and performs all necessary chemical computations to build a fully annotated, "intelligent" graph. This is the most computationally intensive part of the process, where raw data is converted into chemical knowledge.
+1. **Input to Workspace (`MolecularGraph` -> `ProcessingGraph`):**
+   The `perceive` function acts as the constructor for the `ProcessingGraph`. It takes the minimal `MolecularGraph` and performs all necessary chemical computations to build a fully annotated, "intelligent" graph. This is the most computationally intensive part of the process, where raw data is converted into chemical knowledge.
 
-2.  **Workspace to Output (`ProcessingGraph` -> `MolecularTopology`):**
-    The `assign_types` and `build_topology` functions work in concert to transform the rich `ProcessingGraph` into the final, lean `MolecularTopology`. This stage is not about discovering new information, but rather about **querying** the existing knowledge and **formatting** it according to the rules of the DREIDING model. The typing engine queries atomic properties to assign types, and the builder queries connectivity to generate geometric terms.
+2. **Workspace to Output (`ProcessingGraph` -> `MolecularTopology`):**
+   The `assign_types` and `build_topology` functions work in concert to transform the rich `ProcessingGraph` into the final, lean `MolecularTopology`. This stage is not about discovering new information, but rather about **querying** the existing knowledge and **formatting** it according to the rules of the DREIDING model. The typing engine queries atomic properties to assign types, and the builder queries connectivity to generate geometric terms.
 
 By strictly separating these data representations, `dreid-typer` achieves a clean architecture that is both robust and easy to reason about.
