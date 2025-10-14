@@ -424,10 +424,6 @@ fn get_valence_electrons(element: Element) -> Option<u8> {
 ///
 /// This struct encapsulates the state for finding all unique cycles in a molecular graph,
 /// ensuring each cycle is reported only once regardless of starting point.
-/// Cycle finder implementation using Johnson's algorithm.
-///
-/// This struct encapsulates the state for finding all unique cycles in a molecular graph,
-/// ensuring each cycle is reported only once regardless of starting point.
 struct JohnsonCycleFinder<'a> {
     graph: &'a ProcessingGraph,
     all_cycles: HashSet<Vec<usize>>,
