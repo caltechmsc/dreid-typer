@@ -4,7 +4,7 @@
 //! It applies a set of rules to assign atom types based on chemical properties, using iteration to
 //! handle rules that depend on neighboring atom types.
 
-use super::graph::{AtomView, ProcessingGraph};
+use super::{AtomView, ProcessingGraph};
 use crate::core::Element;
 use crate::core::error::AssignmentError;
 use crate::rules::{Conditions, Rule};
