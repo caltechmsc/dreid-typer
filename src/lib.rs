@@ -81,7 +81,7 @@ pub use crate::core::error::{AnnotationError, AssignmentError, GraphValidationEr
 ///
 /// While the library can be used out-of-the-box with its default ruleset,
 /// this module allows advanced users to define and load custom rules from
-/// TOML-formatted strings using the [`parse_rules`] function.
+/// TOML-formatted strings using the [`rules::parse_rules`] function.
 pub mod rules;
 
 /// Assigns a full molecular topology using the default embedded DREIDING ruleset.
@@ -119,14 +119,14 @@ pub fn assign_topology(graph: &MolecularGraph) -> Result<MolecularTopology, Type
 /// Assigns a full molecular topology using a user-provided set of rules.
 ///
 /// This function provides the same functionality as [`assign_topology`] but allows
-/// for customization of the atom typing logic by supplying a custom slice of [`Rule`]s.
+/// for customization of the atom typing logic by supplying a custom slice of [`rules::Rule`]s.
 /// This is useful for extending the DREIDING force field to new elements or
 /// defining special types for specific chemical environments.
 ///
 /// # Arguments
 ///
 /// * `graph` - A reference to the [`MolecularGraph`] to be processed.
-/// * `rules` - A slice of [`Rule`] structs that the typing engine will use.
+/// * `rules` - A slice of [`rules::Rule`] structs that the typing engine will use.
 ///
 /// # Errors
 ///
