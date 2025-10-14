@@ -1,8 +1,20 @@
+//! Functional group template matching for chemical perception.
+//!
+//! This module implements an expert system of functional group templates that
+//! override default perception algorithms for specific chemical environments.
+//! Templates are applied during the perception phase to correctly identify
+//! hybridization states, aromaticity, and other properties in complex molecules.
+
 use crate::core::{BondOrder, Element, Hybridization};
 use crate::processor::graph::{AtomView, PerceptionSource, ProcessingGraph};
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
+/// Applies functional group templates to override default perception results.
+///
+/// This function iterates through predefined templates in order of decreasing
+/// size to avoid conflicts, finding non-overlapping matches and applying
+/// the associated actions to set correct chemical properties.
 pub(crate) fn apply_functional_group_templates(
     graph: &mut ProcessingGraph,
 ) -> Result<(), crate::core::error::AnnotationError> {
@@ -18,40 +30,72 @@ pub(crate) fn apply_functional_group_templates(
     Ok(())
 }
 
+/// Actions that can be applied to atoms when a template matches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Action {
+    /// Sets the chemical state of an atom to a predefined configuration.
     SetState(ChemicalState),
 }
 
+/// Predefined chemical states that templates can assign to atoms.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ChemicalState {
+    /// Aromatic state with resonant hybridization.
     Aromatic,
+    /// Trigonal planar geometry with SP2 hybridization.
     TrigonalPlanar,
+    /// Tetrahedral geometry with SP3 hybridization.
     Tetrahedral,
 }
 
+/// A node in a functional group query pattern.
+///
+/// Each query node defines a label and a predicate function that tests
+/// whether an atom matches the required properties for that position in the template.
 #[derive(Clone)]
 struct QueryNode {
+    /// The label used to reference this node in edges and actions.
     label: &'static str,
+    /// Predicate function that tests if an atom matches this node's requirements.
     predicate: fn(&AtomView) -> bool,
 }
 
+/// An edge in a functional group query pattern.
+///
+/// Query edges define connectivity requirements between labeled nodes,
+/// including bond order constraints.
 #[derive(Clone)]
 struct QueryEdge {
+    /// The labels of the two nodes connected by this edge.
     labels: (&'static str, &'static str),
+    /// Predicate function that tests if the bond order matches requirements.
     predicate: fn(BondOrder) -> bool,
 }
 
+/// A complete functional group template for pattern matching.
+///
+/// Templates define a subgraph pattern to match against molecules,
+/// consisting of nodes, edges, and actions to apply when the pattern is found.
 #[derive(Clone)]
 struct FunctionalGroupTemplate {
+    /// Descriptive name of the functional group.
     name: &'static str,
+    /// The nodes (atoms) in the template pattern.
     nodes: Vec<QueryNode>,
+    /// The edges (bonds) connecting the nodes.
     edges: Vec<QueryEdge>,
+    /// Actions to apply to matched atoms.
     actions: HashMap<&'static str, Action>,
 }
 
+/// A mapping from template node labels to graph atom IDs.
 type Match = HashMap<&'static str, usize>;
 
+/// Finds all non-overlapping matches of a template in the graph.
+///
+/// This function ensures that each atom is used in at most one template match
+/// and prefers larger templates by processing them first. Atoms already
+/// modified by templates are skipped.
 fn find_non_overlapping_matches(
     graph: &ProcessingGraph,
     template: &FunctionalGroupTemplate,
@@ -82,6 +126,10 @@ fn find_non_overlapping_matches(
     all_matches
 }
 
+/// Recursively finds the first complete match for a template starting from a given position.
+///
+/// This backtracking algorithm attempts to match template nodes to graph atoms
+/// in order, ensuring all edge constraints are satisfied.
 fn find_first_match_recursive(
     graph: &ProcessingGraph,
     template: &FunctionalGroupTemplate,
@@ -123,6 +171,10 @@ fn find_first_match_recursive(
     false
 }
 
+/// Verifies that all edge constraints in a template are satisfied by the current match.
+///
+/// Checks each required edge between matched atoms to ensure bond orders match
+/// the template specifications.
 fn verify_edges(
     graph: &ProcessingGraph,
     template: &FunctionalGroupTemplate,
@@ -137,6 +189,10 @@ fn verify_edges(
     })
 }
 
+/// Applies the actions defined in a template to the matched atoms.
+///
+/// Updates the perception source and applies state changes to each matched atom
+/// according to the template's action specifications.
 fn apply_actions(
     graph: &mut ProcessingGraph,
     a_match: &Match,
@@ -154,6 +210,10 @@ fn apply_actions(
     }
 }
 
+/// Applies a predefined chemical state to an atom.
+///
+/// Sets hybridization, steric number, and aromaticity properties according
+/// to the specified chemical state configuration.
 fn apply_state_change(atom: &mut AtomView, state: ChemicalState) {
     match state {
         ChemicalState::Aromatic => {
@@ -174,8 +234,17 @@ fn apply_state_change(atom: &mut AtomView, state: ChemicalState) {
     }
 }
 
+/// Lazily-loaded collection of all functional group templates.
+///
+/// Templates are defined at compile time and sorted by size during application
+/// to ensure larger, more specific patterns are matched before smaller ones.
 static TEMPLATES: LazyLock<Vec<FunctionalGroupTemplate>> = LazyLock::new(define_templates);
 
+/// Defines all functional group templates used in perception.
+///
+/// This function creates templates for common functional groups that require
+/// special handling beyond general perception algorithms, such as resonance
+/// systems and charged species.
 fn define_templates() -> Vec<FunctionalGroupTemplate> {
     vec![
         // --- 1. Guanidinium ---
