@@ -14,10 +14,6 @@ use std::collections::HashMap;
 ///
 /// The engine applies rules in order of decreasing priority, iterating until no more changes occur.
 /// This handles dependencies between rules where an atom's type depends on its neighbors' types.
-/// Priority-based iterative rule engine for assigning DREIDING atom types.
-///
-/// The engine applies rules in order of decreasing priority, iterating until no more changes occur.
-/// This handles dependencies between rules where an atom's type depends on its neighbors' types.
 pub(crate) struct TyperEngine<'a> {
     graph: &'a ProcessingGraph,
     rules: Vec<&'a Rule>,
