@@ -1,3 +1,9 @@
+//! Orchestrates the molecular perception pipeline for the DREIDING force field.
+//!
+//! This module coordinates the three-phase perception process: electron counting, functional group
+//! template application, and generic property detection. It serves as the main entry point for
+//! converting a `MolecularGraph` into a richly annotated `ProcessingGraph` ready for atom typing.
+
 use super::graph::{ProcessingGraph, RingInfo};
 use super::perception::{
     apply_ring_annotations, perceive_electron_counts, perceive_generic_properties, perceive_rings,
@@ -6,12 +12,34 @@ use super::templates;
 use crate::core::error::TyperError;
 use crate::core::graph::MolecularGraph;
 
+/// Result of the molecular perception pipeline.
+///
+/// Contains the fully annotated processing graph and ring information extracted during perception.
 #[derive(Debug)]
 pub struct PerceptionResult {
+    /// The processing graph with all chemical annotations applied.
     pub processing_graph: ProcessingGraph,
+    /// Information about all detected rings in the molecule.
     pub ring_info: RingInfo,
 }
 
+/// Runs the complete molecular perception pipeline.
+///
+/// Executes the three-phase perception process: electron counting, functional group templates,
+/// and generic property detection to produce a fully annotated processing graph.
+///
+/// # Arguments
+///
+/// * `molecular_graph` - The input molecular graph to perceive.
+///
+/// # Returns
+///
+/// A `PerceptionResult` containing the annotated processing graph and ring information.
+///
+/// # Errors
+///
+/// Returns `TyperError::InvalidInputGraph` if graph conversion fails, or `TyperError::AnnotationFailed`
+/// if any perception step encounters an error.
 pub fn perceive(molecular_graph: &MolecularGraph) -> Result<PerceptionResult, TyperError> {
     // Phase 1: Electron count perception
     let mut processing_graph = perceive_electron_counts(molecular_graph)?;
