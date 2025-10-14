@@ -456,10 +456,7 @@ mod tests {
         assert_eq!(topology.atoms.len(), num_atoms);
         assert_eq!(topology.bonds.len(), num_bonds);
         assert_eq!(topology.angles.len(), num_angles);
-        assert!(
-            topology.proper_dihedrals.len() > 0,
-            "Expected some proper dihedrals"
-        );
+        assert_eq!(topology.proper_dihedrals.len(), num_proper_dihedrals);
         assert_eq!(topology.improper_dihedrals.len(), num_improper_dihedrals);
 
         assert!(
