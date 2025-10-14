@@ -1,9 +1,23 @@
+//! Implements the priority-based, iterative rule engine for DREIDING atom type assignment.
+//!
+//! This module contains the `TyperEngine` which executes the typing phase of the dreid-typer pipeline.
+//! It applies a set of rules to assign atom types based on chemical properties, using iteration to
+//! handle rules that depend on neighboring atom types.
+
 use super::graph::{AtomView, ProcessingGraph};
 use crate::core::Element;
 use crate::core::error::AssignmentError;
 use crate::rules::{Conditions, Rule};
 use std::collections::HashMap;
 
+/// Priority-based iterative rule engine for assigning DREIDING atom types.
+///
+/// The engine applies rules in order of decreasing priority, iterating until no more changes occur.
+/// This handles dependencies between rules where an atom's type depends on its neighbors' types.
+/// Priority-based iterative rule engine for assigning DREIDING atom types.
+///
+/// The engine applies rules in order of decreasing priority, iterating until no more changes occur.
+/// This handles dependencies between rules where an atom's type depends on its neighbors' types.
 pub(crate) struct TyperEngine<'a> {
     graph: &'a ProcessingGraph,
     rules: Vec<&'a Rule>,
@@ -12,6 +26,14 @@ pub(crate) struct TyperEngine<'a> {
 }
 
 impl<'a> TyperEngine<'a> {
+    /// Creates a new typer engine with sorted rules.
+    ///
+    /// Rules are sorted by decreasing priority to ensure higher-priority rules are applied first.
+    ///
+    /// # Arguments
+    ///
+    /// * `graph` - The processing graph containing atoms to type.
+    /// * `rules` - The rules to apply for atom typing.
     pub fn new(graph: &'a ProcessingGraph, rules: &'a [Rule]) -> Self {
         let num_atoms = graph.atoms.len();
 
@@ -30,6 +52,18 @@ impl<'a> TyperEngine<'a> {
         }
     }
 
+    /// Runs the iterative typing process until convergence.
+    ///
+    /// Executes rounds of rule application until no atoms change type in a round.
+    /// Returns the final atom types or an error if some atoms remain untyped.
+    ///
+    /// # Returns
+    ///
+    /// A vector of atom type strings in atom index order.
+    ///
+    /// # Errors
+    ///
+    /// Returns `AssignmentError` if any atoms could not be typed after all rounds.
     pub fn run(mut self) -> Result<Vec<String>, AssignmentError> {
         loop {
             self.rounds_completed += 1;
@@ -59,6 +93,14 @@ impl<'a> TyperEngine<'a> {
         }
     }
 
+    /// Executes one round of rule application across all atoms.
+    ///
+    /// Attempts to apply the best matching rule to each atom, updating only if a higher-priority
+    /// rule is found. Returns the number of atoms that changed type this round.
+    ///
+    /// # Returns
+    ///
+    /// The count of atoms that were assigned or reassigned types in this round.
     fn run_single_round(&mut self) -> usize {
         let mut changes_this_round = vec![];
 
@@ -87,6 +129,17 @@ impl<'a> TyperEngine<'a> {
         changes_count
     }
 
+    /// Finds the highest-priority rule that matches the given atom.
+    ///
+    /// Searches through sorted rules to find the first (highest priority) matching rule.
+    ///
+    /// # Arguments
+    ///
+    /// * `atom` - The atom to find a matching rule for.
+    ///
+    /// # Returns
+    ///
+    /// The best matching rule, or `None` if no rules match.
     fn find_best_matching_rule(&self, atom: &AtomView) -> Option<&'a Rule> {
         self.rules
             .iter()
@@ -94,6 +147,18 @@ impl<'a> TyperEngine<'a> {
             .copied()
     }
 
+    /// Checks if an atom matches all the specified rule conditions.
+    ///
+    /// Evaluates each condition in the rule against the atom's properties and neighbors.
+    ///
+    /// # Arguments
+    ///
+    /// * `atom` - The atom to check against the conditions.
+    /// * `conditions` - The conditions that must all be satisfied.
+    ///
+    /// # Returns
+    ///
+    /// `true` if all conditions match, `false` otherwise.
     fn match_conditions(&self, atom: &AtomView, conditions: &Conditions) -> bool {
         if let Some(expected) = conditions.element {
             if expected != atom.element {
@@ -141,6 +206,7 @@ impl<'a> TyperEngine<'a> {
             }
         }
 
+        // Check neighbor element counts and neighbor type counts.
         if !self.match_neighbor_elements(atom, &conditions.neighbor_elements) {
             return false;
         }
@@ -151,6 +217,18 @@ impl<'a> TyperEngine<'a> {
         true
     }
 
+    /// Verifies that neighbor element counts match the expected distribution.
+    ///
+    /// Counts the elements of neighboring atoms and compares against expected counts.
+    ///
+    /// # Arguments
+    ///
+    /// * `atom` - The central atom whose neighbors to check.
+    /// * `expected_neighbors` - Map of element to expected count.
+    ///
+    /// # Returns
+    ///
+    /// `true` if neighbor element counts match exactly, `false` otherwise.
     fn match_neighbor_elements(
         &self,
         atom: &AtomView,
@@ -171,6 +249,19 @@ impl<'a> TyperEngine<'a> {
             .all(|(element, &count)| actual_counts.get(element).copied().unwrap_or(0) == count)
     }
 
+    /// Verifies that neighbor type counts match the expected distribution.
+    ///
+    /// Counts the assigned types of neighboring atoms and compares against expected counts.
+    /// Only considers neighbors that have already been assigned types.
+    ///
+    /// # Arguments
+    ///
+    /// * `atom` - The central atom whose neighbors to check.
+    /// * `expected_types` - Map of atom type to expected count.
+    ///
+    /// # Returns
+    ///
+    /// `true` if neighbor type counts match exactly, `false` otherwise.
     fn match_neighbor_types(&self, atom: &AtomView, expected_types: &HashMap<String, u8>) -> bool {
         if expected_types.is_empty() {
             return true;
@@ -189,6 +280,23 @@ impl<'a> TyperEngine<'a> {
     }
 }
 
+/// Assigns DREIDING atom types to all atoms in the processing graph.
+///
+/// Creates and runs a `TyperEngine` with the given rules to assign types to all atoms.
+/// This is the main entry point for the typing phase.
+///
+/// # Arguments
+///
+/// * `graph` - The processing graph with annotated atoms.
+/// * `rules` - The rules to use for type assignment.
+///
+/// # Returns
+///
+/// A vector of atom type strings corresponding to each atom in the graph.
+///
+/// # Errors
+///
+/// Returns `AssignmentError` if any atoms could not be assigned types.
 pub(crate) fn assign_types(
     graph: &ProcessingGraph,
     rules: &[Rule],
