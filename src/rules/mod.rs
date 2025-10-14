@@ -13,20 +13,6 @@ use std::str::FromStr;
 
 mod default;
 
-/// Deserializes a string into a type that implements `FromStr`.
-///
-/// This custom deserializer is used for TOML fields that need to be parsed
-/// from strings into strongly-typed values like `Element` or `Hybridization`.
-fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-where
-    T: FromStr,
-    T::Err: fmt::Display,
-    D: Deserializer<'de>,
-{
-    let s = String::deserialize(deserializer)?;
-    T::from_str(&s).map_err(de::Error::custom)
-}
-
 /// Deserializes a hash map with string keys that need to be parsed into a specific type.
 ///
 /// This deserializer converts TOML tables with string keys into `HashMap<K, V>`
