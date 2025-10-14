@@ -160,50 +160,59 @@ impl<'a> TyperEngine<'a> {
     ///
     /// `true` if all conditions match, `false` otherwise.
     fn match_conditions(&self, atom: &AtomView, conditions: &Conditions) -> bool {
-        if let Some(expected) = conditions.element {
-            if expected != atom.element {
-                return false;
-            }
+        if conditions
+            .element
+            .is_some_and(|expected| expected != atom.element)
+        {
+            return false;
         }
-        if let Some(expected) = conditions.formal_charge {
-            if expected != atom.formal_charge {
-                return false;
-            }
+        if conditions
+            .formal_charge
+            .is_some_and(|expected| expected != atom.formal_charge)
+        {
+            return false;
         }
-        if let Some(expected) = conditions.degree {
-            if expected != atom.degree {
-                return false;
-            }
+        if conditions
+            .degree
+            .is_some_and(|expected| expected != atom.degree)
+        {
+            return false;
         }
-        if let Some(expected) = conditions.lone_pairs {
-            if expected != atom.lone_pairs {
-                return false;
-            }
+        if conditions
+            .lone_pairs
+            .is_some_and(|expected| expected != atom.lone_pairs)
+        {
+            return false;
         }
-        if let Some(expected) = conditions.steric_number {
-            if expected != atom.steric_number {
-                return false;
-            }
+        if conditions
+            .steric_number
+            .is_some_and(|expected| expected != atom.steric_number)
+        {
+            return false;
         }
-        if let Some(expected) = conditions.hybridization {
-            if expected != atom.hybridization {
-                return false;
-            }
+        if conditions
+            .hybridization
+            .is_some_and(|expected| expected != atom.hybridization)
+        {
+            return false;
         }
-        if let Some(expected) = conditions.is_in_ring {
-            if expected != atom.is_in_ring {
-                return false;
-            }
+        if conditions
+            .is_in_ring
+            .is_some_and(|expected| expected != atom.is_in_ring)
+        {
+            return false;
         }
-        if let Some(expected) = conditions.is_aromatic {
-            if expected != atom.is_aromatic {
-                return false;
-            }
+        if conditions
+            .is_aromatic
+            .is_some_and(|expected| expected != atom.is_aromatic)
+        {
+            return false;
         }
-        if let Some(expected) = conditions.smallest_ring_size {
-            if Some(expected) != atom.smallest_ring_size {
-                return false;
-            }
+        if conditions
+            .smallest_ring_size
+            .is_some_and(|expected| Some(expected) != atom.smallest_ring_size)
+        {
+            return false;
         }
 
         // Check neighbor element counts and neighbor type counts.
