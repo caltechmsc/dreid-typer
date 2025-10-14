@@ -282,7 +282,7 @@ fn is_ring_aromatic(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> bool {
     }
 
     // Hückel's rule: aromatic if 4n+2 pi electrons.
-    (total_pi_electrons - 2) % 4 == 0
+    (total_pi_electrons - 2).is_multiple_of(4)
 }
 
 /// Calculates the pi electron contribution of an atom to its ring's aromaticity.
