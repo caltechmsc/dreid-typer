@@ -79,6 +79,7 @@ struct QueryEdge {
 #[derive(Clone)]
 struct FunctionalGroupTemplate {
     /// Descriptive name of the functional group.
+    #[allow(dead_code)]
     name: &'static str,
     /// The nodes (atoms) in the template pattern.
     nodes: Vec<QueryNode>,
