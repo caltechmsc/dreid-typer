@@ -20,6 +20,7 @@ pub struct PerceptionResult {
     /// The processing graph with all chemical annotations applied.
     pub processing_graph: ProcessingGraph,
     /// Information about all detected rings in the molecule.
+    #[allow(dead_code)]
     pub ring_info: RingInfo,
 }
 
