@@ -1,9 +1,33 @@
+//! Molecular perception algorithms for the DREIDING force field.
+//!
+//! This module implements the perception phase of the dreid-typer pipeline, converting a basic
+//! `MolecularGraph` into a richly annotated `ProcessingGraph` with electron counts, hybridization,
+//! ring membership, and aromaticity information. It combines general chemical algorithms with
+//! functional group template matching to prepare molecules for atom typing.
+
 use super::graph::{PerceptionSource, ProcessingGraph, RingInfo};
 use crate::core::error::{AnnotationError, TyperError};
 use crate::core::graph::MolecularGraph;
 use crate::core::{BondOrder, Element, Hybridization};
 use std::collections::{HashSet, VecDeque};
 
+/// Calculates valence electrons, bonding electrons, and lone pairs for each atom.
+///
+/// This function initializes the `ProcessingGraph` with basic electron distribution information
+/// required for subsequent perception steps. It computes valence electrons based on element type,
+/// bonding electrons from bond orders, and derives lone pairs from the difference.
+///
+/// # Arguments
+///
+/// * `molecular_graph` - The input molecular graph containing atoms and bonds.
+///
+/// # Returns
+///
+/// A `ProcessingGraph` with electron counts annotated on each atom.
+///
+/// # Errors
+///
+/// Returns `TyperError::InvalidInputGraph` if the input graph cannot be converted to a processing graph.
 pub(crate) fn perceive_electron_counts(
     molecular_graph: &MolecularGraph,
 ) -> Result<ProcessingGraph, TyperError> {
@@ -20,6 +44,8 @@ pub(crate) fn perceive_electron_counts(
             .sum::<u8>();
         atom.bonding_electrons = bonding;
 
+        // Calculate available electrons after accounting for bonding and formal charge,
+        // then assign lone pairs as half of the remaining electrons (octet rule approximation).
         let available = valence as i16 - bonding as i16 - atom.formal_charge as i16;
         let adjusted = available.max(0);
         let lone_pairs = (adjusted / 2) as u8;
@@ -35,6 +61,18 @@ pub(crate) fn perceive_electron_counts(
     Ok(graph)
 }
 
+/// Identifies all rings in the molecular graph using cycle detection.
+///
+/// This function employs the Johnson cycle finding algorithm to detect all unique cycles
+/// (rings) in the graph, which is essential for aromaticity perception and ring-based properties.
+///
+/// # Arguments
+///
+/// * `graph` - The processing graph to analyze for rings.
+///
+/// # Returns
+///
+/// A `RingInfo` structure containing all detected rings as sets of atom indices.
 pub(crate) fn perceive_rings(graph: &ProcessingGraph) -> RingInfo {
     if graph.atoms.is_empty() {
         return RingInfo::default();
@@ -45,6 +83,15 @@ pub(crate) fn perceive_rings(graph: &ProcessingGraph) -> RingInfo {
     RingInfo(sorted_vec_cycles)
 }
 
+/// Annotates atoms with ring membership and smallest ring size information.
+///
+/// This function processes the detected rings to mark atoms as being in rings and determines
+/// the smallest ring each atom participates in, which is crucial for hybridization and typing rules.
+///
+/// # Arguments
+///
+/// * `graph` - The processing graph to annotate with ring information.
+/// * `ring_info` - The detected rings from `perceive_rings`.
 pub(crate) fn apply_ring_annotations(graph: &mut ProcessingGraph, ring_info: &RingInfo) {
     let mut atom_ring_sizes: Vec<Vec<u8>> = vec![vec![]; graph.atoms.len()];
     for ring in &ring_info.0 {
@@ -62,6 +109,23 @@ pub(crate) fn apply_ring_annotations(graph: &mut ProcessingGraph, ring_info: &Ri
     }
 }
 
+/// Applies generic perception algorithms for aromaticity and hybridization.
+///
+/// This is a convenience function that orchestrates the application of general chemical rules
+/// for aromaticity detection and hybridization assignment, skipping atoms already handled by templates.
+///
+/// # Arguments
+///
+/// * `graph` - The processing graph to annotate.
+/// * `ring_info` - The detected rings for aromaticity analysis.
+///
+/// # Returns
+///
+/// An empty result on success.
+///
+/// # Errors
+///
+/// Returns `AnnotationError` if hybridization inference fails for any atom.
 pub(crate) fn perceive_generic_properties(
     graph: &mut ProcessingGraph,
     ring_info: &RingInfo,
@@ -71,6 +135,23 @@ pub(crate) fn perceive_generic_properties(
     Ok(())
 }
 
+/// Detects aromatic rings using Hückel's rule and marks aromatic atoms.
+///
+/// This function analyzes each detected ring for aromaticity based on electron count and bond types,
+/// respecting atoms already marked by functional group templates.
+///
+/// # Arguments
+///
+/// * `graph` - The processing graph to annotate with aromaticity.
+/// * `ring_info` - The detected rings to analyze.
+///
+/// # Returns
+///
+/// An empty result on success.
+///
+/// # Errors
+///
+/// Returns `AnnotationError` if aromaticity detection encounters invalid electron contributions.
 pub(crate) fn perceive_generic_aromaticity(
     graph: &mut ProcessingGraph,
     ring_info: &RingInfo,
@@ -93,6 +174,22 @@ pub(crate) fn perceive_generic_aromaticity(
     Ok(())
 }
 
+/// Assigns hybridization states to atoms based on steric number and special cases.
+///
+/// This function determines hybridization for atoms not already handled by templates, using
+/// steric number (degree + lone pairs) and considering aromaticity and special element rules.
+///
+/// # Arguments
+///
+/// * `graph` - The processing graph to annotate with hybridization.
+///
+/// # Returns
+///
+/// An empty result on success.
+///
+/// # Errors
+///
+/// Returns `AnnotationError::HybridizationInference` if an atom's hybridization cannot be determined.
 pub(crate) fn perceive_generic_hybridization(
     graph: &mut ProcessingGraph,
 ) -> Result<(), AnnotationError> {
@@ -123,6 +220,7 @@ pub(crate) fn perceive_generic_hybridization(
         atom.hybridization = hyb;
         atom.perception_source = Some(PerceptionSource::Generic);
 
+        // Adjust steric number based on hybridization for consistency with DREIDING conventions.
         atom.steric_number = match hyb {
             Hybridization::Resonant | Hybridization::SP2 => 3,
             Hybridization::SP3 => 4,
@@ -135,6 +233,19 @@ pub(crate) fn perceive_generic_hybridization(
     Ok(())
 }
 
+/// Determines if a ring is aromatic based on Hückel's rule.
+///
+/// Checks for explicit aromatic bonds first, then falls back to pi electron counting
+/// following the 4n+2 rule for cyclic conjugated systems.
+///
+/// # Arguments
+///
+/// * `ring_atom_ids` - The atom indices forming the ring.
+/// * `graph` - The processing graph containing the atoms.
+///
+/// # Returns
+///
+/// `true` if the ring is aromatic, `false` otherwise.
 fn is_ring_aromatic(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> bool {
     if ring_atom_ids.len() < 3 {
         return false;
@@ -156,6 +267,7 @@ fn is_ring_aromatic(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> bool {
         return true;
     }
 
+    // Count pi electrons contributed by each atom in the ring.
     let mut total_pi_electrons = 0u8;
 
     for &atom_id in ring_atom_ids {
@@ -169,9 +281,24 @@ fn is_ring_aromatic(ring_atom_ids: &[usize], graph: &ProcessingGraph) -> bool {
         return false;
     }
 
+    // Hückel's rule: aromatic if 4n+2 pi electrons.
     (total_pi_electrons - 2) % 4 == 0
 }
 
+/// Calculates the pi electron contribution of an atom to its ring's aromaticity.
+///
+/// Considers the atom's steric number, lone pairs, and exocyclic pi bonds to determine
+/// how many pi electrons it contributes to the ring's conjugated system.
+///
+/// # Arguments
+///
+/// * `atom_id` - The index of the atom to analyze.
+/// * `ring_atoms` - The set of atoms in the ring.
+/// * `graph` - The processing graph containing the atom.
+///
+/// # Returns
+///
+/// The number of pi electrons contributed, or `None` if the atom cannot participate in aromaticity.
 fn count_atom_pi_contribution(
     atom_id: usize,
     ring_atoms: &HashSet<usize>,
@@ -202,6 +329,17 @@ fn count_atom_pi_contribution(
     }
 }
 
+/// Converts a bond order to its electron contribution for bonding calculations.
+///
+/// Maps bond orders to the number of electrons involved in the bond.
+///
+/// # Arguments
+///
+/// * `order` - The bond order to convert.
+///
+/// # Returns
+///
+/// The number of bonding electrons contributed by this bond order.
 fn bond_order_contribution(order: BondOrder) -> u8 {
     match order {
         BondOrder::Single => 1,
@@ -211,6 +349,18 @@ fn bond_order_contribution(order: BondOrder) -> u8 {
     }
 }
 
+/// Checks if an element typically does not participate in hybridization.
+///
+/// Certain elements (halogens, noble gases, alkali/alkaline earth metals, transition metals)
+/// are treated as non-hybridized in the DREIDING force field context.
+///
+/// # Arguments
+///
+/// * `element` - The element to check.
+///
+/// # Returns
+///
+/// `true` if the element is considered non-hybridized, `false` otherwise.
 fn is_special_non_hybridized(element: Element) -> bool {
     matches!(
         element,
@@ -242,6 +392,17 @@ fn is_special_non_hybridized(element: Element) -> bool {
     )
 }
 
+/// Returns the number of valence electrons for a given element.
+///
+/// Uses standard periodic table valence electron counts for common elements.
+///
+/// # Arguments
+///
+/// * `element` - The element to query.
+///
+/// # Returns
+///
+/// The number of valence electrons, or `None` for unknown elements.
 fn get_valence_electrons(element: Element) -> Option<u8> {
     use Element::*;
     match element {
@@ -259,12 +420,25 @@ fn get_valence_electrons(element: Element) -> Option<u8> {
     }
 }
 
+/// Cycle finder implementation using Johnson's algorithm.
+///
+/// This struct encapsulates the state for finding all unique cycles in a molecular graph,
+/// ensuring each cycle is reported only once regardless of starting point.
+/// Cycle finder implementation using Johnson's algorithm.
+///
+/// This struct encapsulates the state for finding all unique cycles in a molecular graph,
+/// ensuring each cycle is reported only once regardless of starting point.
 struct JohnsonCycleFinder<'a> {
     graph: &'a ProcessingGraph,
     all_cycles: HashSet<Vec<usize>>,
 }
 
 impl<'a> JohnsonCycleFinder<'a> {
+    /// Creates a new cycle finder for the given graph.
+    ///
+    /// # Arguments
+    ///
+    /// * `graph` - The processing graph to analyze for cycles.
     fn new(graph: &'a ProcessingGraph) -> Self {
         Self {
             graph,
@@ -272,6 +446,13 @@ impl<'a> JohnsonCycleFinder<'a> {
         }
     }
 
+    /// Finds all unique cycles in the graph.
+    ///
+    /// Iterates through all possible starting nodes to ensure complete cycle detection.
+    ///
+    /// # Returns
+    ///
+    /// A set of all detected cycles, each represented as a sorted vector of atom indices.
     fn find_cycles_internal(&mut self) -> HashSet<Vec<usize>> {
         let num_atoms = self.graph.atoms.len();
         for i in 0..num_atoms {
@@ -280,6 +461,14 @@ impl<'a> JohnsonCycleFinder<'a> {
         self.all_cycles.clone()
     }
 
+    /// Finds cycles starting from a specific node using BFS.
+    ///
+    /// Uses a queue-based approach to explore paths from the start node, detecting
+    /// cycles when returning to the start with sufficient length.
+    ///
+    /// # Arguments
+    ///
+    /// * `start_node` - The atom index to start cycle detection from.
     fn find_cycles_from_node(&mut self, start_node: usize) {
         let mut queue = VecDeque::new();
         queue.push_back(vec![start_node]);
