@@ -15,7 +15,6 @@ keywords = [
     "force-field",
     "bioinformatics",
     "dreiding",
-    "forcefield-parameterization",
 ]
 categories = ["science", "simulation"]
 readme = "README.md"
