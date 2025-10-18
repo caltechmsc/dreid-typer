@@ -403,26 +403,24 @@ mod tests {
     #[test]
     fn molecular_graph_add_atom() {
         let mut graph = MolecularGraph::new();
-        let atom_id_1 = graph.add_atom(Element::C, 0);
+        let atom_id_1 = graph.add_atom(Element::C);
         assert_eq!(atom_id_1, 0);
         assert_eq!(graph.atoms.len(), 1);
         assert_eq!(graph.atoms[0].id, 0);
         assert_eq!(graph.atoms[0].element, Element::C);
-        assert_eq!(graph.atoms[0].formal_charge, 0);
 
-        let atom_id_2 = graph.add_atom(Element::H, 0);
+        let atom_id_2 = graph.add_atom(Element::H);
         assert_eq!(atom_id_2, 1);
         assert_eq!(graph.atoms.len(), 2);
         assert_eq!(graph.atoms[1].id, 1);
         assert_eq!(graph.atoms[1].element, Element::H);
-        assert_eq!(graph.atoms[1].formal_charge, 0);
     }
 
     #[test]
     fn molecular_graph_add_bond_succeeds() {
         let mut graph = MolecularGraph::new();
-        graph.add_atom(Element::C, 0);
-        graph.add_atom(Element::C, 0);
+        graph.add_atom(Element::C);
+        graph.add_atom(Element::C);
         let bond_id = graph.add_bond(0, 1, BondOrder::Single).unwrap();
         assert_eq!(bond_id, 0);
         assert_eq!(graph.bonds.len(), 1);
@@ -433,7 +431,7 @@ mod tests {
     #[test]
     fn molecular_graph_add_bond_with_out_of_bounds_atom_id() {
         let mut graph = MolecularGraph::new();
-        graph.add_atom(Element::C, 0);
+        graph.add_atom(Element::C);
         let result = graph.add_bond(0, 1, BondOrder::Single);
         assert!(result.is_err());
     }
@@ -441,7 +439,7 @@ mod tests {
     #[test]
     fn molecular_graph_add_bond_to_itself() {
         let mut graph = MolecularGraph::new();
-        graph.add_atom(Element::C, 0);
+        graph.add_atom(Element::C);
         let result = graph.add_bond(0, 0, BondOrder::Single);
         assert!(result.is_err());
     }
