@@ -142,8 +142,8 @@ impl MolecularGraph {
     /// use dreid_typer::{MolecularGraph, Element, BondOrder};
     ///
     /// let mut graph = MolecularGraph::new();
-    /// let atom1 = graph.add_atom(Element::C, 0);
-    /// let atom2 = graph.add_atom(Element::C, 0);
+    /// let atom1 = graph.add_atom(Element::C);
+    /// let atom2 = graph.add_atom(Element::C);
     /// let bond_id = graph.add_bond(atom1, atom2, BondOrder::Single).unwrap();
     /// assert_eq!(bond_id, 0);
     /// ```
