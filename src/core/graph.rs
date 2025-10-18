@@ -37,7 +37,7 @@ pub struct BondEdge {
 ///
 /// This struct serves as the input to the dreid-typer pipeline, containing only
 /// the basic chemical connectivity information: atoms with their elements and
-/// formal charges, and bonds with their orders. It does not include any derived
+/// bonds with their orders. It does not include any derived
 /// properties like hybridization or atom types.
 ///
 /// # Examples
@@ -48,11 +48,11 @@ pub struct BondEdge {
 /// use dreid_typer::{MolecularGraph, Element, BondOrder};
 ///
 /// let mut graph = MolecularGraph::new();
-/// let carbon = graph.add_atom(Element::C, 0);
-/// let hydrogen1 = graph.add_atom(Element::H, 0);
-/// let hydrogen2 = graph.add_atom(Element::H, 0);
-/// let hydrogen3 = graph.add_atom(Element::H, 0);
-/// let hydrogen4 = graph.add_atom(Element::H, 0);
+/// let carbon = graph.add_atom(Element::C);
+/// let hydrogen1 = graph.add_atom(Element::H);
+/// let hydrogen2 = graph.add_atom(Element::H);
+/// let hydrogen3 = graph.add_atom(Element::H);
+/// let hydrogen4 = graph.add_atom(Element::H);
 ///
 /// graph.add_bond(carbon, hydrogen1, BondOrder::Single).unwrap();
 /// graph.add_bond(carbon, hydrogen2, BondOrder::Single).unwrap();
