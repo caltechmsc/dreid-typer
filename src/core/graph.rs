@@ -95,7 +95,6 @@ impl MolecularGraph {
     /// # Arguments
     ///
     /// * `element` - The chemical element of the atom.
-    /// * `formal_charge` - The formal charge of the atom.
     ///
     /// # Returns
     ///
@@ -107,17 +106,13 @@ impl MolecularGraph {
     /// use dreid_typer::{MolecularGraph, Element};
     ///
     /// let mut graph = MolecularGraph::new();
-    /// let atom_id = graph.add_atom(Element::C, 0);
+    /// let atom_id = graph.add_atom(Element::C);
     /// assert_eq!(atom_id, 0);
     /// assert_eq!(graph.atoms.len(), 1);
     /// ```
-    pub fn add_atom(&mut self, element: Element, formal_charge: i8) -> usize {
+    pub fn add_atom(&mut self, element: Element) -> usize {
         let id = self.atoms.len();
-        self.atoms.push(AtomNode {
-            id,
-            element,
-            formal_charge,
-        });
+        self.atoms.push(AtomNode { id, element });
         id
     }
 
