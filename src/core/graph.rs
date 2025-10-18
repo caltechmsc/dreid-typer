@@ -10,16 +10,13 @@ use super::{BondOrder, Element, Hybridization};
 /// Represents an atom in a molecular graph with its basic properties.
 ///
 /// This struct is used as a node in the `MolecularGraph` to store essential
-/// information about each atom, including its unique identifier, chemical element,
-/// and formal charge.
+/// information about each atom, including its unique identifier and chemical element.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AtomNode {
     /// The unique identifier for this atom within the graph.
     pub id: usize,
     /// The chemical element of this atom.
     pub element: Element,
-    /// The formal charge of this atom.
-    pub formal_charge: i8,
 }
 
 /// Represents a bond between two atoms in a molecular graph.
