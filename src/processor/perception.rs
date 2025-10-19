@@ -11,6 +11,111 @@ use crate::core::graph::MolecularGraph;
 use crate::core::{BondOrder, Element, Hybridization};
 use std::collections::{HashSet, VecDeque};
 
+/// Infers the formal charge and lone pairs for an atom based on its element and bonding pattern.
+///
+/// This function implements a robust chemical perception logic to determine the most likely
+/// formal charge and lone pair count for an atom. It assumes that the overall molecule
+/// is best represented by Lewis structures that minimize formal charges, while adhering to
+/// the octet rule where possible. It includes specific pattern recognition for common
+/// functional groups and hypervalent species relevant to the DREIDING force field.
+///
+/// # Arguments
+///
+/// * `atom` - The atom view containing element and bonding information.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// A tuple of `(formal_charge, lone_pairs)`.
+fn perceive_charge_and_lone_pairs(
+    atom: &super::graph::AtomView,
+    graph: &ProcessingGraph,
+) -> (i8, u8) {
+    let valence = atom.valence_electrons as i8;
+    let bonding_electrons = atom.bonding_electrons as i8;
+    let degree = atom.degree as i8;
+
+    if matches!(
+        atom.element,
+        Element::F | Element::Cl | Element::Br | Element::I
+    ) && degree == 1
+    {
+        return (0, 3);
+    }
+    if matches!(
+        atom.element,
+        Element::H | Element::Li | Element::Na | Element::K
+    ) && degree == 1
+    {
+        return (0, 0);
+    }
+    if matches!(atom.element, Element::Be | Element::Mg | Element::Ca) && degree == 2 {
+        return (0, 0);
+    }
+
+    match atom.element {
+        Element::O => {
+            let is_double_bonded = graph.adjacency[atom.id]
+                .iter()
+                .any(|(_, order)| *order == BondOrder::Double);
+            if is_double_bonded && degree == 1 {
+                // This covers carbonyls (C=O), sulfoxides (S=O), phosphates (P=O), etc.
+                return (0, 2);
+            }
+
+            if degree == 1 {
+                // This is now guaranteed to be a single-bonded oxygen.
+                if let Some(neighbor_id) = graph.adjacency[atom.id].first().map(|(id, _)| *id) {
+                    let neighbor = &graph.atoms[neighbor_id];
+                    if is_part_of_oxyacid_anion(atom, neighbor, graph) {
+                        return (-1, 3);
+                    }
+                }
+                // Default for single-bonded O (e.g., hydroxyl in alcohol).
+                return (0, 2);
+            }
+            if degree == 2 {
+                // Default for ether/ester (two single bonds).
+                return (0, 2);
+            }
+        }
+        Element::N => {
+            if degree == 4 {
+                return (1, 0);
+            }
+            if is_nitro_nitrogen(atom, graph) {
+                return (1, 0);
+            }
+        }
+        Element::P => {
+            if is_phosphate_phosphorus(atom, graph) {
+                return (1, 0);
+            }
+        }
+        Element::S => {
+            if let Some((fc, lp)) = perceive_sulfur_oxidation_state(atom, graph) {
+                return (fc, lp);
+            }
+        }
+        Element::Cl => {
+            if is_perchlorate_chlorine(atom, graph) {
+                return (3, 0);
+            }
+        }
+        _ => {} // Fall through for C, B, Si, etc.
+    }
+
+    let mut lone_pairs = ((valence - bonding_electrons).max(0) / 2) as u8;
+
+    if matches!(atom.element, Element::B | Element::Al) && degree == 3 {
+        lone_pairs = 0;
+    }
+
+    let formal_charge = valence - (lone_pairs as i8 * 2) - degree;
+
+    (formal_charge, lone_pairs)
+}
+
 /// Calculates valence electrons, bonding electrons, and lone pairs for each atom.
 ///
 /// This function initializes the `ProcessingGraph` with basic electron distribution information
