@@ -518,11 +518,11 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
                 },
                 QueryNode {
                     label: "O_double",
-                    predicate: |a| a.element == Element::O && a.formal_charge == 0,
+                    predicate: |a| a.element == Element::O,
                 },
                 QueryNode {
                     label: "O_single",
-                    predicate: |a| a.element == Element::O && a.formal_charge == -1,
+                    predicate: |a| a.element == Element::O && a.lone_pairs == 3,
                 },
             ],
             edges: vec![
