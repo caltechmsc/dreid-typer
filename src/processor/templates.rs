@@ -640,6 +640,7 @@ fn define_templates() -> Vec<FunctionalGroupTemplate> {
 #[cfg(test)]
 mod tests {
     use super::super::graph::PerceptionSource;
+    use super::super::perception;
     use super::*;
     use crate::core::graph::MolecularGraph;
     use crate::core::{BondOrder, Element, Hybridization};
@@ -647,10 +648,10 @@ mod tests {
     #[test]
     fn guanidinium_template_sets_planar_states_on_all_atoms() {
         let mut mg = MolecularGraph::new();
-        let carbon = mg.add_atom(Element::C, 0);
-        let n1 = mg.add_atom(Element::N, 1);
-        let n2 = mg.add_atom(Element::N, 1);
-        let n3 = mg.add_atom(Element::N, 1);
+        let carbon = mg.add_atom(Element::C);
+        let n1 = mg.add_atom(Element::N);
+        let n2 = mg.add_atom(Element::N);
+        let n3 = mg.add_atom(Element::N);
 
         mg.add_bond(carbon, n1, BondOrder::Single).expect("C-N1");
         mg.add_bond(carbon, n2, BondOrder::Single).expect("C-N2");
@@ -670,9 +671,9 @@ mod tests {
     #[test]
     fn amide_template_sets_planar_carbon_and_nitrogen() {
         let mut mg = MolecularGraph::new();
-        let carbon = mg.add_atom(Element::C, 0);
-        let oxygen = mg.add_atom(Element::O, 0);
-        let nitrogen = mg.add_atom(Element::N, 0);
+        let carbon = mg.add_atom(Element::C);
+        let oxygen = mg.add_atom(Element::O);
+        let nitrogen = mg.add_atom(Element::N);
 
         mg.add_bond(carbon, oxygen, BondOrder::Double).expect("C=O");
         mg.add_bond(carbon, nitrogen, BondOrder::Single)
@@ -698,10 +699,10 @@ mod tests {
     #[test]
     fn thioamide_bis_template_sets_trigonal_planar_states() {
         let mut mg = MolecularGraph::new();
-        let carbon = mg.add_atom(Element::C, 0);
-        let sulfur = mg.add_atom(Element::S, 0);
-        let nitrogen1 = mg.add_atom(Element::N, 0);
-        let nitrogen2 = mg.add_atom(Element::N, 0);
+        let carbon = mg.add_atom(Element::C);
+        let sulfur = mg.add_atom(Element::S);
+        let nitrogen1 = mg.add_atom(Element::N);
+        let nitrogen2 = mg.add_atom(Element::N);
 
         mg.add_bond(carbon, sulfur, BondOrder::Double).expect("C=S");
         mg.add_bond(carbon, nitrogen1, BondOrder::Single)
@@ -723,9 +724,9 @@ mod tests {
     #[test]
     fn thioamide_template_sets_trigonal_planar_states() {
         let mut mg = MolecularGraph::new();
-        let carbon = mg.add_atom(Element::C, 0);
-        let sulfur = mg.add_atom(Element::S, 0);
-        let nitrogen = mg.add_atom(Element::N, 0);
+        let carbon = mg.add_atom(Element::C);
+        let sulfur = mg.add_atom(Element::S);
+        let nitrogen = mg.add_atom(Element::N);
 
         mg.add_bond(carbon, sulfur, BondOrder::Double).expect("C=S");
         mg.add_bond(carbon, nitrogen, BondOrder::Single)
@@ -745,16 +746,17 @@ mod tests {
     #[test]
     fn carboxylate_template_sets_planar_states_for_carbon_and_oxygens() {
         let mut mg = MolecularGraph::new();
-        let carbon = mg.add_atom(Element::C, 0);
-        let oxygen_double = mg.add_atom(Element::O, 0);
-        let oxygen_single = mg.add_atom(Element::O, -1);
+        let carbon = mg.add_atom(Element::C);
+        let oxygen_double = mg.add_atom(Element::O);
+        let oxygen_single = mg.add_atom(Element::O);
 
         mg.add_bond(carbon, oxygen_double, BondOrder::Double)
             .expect("C=O");
         mg.add_bond(carbon, oxygen_single, BondOrder::Single)
             .expect("C-O");
 
-        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        let mut pg =
+            perception::perceive_electron_counts(&mg).expect("electron count perception failed");
         apply_functional_group_templates(&mut pg).expect("template application failed");
 
         for &idx in [carbon, oxygen_double, oxygen_single].iter() {
@@ -768,10 +770,10 @@ mod tests {
     #[test]
     fn phenol_enol_template_marks_oxygen_aromatic() {
         let mut mg = MolecularGraph::new();
-        let oxygen = mg.add_atom(Element::O, 0);
-        let c1 = mg.add_atom(Element::C, 0);
-        let c2 = mg.add_atom(Element::C, 0);
-        let hydrogen = mg.add_atom(Element::H, 0);
+        let oxygen = mg.add_atom(Element::O);
+        let c1 = mg.add_atom(Element::C);
+        let c2 = mg.add_atom(Element::C);
+        let hydrogen = mg.add_atom(Element::H);
 
         mg.add_bond(oxygen, c1, BondOrder::Single).expect("O-C1");
         mg.add_bond(c1, c2, BondOrder::Aromatic).expect("C1=C2");
@@ -794,15 +796,16 @@ mod tests {
     #[test]
     fn nitro_template_sets_trigonal_planar_states() {
         let mut mg = MolecularGraph::new();
-        let nitrogen = mg.add_atom(Element::N, 1);
-        let oxygen_neutral = mg.add_atom(Element::O, 0);
-        let oxygen_anion = mg.add_atom(Element::O, -1);
+        let nitrogen = mg.add_atom(Element::N);
+        let oxygen_neutral = mg.add_atom(Element::O);
+        let oxygen_anion = mg.add_atom(Element::O);
         mg.add_bond(nitrogen, oxygen_neutral, BondOrder::Double)
             .expect("double bond");
         mg.add_bond(nitrogen, oxygen_anion, BondOrder::Single)
             .expect("single bond");
 
-        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        let mut pg =
+            perception::perceive_electron_counts(&mg).expect("electron count perception failed");
         apply_functional_group_templates(&mut pg).expect("template application failed");
 
         for &idx in [nitrogen, oxygen_neutral, oxygen_anion].iter() {
@@ -816,16 +819,17 @@ mod tests {
     #[test]
     fn phosphate_template_sets_expected_states() {
         let mut mg = MolecularGraph::new();
-        let phosphorus = mg.add_atom(Element::P, 0);
-        let oxygen_double = mg.add_atom(Element::O, 0);
-        let oxygen_single = mg.add_atom(Element::O, -1);
+        let phosphorus = mg.add_atom(Element::P);
+        let oxygen_double = mg.add_atom(Element::O);
+        let oxygen_single = mg.add_atom(Element::O);
 
         mg.add_bond(phosphorus, oxygen_double, BondOrder::Double)
             .expect("P=O");
         mg.add_bond(phosphorus, oxygen_single, BondOrder::Single)
             .expect("P-O");
 
-        let mut pg = ProcessingGraph::new(&mg).expect("processing graph creation failed");
+        let mut pg =
+            perception::perceive_electron_counts(&mg).expect("electron count perception failed");
         apply_functional_group_templates(&mut pg).expect("template application failed");
 
         let phosphorus_atom = &pg.atoms[phosphorus];
@@ -847,15 +851,15 @@ mod tests {
     #[test]
     fn purine_skeleton_template_marks_fused_ring_atoms_aromatic() {
         let mut mg = MolecularGraph::new();
-        let n1 = mg.add_atom(Element::N, 0);
-        let c2 = mg.add_atom(Element::C, 0);
-        let n3 = mg.add_atom(Element::N, 0);
-        let c4 = mg.add_atom(Element::C, 0);
-        let c5 = mg.add_atom(Element::C, 0);
-        let c6 = mg.add_atom(Element::C, 0);
-        let n7 = mg.add_atom(Element::N, 0);
-        let c8 = mg.add_atom(Element::C, 0);
-        let n9 = mg.add_atom(Element::N, 0);
+        let n1 = mg.add_atom(Element::N);
+        let c2 = mg.add_atom(Element::C);
+        let n3 = mg.add_atom(Element::N);
+        let c4 = mg.add_atom(Element::C);
+        let c5 = mg.add_atom(Element::C);
+        let c6 = mg.add_atom(Element::C);
+        let n7 = mg.add_atom(Element::N);
+        let c8 = mg.add_atom(Element::C);
+        let n9 = mg.add_atom(Element::N);
 
         mg.add_bond(n1, c2, BondOrder::Aromatic).unwrap();
         mg.add_bond(c2, n3, BondOrder::Aromatic).unwrap();
