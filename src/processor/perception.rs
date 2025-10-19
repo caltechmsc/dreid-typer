@@ -223,6 +223,36 @@ fn perceive_sulfur_oxidation_state(
     }
 }
 
+/// Generic helper to check if a single-bonded oxygen is part of a resonance-stabilized anion
+/// like carboxylate, nitro, phosphate, etc. (X-Y=O pattern).
+///
+/// This function checks if a single-bonded oxygen atom is part of a resonance-stabilized anion
+/// by verifying that its neighbor (the central atom) is also double-bonded to another oxygen.
+/// This pattern is common in oxyacid anions where the negative charge is delocalized.
+///
+/// # Arguments
+///
+/// * `atom` - The oxygen atom view (should have degree 1).
+/// * `neighbor` - The central atom view bonded to the oxygen.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// `true` if the oxygen is part of a resonance-stabilized anion, `false` otherwise.
+fn is_part_of_oxyacid_anion(
+    atom: &super::graph::AtomView,
+    neighbor: &super::graph::AtomView,
+    graph: &ProcessingGraph,
+) -> bool {
+    graph.adjacency[neighbor.id]
+        .iter()
+        .any(|(other_neighbor_id, order)| {
+            *other_neighbor_id != atom.id
+                && *order == BondOrder::Double
+                && graph.atoms[*other_neighbor_id].element == Element::O
+        })
+}
+
 /// Calculates valence electrons, bonding electrons, and lone pairs for each atom.
 ///
 /// This function initializes the `ProcessingGraph` with basic electron distribution information
