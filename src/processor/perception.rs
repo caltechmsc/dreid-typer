@@ -744,9 +744,9 @@ mod tests {
     #[test]
     fn electron_counts_assign_lone_pairs() {
         let mut mg = MolecularGraph::new();
-        let o = mg.add_atom(Element::O, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
+        let o = mg.add_atom(Element::O);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
 
         mg.add_bond(o, h1, BondOrder::Single).unwrap();
         mg.add_bond(o, h2, BondOrder::Single).unwrap();
@@ -762,9 +762,9 @@ mod tests {
     #[test]
     fn ring_detection_identifies_simple_cycle() {
         let mut mg = MolecularGraph::new();
-        let a = mg.add_atom(Element::C, 0);
-        let b = mg.add_atom(Element::C, 0);
-        let c = mg.add_atom(Element::C, 0);
+        let a = mg.add_atom(Element::C);
+        let b = mg.add_atom(Element::C);
+        let c = mg.add_atom(Element::C);
 
         mg.add_bond(a, b, BondOrder::Single).unwrap();
         mg.add_bond(b, c, BondOrder::Single).unwrap();
@@ -780,7 +780,7 @@ mod tests {
         let mut mg = MolecularGraph::new();
         let mut atoms = vec![];
         for _ in 0..6 {
-            atoms.push(mg.add_atom(Element::C, 0));
+            atoms.push(mg.add_atom(Element::C));
         }
         for i in 0..6 {
             mg.add_bond(atoms[i], atoms[(i + 1) % 6], BondOrder::Aromatic)
@@ -800,7 +800,7 @@ mod tests {
         let mut mg = MolecularGraph::new();
         let mut atoms = vec![];
         for _ in 0..6 {
-            atoms.push(mg.add_atom(Element::C, 0));
+            atoms.push(mg.add_atom(Element::C));
         }
         for i in 0..6 {
             mg.add_bond(atoms[i], atoms[(i + 1) % 6], BondOrder::Aromatic)
@@ -824,11 +824,11 @@ mod tests {
     #[test]
     fn test_ammonium_ion_perception() {
         let mut mg = MolecularGraph::new();
-        let n = mg.add_atom(Element::N, 1);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
+        let n = mg.add_atom(Element::N);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
 
         mg.add_bond(n, h1, BondOrder::Single).unwrap();
         mg.add_bond(n, h2, BondOrder::Single).unwrap();
@@ -850,13 +850,13 @@ mod tests {
     #[test]
     fn test_acetate_ion_perception() {
         let mut mg = MolecularGraph::new();
-        let c_methyl = mg.add_atom(Element::C, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let c_carboxyl = mg.add_atom(Element::C, 0);
-        let o_double = mg.add_atom(Element::O, 0);
-        let o_single = mg.add_atom(Element::O, -1);
+        let c_methyl = mg.add_atom(Element::C);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let c_carboxyl = mg.add_atom(Element::C);
+        let o_double = mg.add_atom(Element::O);
+        let o_single = mg.add_atom(Element::O);
 
         mg.add_bond(c_methyl, h1, BondOrder::Single).unwrap();
         mg.add_bond(c_methyl, h2, BondOrder::Single).unwrap();
@@ -891,10 +891,10 @@ mod tests {
     #[test]
     fn test_boron_trifluoride_hybridization() {
         let mut mg = MolecularGraph::new();
-        let b = mg.add_atom(Element::B, 0);
-        let f1 = mg.add_atom(Element::F, 0);
-        let f2 = mg.add_atom(Element::F, 0);
-        let f3 = mg.add_atom(Element::F, 0);
+        let b = mg.add_atom(Element::B);
+        let f1 = mg.add_atom(Element::F);
+        let f2 = mg.add_atom(Element::F);
+        let f3 = mg.add_atom(Element::F);
 
         mg.add_bond(b, f1, BondOrder::Single).unwrap();
         mg.add_bond(b, f2, BondOrder::Single).unwrap();
@@ -909,16 +909,16 @@ mod tests {
     #[test]
     fn test_pyrrole_aromatic_pi_contribution() {
         let mut mg = MolecularGraph::new();
-        let n = mg.add_atom(Element::N, 0);
-        let c1 = mg.add_atom(Element::C, 0);
-        let c2 = mg.add_atom(Element::C, 0);
-        let c3 = mg.add_atom(Element::C, 0);
-        let c4 = mg.add_atom(Element::C, 0);
-        let h_n = mg.add_atom(Element::H, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
+        let n = mg.add_atom(Element::N);
+        let c1 = mg.add_atom(Element::C);
+        let c2 = mg.add_atom(Element::C);
+        let c3 = mg.add_atom(Element::C);
+        let c4 = mg.add_atom(Element::C);
+        let h_n = mg.add_atom(Element::H);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
 
         mg.add_bond(n, c1, BondOrder::Single).unwrap();
         mg.add_bond(c1, c2, BondOrder::Double).unwrap();
@@ -946,15 +946,15 @@ mod tests {
     #[test]
     fn test_furan_aromatic_pi_contribution() {
         let mut mg = MolecularGraph::new();
-        let o = mg.add_atom(Element::O, 0);
-        let c1 = mg.add_atom(Element::C, 0);
-        let c2 = mg.add_atom(Element::C, 0);
-        let c3 = mg.add_atom(Element::C, 0);
-        let c4 = mg.add_atom(Element::C, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
+        let o = mg.add_atom(Element::O);
+        let c1 = mg.add_atom(Element::C);
+        let c2 = mg.add_atom(Element::C);
+        let c3 = mg.add_atom(Element::C);
+        let c4 = mg.add_atom(Element::C);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
 
         mg.add_bond(o, c1, BondOrder::Single).unwrap();
         mg.add_bond(c1, c2, BondOrder::Double).unwrap();
@@ -981,17 +981,17 @@ mod tests {
     #[test]
     fn test_pyridine_aromatic_pi_contribution() {
         let mut mg = MolecularGraph::new();
-        let n = mg.add_atom(Element::N, 0);
-        let c1 = mg.add_atom(Element::C, 0);
-        let c2 = mg.add_atom(Element::C, 0);
-        let c3 = mg.add_atom(Element::C, 0);
-        let c4 = mg.add_atom(Element::C, 0);
-        let c5 = mg.add_atom(Element::C, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
-        let h5 = mg.add_atom(Element::H, 0);
+        let n = mg.add_atom(Element::N);
+        let c1 = mg.add_atom(Element::C);
+        let c2 = mg.add_atom(Element::C);
+        let c3 = mg.add_atom(Element::C);
+        let c4 = mg.add_atom(Element::C);
+        let c5 = mg.add_atom(Element::C);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
+        let h5 = mg.add_atom(Element::H);
 
         mg.add_bond(n, c1, BondOrder::Double).unwrap();
         mg.add_bond(c1, c2, BondOrder::Single).unwrap();
