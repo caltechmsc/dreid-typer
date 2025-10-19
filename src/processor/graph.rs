@@ -129,11 +129,11 @@ mod tests {
     #[test]
     fn new_processing_graph_for_methane_is_correct() {
         let mut mg = MolecularGraph::new();
-        let c1 = mg.add_atom(Element::C, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
+        let c1 = mg.add_atom(Element::C);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
         mg.add_bond(c1, h1, BondOrder::Single).unwrap();
         mg.add_bond(c1, h2, BondOrder::Single).unwrap();
         mg.add_bond(c1, h3, BondOrder::Single).unwrap();
@@ -166,8 +166,8 @@ mod tests {
     #[test]
     fn new_processing_graph_for_ethene_is_correct() {
         let mut mg = MolecularGraph::new();
-        let c1 = mg.add_atom(Element::C, 0);
-        let c2 = mg.add_atom(Element::C, 0);
+        let c1 = mg.add_atom(Element::C);
+        let c2 = mg.add_atom(Element::C);
         mg.add_bond(c1, c2, BondOrder::Double).unwrap();
 
         let pg = ProcessingGraph::new(&mg).unwrap();
@@ -183,14 +183,13 @@ mod tests {
     #[test]
     fn new_processing_graph_with_invalid_bond_returns_error() {
         let mut mg = MolecularGraph::new();
-        mg.add_atom(Element::C, 0);
+        mg.add_atom(Element::C);
         mg.add_bond(0, 1, BondOrder::Single).unwrap_err();
 
         let bad_mg = MolecularGraph {
             atoms: vec![crate::core::graph::AtomNode {
                 id: 0,
                 element: Element::C,
-                formal_charge: 0,
             }],
             bonds: vec![crate::core::graph::BondEdge {
                 id: 0,
