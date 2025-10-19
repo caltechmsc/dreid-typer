@@ -164,6 +164,28 @@ fn is_phosphate_phosphorus(atom: &super::graph::AtomView, graph: &ProcessingGrap
         })
 }
 
+/// Checks if an atom is the central Cl of a perchlorate (ClO₄⁻).
+///
+/// This function determines if a chlorine atom is the central atom in a perchlorate ion
+/// by checking its degree and that all neighbors are oxygen atoms. Perchlorate has
+/// chlorine with degree 4, bonded to four oxygen atoms.
+///
+/// # Arguments
+///
+/// * `atom` - The atom view to check.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// `true` if the atom is the central chlorine of a perchlorate, `false` otherwise.
+fn is_perchlorate_chlorine(atom: &super::graph::AtomView, graph: &ProcessingGraph) -> bool {
+    atom.element == Element::Cl
+        && atom.degree == 4
+        && graph.adjacency[atom.id]
+            .iter()
+            .all(|(id, _)| graph.atoms[*id].element == Element::O)
+}
+
 /// Calculates valence electrons, bonding electrons, and lone pairs for each atom.
 ///
 /// This function initializes the `ProcessingGraph` with basic electron distribution information
