@@ -11,6 +11,248 @@ use crate::core::graph::MolecularGraph;
 use crate::core::{BondOrder, Element, Hybridization};
 use std::collections::{HashSet, VecDeque};
 
+/// Infers the formal charge and lone pairs for an atom based on its element and bonding pattern.
+///
+/// This function implements a robust chemical perception logic to determine the most likely
+/// formal charge and lone pair count for an atom. It assumes that the overall molecule
+/// is best represented by Lewis structures that minimize formal charges, while adhering to
+/// the octet rule where possible. It includes specific pattern recognition for common
+/// functional groups and hypervalent species relevant to the DREIDING force field.
+///
+/// # Arguments
+///
+/// * `atom` - The atom view containing element and bonding information.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// A tuple of `(formal_charge, lone_pairs)`.
+fn perceive_charge_and_lone_pairs(
+    atom: &super::graph::AtomView,
+    graph: &ProcessingGraph,
+) -> (i8, u8) {
+    let valence = atom.valence_electrons as i8;
+    let bonding_electrons = atom.bonding_electrons as i8;
+    let degree = atom.degree as i8;
+
+    if matches!(
+        atom.element,
+        Element::F | Element::Cl | Element::Br | Element::I
+    ) && degree == 1
+    {
+        return (0, 3);
+    }
+    if matches!(
+        atom.element,
+        Element::H | Element::Li | Element::Na | Element::K
+    ) && degree == 1
+    {
+        return (0, 0);
+    }
+    if matches!(atom.element, Element::Be | Element::Mg | Element::Ca) && degree == 2 {
+        return (0, 0);
+    }
+
+    match atom.element {
+        Element::O => {
+            let is_double_bonded = graph.adjacency[atom.id]
+                .iter()
+                .any(|(_, order)| *order == BondOrder::Double);
+            if is_double_bonded && degree == 1 {
+                // This covers carbonyls (C=O), sulfoxides (S=O), phosphates (P=O), etc.
+                return (0, 2);
+            }
+
+            if degree == 1 {
+                // This is now guaranteed to be a single-bonded oxygen.
+                if let Some(neighbor_id) = graph.adjacency[atom.id].first().map(|(id, _)| *id) {
+                    let neighbor = &graph.atoms[neighbor_id];
+                    if is_part_of_oxyacid_anion(atom, neighbor, graph) {
+                        return (-1, 3);
+                    }
+                }
+                // Default for single-bonded O (e.g., hydroxyl in alcohol).
+                return (0, 2);
+            }
+            if degree == 2 {
+                // Default for ether/ester (two single bonds).
+                return (0, 2);
+            }
+        }
+        Element::N => {
+            if degree == 4 {
+                return (1, 0);
+            }
+            if is_nitro_nitrogen(atom, graph) {
+                return (1, 0);
+            }
+        }
+        Element::P => {
+            if is_phosphate_phosphorus(atom, graph) {
+                return (1, 0);
+            }
+        }
+        Element::S => {
+            if let Some((fc, lp)) = perceive_sulfur_oxidation_state(atom, graph) {
+                return (fc, lp);
+            }
+        }
+        Element::Cl => {
+            if is_perchlorate_chlorine(atom, graph) {
+                return (3, 0);
+            }
+        }
+        _ => {} // Fall through for C, B, Si, etc.
+    }
+
+    let mut lone_pairs = ((valence - bonding_electrons).max(0) / 2) as u8;
+
+    if matches!(atom.element, Element::B | Element::Al) && degree == 3 {
+        lone_pairs = 0;
+    }
+
+    let formal_charge = valence - (lone_pairs as i8 * 2) - degree;
+
+    (formal_charge, lone_pairs)
+}
+
+/// Checks if an atom is the central atom of a nitro group (R-NO₂).
+///
+/// This function determines if a given atom is the nitrogen in a nitro functional group
+/// by checking its element, degree, and the number of oxygen neighbors. A nitro group
+/// consists of a nitrogen atom bonded to two oxygen atoms and one other group.
+///
+/// # Arguments
+///
+/// * `atom` - The atom view to check.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// `true` if the atom is the central nitrogen of a nitro group, `false` otherwise.
+fn is_nitro_nitrogen(atom: &super::graph::AtomView, graph: &ProcessingGraph) -> bool {
+    if atom.element == Element::N && atom.degree == 3 {
+        let oxygen_neighbors = graph.adjacency[atom.id]
+            .iter()
+            .filter(|(id, _)| graph.atoms[*id].element == Element::O)
+            .count();
+        return oxygen_neighbors == 2;
+    }
+    false
+}
+
+/// Checks if an atom is the central P of a phosphate/phosphine oxide (R₃P=O).
+///
+/// This function identifies if a phosphorus atom is part of a phosphate or phosphine oxide
+/// group by verifying its degree and the presence of a double bond to oxygen. Phosphate
+/// groups have phosphorus with degree 4 and a P=O double bond.
+///
+/// # Arguments
+///
+/// * `atom` - The atom view to check.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// `true` if the atom is the central phosphorus of a phosphate/phosphine oxide, `false` otherwise.
+fn is_phosphate_phosphorus(atom: &super::graph::AtomView, graph: &ProcessingGraph) -> bool {
+    atom.element == Element::P
+        && atom.degree == 4
+        && graph.adjacency[atom.id].iter().any(|(id, order)| {
+            graph.atoms[*id].element == Element::O
+                && (*order == BondOrder::Double || *order == BondOrder::Aromatic)
+        })
+}
+
+/// Checks if an atom is the central Cl of a perchlorate (ClO₄⁻).
+///
+/// This function determines if a chlorine atom is the central atom in a perchlorate ion
+/// by checking its degree and that all neighbors are oxygen atoms. Perchlorate has
+/// chlorine with degree 4, bonded to four oxygen atoms.
+///
+/// # Arguments
+///
+/// * `atom` - The atom view to check.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// `true` if the atom is the central chlorine of a perchlorate, `false` otherwise.
+fn is_perchlorate_chlorine(atom: &super::graph::AtomView, graph: &ProcessingGraph) -> bool {
+    atom.element == Element::Cl
+        && atom.degree == 4
+        && graph.adjacency[atom.id]
+            .iter()
+            .all(|(id, _)| graph.atoms[*id].element == Element::O)
+}
+
+/// Determines the formal charge and lone pairs for a Sulfur atom based on its oxidation state.
+///
+/// This function analyzes the bonding pattern of a sulfur atom to infer its formal charge
+/// and lone pair count, modeling resonance structures for sulfoxides and sulfones that
+/// correctly predict geometry via VSEPR theory.
+///
+/// # Arguments
+///
+/// * `atom` - The sulfur atom view to analyze.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// An `Option` containing a tuple of `(formal_charge, lone_pairs)` if the sulfur's oxidation
+/// state can be determined, or `None` if it falls back to general rules.
+fn perceive_sulfur_oxidation_state(
+    atom: &super::graph::AtomView,
+    graph: &ProcessingGraph,
+) -> Option<(i8, u8)> {
+    if atom.element != Element::S {
+        return None;
+    }
+
+    let num_double_bonds_to_o = graph.adjacency[atom.id]
+        .iter()
+        .filter(|(id, order)| graph.atoms[*id].element == Element::O && *order == BondOrder::Double)
+        .count();
+
+    match (atom.degree, num_double_bonds_to_o) {
+        // Sulfoxide (e.g., R₂S=O) -> R₂S⁺-O⁻. S has degree 3, 1 lone pair. FC=+1.
+        (3, 1) => Some((1, 1)),
+        // Sulfone (e.g., R₂SO₂) -> R₂S²⁺(O⁻)₂. S has degree 4, 0 lone pairs. FC=+2.
+        (4, 2) => Some((2, 0)),
+        _ => None, // Fallback to general rule for simple sulfides/thiols.
+    }
+}
+
+/// Generic helper to check if a single-bonded oxygen is part of a resonance-stabilized anion
+/// like carboxylate, nitro, phosphate, etc. (X-Y=O pattern).
+///
+/// This function checks if a single-bonded oxygen atom is part of a resonance-stabilized anion
+/// by verifying that its neighbor (the central atom) is also double-bonded to another oxygen.
+/// This pattern is common in oxyacid anions where the negative charge is delocalized.
+///
+/// # Arguments
+///
+/// * `atom` - The oxygen atom view (should have degree 1).
+/// * `neighbor` - The central atom view bonded to the oxygen.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// `true` if the oxygen is part of a resonance-stabilized anion, `false` otherwise.
+fn is_part_of_oxyacid_anion(
+    atom: &super::graph::AtomView,
+    neighbor: &super::graph::AtomView,
+    graph: &ProcessingGraph,
+) -> bool {
+    graph.adjacency[neighbor.id]
+        .iter()
+        .any(|(other_neighbor_id, order)| {
+            *other_neighbor_id != atom.id
+                && *order == BondOrder::Double
+                && graph.atoms[*other_neighbor_id].element == Element::O
+        })
+}
+
 /// Calculates valence electrons, bonding electrons, and lone pairs for each atom.
 ///
 /// This function initializes the `ProcessingGraph` with basic electron distribution information
@@ -33,29 +275,27 @@ pub(crate) fn perceive_electron_counts(
 ) -> Result<ProcessingGraph, TyperError> {
     let mut graph = ProcessingGraph::new(molecular_graph).map_err(TyperError::InvalidInputGraph)?;
 
-    for atom in &mut graph.atoms {
-        let valence = get_valence_electrons(atom.element).unwrap_or(0);
+    for i in 0..graph.atoms.len() {
+        let valence = get_valence_electrons(graph.atoms[i].element).unwrap_or(0);
+        graph.atoms[i].valence_electrons = valence;
 
-        atom.valence_electrons = valence;
-
-        let bonding = graph.adjacency[atom.id]
+        let bonding = graph.adjacency[i]
             .iter()
             .map(|(_, order)| bond_order_contribution(*order))
             .sum::<u8>();
-        atom.bonding_electrons = bonding;
+        graph.atoms[i].bonding_electrons = bonding;
+    }
 
-        // Calculate available electrons after accounting for bonding and formal charge,
-        // then assign lone pairs as half of the remaining electrons (octet rule approximation).
-        let available = valence as i16 - bonding as i16 - atom.formal_charge as i16;
-        let adjusted = available.max(0);
-        let lone_pairs = (adjusted / 2) as u8;
-        atom.lone_pairs = lone_pairs;
-        atom.steric_number = 0;
-        atom.hybridization = Hybridization::Unknown;
-        atom.is_aromatic = false;
-        atom.is_in_ring = false;
-        atom.smallest_ring_size = None;
-        atom.perception_source = None;
+    for i in 0..graph.atoms.len() {
+        let (formal_charge, lone_pairs) = perceive_charge_and_lone_pairs(&graph.atoms[i], &graph);
+        graph.atoms[i].formal_charge = formal_charge;
+        graph.atoms[i].lone_pairs = lone_pairs;
+        graph.atoms[i].steric_number = 0;
+        graph.atoms[i].hybridization = Hybridization::Unknown;
+        graph.atoms[i].is_aromatic = false;
+        graph.atoms[i].is_in_ring = false;
+        graph.atoms[i].smallest_ring_size = None;
+        graph.atoms[i].perception_source = None;
     }
 
     Ok(graph)
@@ -504,9 +744,9 @@ mod tests {
     #[test]
     fn electron_counts_assign_lone_pairs() {
         let mut mg = MolecularGraph::new();
-        let o = mg.add_atom(Element::O, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
+        let o = mg.add_atom(Element::O);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
 
         mg.add_bond(o, h1, BondOrder::Single).unwrap();
         mg.add_bond(o, h2, BondOrder::Single).unwrap();
@@ -522,9 +762,9 @@ mod tests {
     #[test]
     fn ring_detection_identifies_simple_cycle() {
         let mut mg = MolecularGraph::new();
-        let a = mg.add_atom(Element::C, 0);
-        let b = mg.add_atom(Element::C, 0);
-        let c = mg.add_atom(Element::C, 0);
+        let a = mg.add_atom(Element::C);
+        let b = mg.add_atom(Element::C);
+        let c = mg.add_atom(Element::C);
 
         mg.add_bond(a, b, BondOrder::Single).unwrap();
         mg.add_bond(b, c, BondOrder::Single).unwrap();
@@ -540,7 +780,7 @@ mod tests {
         let mut mg = MolecularGraph::new();
         let mut atoms = vec![];
         for _ in 0..6 {
-            atoms.push(mg.add_atom(Element::C, 0));
+            atoms.push(mg.add_atom(Element::C));
         }
         for i in 0..6 {
             mg.add_bond(atoms[i], atoms[(i + 1) % 6], BondOrder::Aromatic)
@@ -560,7 +800,7 @@ mod tests {
         let mut mg = MolecularGraph::new();
         let mut atoms = vec![];
         for _ in 0..6 {
-            atoms.push(mg.add_atom(Element::C, 0));
+            atoms.push(mg.add_atom(Element::C));
         }
         for i in 0..6 {
             mg.add_bond(atoms[i], atoms[(i + 1) % 6], BondOrder::Aromatic)
@@ -584,11 +824,11 @@ mod tests {
     #[test]
     fn test_ammonium_ion_perception() {
         let mut mg = MolecularGraph::new();
-        let n = mg.add_atom(Element::N, 1);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
+        let n = mg.add_atom(Element::N);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
 
         mg.add_bond(n, h1, BondOrder::Single).unwrap();
         mg.add_bond(n, h2, BondOrder::Single).unwrap();
@@ -610,13 +850,13 @@ mod tests {
     #[test]
     fn test_acetate_ion_perception() {
         let mut mg = MolecularGraph::new();
-        let c_methyl = mg.add_atom(Element::C, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let c_carboxyl = mg.add_atom(Element::C, 0);
-        let o_double = mg.add_atom(Element::O, 0);
-        let o_single = mg.add_atom(Element::O, -1);
+        let c_methyl = mg.add_atom(Element::C);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let c_carboxyl = mg.add_atom(Element::C);
+        let o_double = mg.add_atom(Element::O);
+        let o_single = mg.add_atom(Element::O);
 
         mg.add_bond(c_methyl, h1, BondOrder::Single).unwrap();
         mg.add_bond(c_methyl, h2, BondOrder::Single).unwrap();
@@ -651,10 +891,10 @@ mod tests {
     #[test]
     fn test_boron_trifluoride_hybridization() {
         let mut mg = MolecularGraph::new();
-        let b = mg.add_atom(Element::B, 0);
-        let f1 = mg.add_atom(Element::F, 0);
-        let f2 = mg.add_atom(Element::F, 0);
-        let f3 = mg.add_atom(Element::F, 0);
+        let b = mg.add_atom(Element::B);
+        let f1 = mg.add_atom(Element::F);
+        let f2 = mg.add_atom(Element::F);
+        let f3 = mg.add_atom(Element::F);
 
         mg.add_bond(b, f1, BondOrder::Single).unwrap();
         mg.add_bond(b, f2, BondOrder::Single).unwrap();
@@ -669,16 +909,16 @@ mod tests {
     #[test]
     fn test_pyrrole_aromatic_pi_contribution() {
         let mut mg = MolecularGraph::new();
-        let n = mg.add_atom(Element::N, 0);
-        let c1 = mg.add_atom(Element::C, 0);
-        let c2 = mg.add_atom(Element::C, 0);
-        let c3 = mg.add_atom(Element::C, 0);
-        let c4 = mg.add_atom(Element::C, 0);
-        let h_n = mg.add_atom(Element::H, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
+        let n = mg.add_atom(Element::N);
+        let c1 = mg.add_atom(Element::C);
+        let c2 = mg.add_atom(Element::C);
+        let c3 = mg.add_atom(Element::C);
+        let c4 = mg.add_atom(Element::C);
+        let h_n = mg.add_atom(Element::H);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
 
         mg.add_bond(n, c1, BondOrder::Single).unwrap();
         mg.add_bond(c1, c2, BondOrder::Double).unwrap();
@@ -706,15 +946,15 @@ mod tests {
     #[test]
     fn test_furan_aromatic_pi_contribution() {
         let mut mg = MolecularGraph::new();
-        let o = mg.add_atom(Element::O, 0);
-        let c1 = mg.add_atom(Element::C, 0);
-        let c2 = mg.add_atom(Element::C, 0);
-        let c3 = mg.add_atom(Element::C, 0);
-        let c4 = mg.add_atom(Element::C, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
+        let o = mg.add_atom(Element::O);
+        let c1 = mg.add_atom(Element::C);
+        let c2 = mg.add_atom(Element::C);
+        let c3 = mg.add_atom(Element::C);
+        let c4 = mg.add_atom(Element::C);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
 
         mg.add_bond(o, c1, BondOrder::Single).unwrap();
         mg.add_bond(c1, c2, BondOrder::Double).unwrap();
@@ -741,17 +981,17 @@ mod tests {
     #[test]
     fn test_pyridine_aromatic_pi_contribution() {
         let mut mg = MolecularGraph::new();
-        let n = mg.add_atom(Element::N, 0);
-        let c1 = mg.add_atom(Element::C, 0);
-        let c2 = mg.add_atom(Element::C, 0);
-        let c3 = mg.add_atom(Element::C, 0);
-        let c4 = mg.add_atom(Element::C, 0);
-        let c5 = mg.add_atom(Element::C, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
-        let h5 = mg.add_atom(Element::H, 0);
+        let n = mg.add_atom(Element::N);
+        let c1 = mg.add_atom(Element::C);
+        let c2 = mg.add_atom(Element::C);
+        let c3 = mg.add_atom(Element::C);
+        let c4 = mg.add_atom(Element::C);
+        let c5 = mg.add_atom(Element::C);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
+        let h5 = mg.add_atom(Element::H);
 
         mg.add_bond(n, c1, BondOrder::Double).unwrap();
         mg.add_bond(c1, c2, BondOrder::Single).unwrap();

@@ -8,7 +8,6 @@ use std::collections::HashMap;
 pub struct AtomBlueprint {
     pub label: &'static str,
     pub element: Element,
-    pub charge: i8,
     pub expected_type: &'static str,
 }
 
@@ -58,7 +57,7 @@ fn build_from_blueprint(case: &MoleculeTestCase) -> LabeledMolecule {
     let mut labels = HashMap::new();
 
     for atom_bp in case.atoms {
-        let id = graph.add_atom(atom_bp.element, atom_bp.charge);
+        let id = graph.add_atom(atom_bp.element);
         if labels.insert(atom_bp.label, id).is_some() {
             panic!(
                 "Molecule '{}': Duplicate atom label '{}'",

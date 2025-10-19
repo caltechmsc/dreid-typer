@@ -10,16 +10,13 @@ use super::{BondOrder, Element, Hybridization};
 /// Represents an atom in a molecular graph with its basic properties.
 ///
 /// This struct is used as a node in the `MolecularGraph` to store essential
-/// information about each atom, including its unique identifier, chemical element,
-/// and formal charge.
+/// information about each atom, including its unique identifier and chemical element.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AtomNode {
     /// The unique identifier for this atom within the graph.
     pub id: usize,
     /// The chemical element of this atom.
     pub element: Element,
-    /// The formal charge of this atom.
-    pub formal_charge: i8,
 }
 
 /// Represents a bond between two atoms in a molecular graph.
@@ -40,7 +37,7 @@ pub struct BondEdge {
 ///
 /// This struct serves as the input to the dreid-typer pipeline, containing only
 /// the basic chemical connectivity information: atoms with their elements and
-/// formal charges, and bonds with their orders. It does not include any derived
+/// bonds with their orders. It does not include any derived
 /// properties like hybridization or atom types.
 ///
 /// # Examples
@@ -51,11 +48,11 @@ pub struct BondEdge {
 /// use dreid_typer::{MolecularGraph, Element, BondOrder};
 ///
 /// let mut graph = MolecularGraph::new();
-/// let carbon = graph.add_atom(Element::C, 0);
-/// let hydrogen1 = graph.add_atom(Element::H, 0);
-/// let hydrogen2 = graph.add_atom(Element::H, 0);
-/// let hydrogen3 = graph.add_atom(Element::H, 0);
-/// let hydrogen4 = graph.add_atom(Element::H, 0);
+/// let carbon = graph.add_atom(Element::C);
+/// let hydrogen1 = graph.add_atom(Element::H);
+/// let hydrogen2 = graph.add_atom(Element::H);
+/// let hydrogen3 = graph.add_atom(Element::H);
+/// let hydrogen4 = graph.add_atom(Element::H);
 ///
 /// graph.add_bond(carbon, hydrogen1, BondOrder::Single).unwrap();
 /// graph.add_bond(carbon, hydrogen2, BondOrder::Single).unwrap();
@@ -98,7 +95,6 @@ impl MolecularGraph {
     /// # Arguments
     ///
     /// * `element` - The chemical element of the atom.
-    /// * `formal_charge` - The formal charge of the atom.
     ///
     /// # Returns
     ///
@@ -110,17 +106,13 @@ impl MolecularGraph {
     /// use dreid_typer::{MolecularGraph, Element};
     ///
     /// let mut graph = MolecularGraph::new();
-    /// let atom_id = graph.add_atom(Element::C, 0);
+    /// let atom_id = graph.add_atom(Element::C);
     /// assert_eq!(atom_id, 0);
     /// assert_eq!(graph.atoms.len(), 1);
     /// ```
-    pub fn add_atom(&mut self, element: Element, formal_charge: i8) -> usize {
+    pub fn add_atom(&mut self, element: Element) -> usize {
         let id = self.atoms.len();
-        self.atoms.push(AtomNode {
-            id,
-            element,
-            formal_charge,
-        });
+        self.atoms.push(AtomNode { id, element });
         id
     }
 
@@ -150,8 +142,8 @@ impl MolecularGraph {
     /// use dreid_typer::{MolecularGraph, Element, BondOrder};
     ///
     /// let mut graph = MolecularGraph::new();
-    /// let atom1 = graph.add_atom(Element::C, 0);
-    /// let atom2 = graph.add_atom(Element::C, 0);
+    /// let atom1 = graph.add_atom(Element::C);
+    /// let atom2 = graph.add_atom(Element::C);
     /// let bond_id = graph.add_bond(atom1, atom2, BondOrder::Single).unwrap();
     /// assert_eq!(bond_id, 0);
     /// ```
@@ -411,26 +403,24 @@ mod tests {
     #[test]
     fn molecular_graph_add_atom() {
         let mut graph = MolecularGraph::new();
-        let atom_id_1 = graph.add_atom(Element::C, 0);
+        let atom_id_1 = graph.add_atom(Element::C);
         assert_eq!(atom_id_1, 0);
         assert_eq!(graph.atoms.len(), 1);
         assert_eq!(graph.atoms[0].id, 0);
         assert_eq!(graph.atoms[0].element, Element::C);
-        assert_eq!(graph.atoms[0].formal_charge, 0);
 
-        let atom_id_2 = graph.add_atom(Element::H, 0);
+        let atom_id_2 = graph.add_atom(Element::H);
         assert_eq!(atom_id_2, 1);
         assert_eq!(graph.atoms.len(), 2);
         assert_eq!(graph.atoms[1].id, 1);
         assert_eq!(graph.atoms[1].element, Element::H);
-        assert_eq!(graph.atoms[1].formal_charge, 0);
     }
 
     #[test]
     fn molecular_graph_add_bond_succeeds() {
         let mut graph = MolecularGraph::new();
-        graph.add_atom(Element::C, 0);
-        graph.add_atom(Element::C, 0);
+        graph.add_atom(Element::C);
+        graph.add_atom(Element::C);
         let bond_id = graph.add_bond(0, 1, BondOrder::Single).unwrap();
         assert_eq!(bond_id, 0);
         assert_eq!(graph.bonds.len(), 1);
@@ -441,7 +431,7 @@ mod tests {
     #[test]
     fn molecular_graph_add_bond_with_out_of_bounds_atom_id() {
         let mut graph = MolecularGraph::new();
-        graph.add_atom(Element::C, 0);
+        graph.add_atom(Element::C);
         let result = graph.add_bond(0, 1, BondOrder::Single);
         assert!(result.is_err());
     }
@@ -449,7 +439,7 @@ mod tests {
     #[test]
     fn molecular_graph_add_bond_to_itself() {
         let mut graph = MolecularGraph::new();
-        graph.add_atom(Element::C, 0);
+        graph.add_atom(Element::C);
         let result = graph.add_bond(0, 0, BondOrder::Single);
         assert!(result.is_err());
     }
