@@ -141,6 +141,29 @@ fn is_nitro_nitrogen(atom: &super::graph::AtomView, graph: &ProcessingGraph) -> 
     false
 }
 
+/// Checks if an atom is the central P of a phosphate/phosphine oxide (R₃P=O).
+///
+/// This function identifies if a phosphorus atom is part of a phosphate or phosphine oxide
+/// group by verifying its degree and the presence of a double bond to oxygen. Phosphate
+/// groups have phosphorus with degree 4 and a P=O double bond.
+///
+/// # Arguments
+///
+/// * `atom` - The atom view to check.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// `true` if the atom is the central phosphorus of a phosphate/phosphine oxide, `false` otherwise.
+fn is_phosphate_phosphorus(atom: &super::graph::AtomView, graph: &ProcessingGraph) -> bool {
+    atom.element == Element::P
+        && atom.degree == 4
+        && graph.adjacency[atom.id].iter().any(|(id, order)| {
+            graph.atoms[*id].element == Element::O
+                && (*order == BondOrder::Double || *order == BondOrder::Aromatic)
+        })
+}
+
 /// Calculates valence electrons, bonding electrons, and lone pairs for each atom.
 ///
 /// This function initializes the `ProcessingGraph` with basic electron distribution information
