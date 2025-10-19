@@ -21,7 +21,7 @@ The `MolecularGraph` is the sole entry point for user data into the system. It r
 ```rust
 // A conceptual representation of MolecularGraph's simplicity
 pub struct MolecularGraph {
-    pub atoms: Vec<AtomNode { element, formal_charge, .. }>,
+    pub atoms: Vec<AtomNode { element, .. }>,
     pub bonds: Vec<BondEdge { atom_ids, order, .. }>,
 }
 ```
