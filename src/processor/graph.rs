@@ -101,7 +101,7 @@ impl ProcessingGraph {
                 AtomView {
                     id: atom_node.id,
                     element: atom_node.element,
-                    formal_charge: atom_node.formal_charge,
+                    formal_charge: 0,
                     degree,
                     valence_electrons: 0,
                     bonding_electrons: 0,
