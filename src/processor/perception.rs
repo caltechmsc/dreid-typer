@@ -275,29 +275,27 @@ pub(crate) fn perceive_electron_counts(
 ) -> Result<ProcessingGraph, TyperError> {
     let mut graph = ProcessingGraph::new(molecular_graph).map_err(TyperError::InvalidInputGraph)?;
 
-    for atom in &mut graph.atoms {
-        let valence = get_valence_electrons(atom.element).unwrap_or(0);
+    for i in 0..graph.atoms.len() {
+        let valence = get_valence_electrons(graph.atoms[i].element).unwrap_or(0);
+        graph.atoms[i].valence_electrons = valence;
 
-        atom.valence_electrons = valence;
-
-        let bonding = graph.adjacency[atom.id]
+        let bonding = graph.adjacency[i]
             .iter()
             .map(|(_, order)| bond_order_contribution(*order))
             .sum::<u8>();
-        atom.bonding_electrons = bonding;
+        graph.atoms[i].bonding_electrons = bonding;
+    }
 
-        // Calculate available electrons after accounting for bonding and formal charge,
-        // then assign lone pairs as half of the remaining electrons (octet rule approximation).
-        let available = valence as i16 - bonding as i16 - atom.formal_charge as i16;
-        let adjusted = available.max(0);
-        let lone_pairs = (adjusted / 2) as u8;
-        atom.lone_pairs = lone_pairs;
-        atom.steric_number = 0;
-        atom.hybridization = Hybridization::Unknown;
-        atom.is_aromatic = false;
-        atom.is_in_ring = false;
-        atom.smallest_ring_size = None;
-        atom.perception_source = None;
+    for i in 0..graph.atoms.len() {
+        let (formal_charge, lone_pairs) = perceive_charge_and_lone_pairs(&graph.atoms[i], &graph);
+        graph.atoms[i].formal_charge = formal_charge;
+        graph.atoms[i].lone_pairs = lone_pairs;
+        graph.atoms[i].steric_number = 0;
+        graph.atoms[i].hybridization = Hybridization::Unknown;
+        graph.atoms[i].is_aromatic = false;
+        graph.atoms[i].is_in_ring = false;
+        graph.atoms[i].smallest_ring_size = None;
+        graph.atoms[i].perception_source = None;
     }
 
     Ok(graph)
