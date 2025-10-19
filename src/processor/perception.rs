@@ -186,6 +186,43 @@ fn is_perchlorate_chlorine(atom: &super::graph::AtomView, graph: &ProcessingGrap
             .all(|(id, _)| graph.atoms[*id].element == Element::O)
 }
 
+/// Determines the formal charge and lone pairs for a Sulfur atom based on its oxidation state.
+///
+/// This function analyzes the bonding pattern of a sulfur atom to infer its formal charge
+/// and lone pair count, modeling resonance structures for sulfoxides and sulfones that
+/// correctly predict geometry via VSEPR theory.
+///
+/// # Arguments
+///
+/// * `atom` - The sulfur atom view to analyze.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// An `Option` containing a tuple of `(formal_charge, lone_pairs)` if the sulfur's oxidation
+/// state can be determined, or `None` if it falls back to general rules.
+fn perceive_sulfur_oxidation_state(
+    atom: &super::graph::AtomView,
+    graph: &ProcessingGraph,
+) -> Option<(i8, u8)> {
+    if atom.element != Element::S {
+        return None;
+    }
+
+    let num_double_bonds_to_o = graph.adjacency[atom.id]
+        .iter()
+        .filter(|(id, order)| graph.atoms[*id].element == Element::O && *order == BondOrder::Double)
+        .count();
+
+    match (atom.degree, num_double_bonds_to_o) {
+        // Sulfoxide (e.g., R₂S=O) -> R₂S⁺-O⁻. S has degree 3, 1 lone pair. FC=+1.
+        (3, 1) => Some((1, 1)),
+        // Sulfone (e.g., R₂SO₂) -> R₂S²⁺(O⁻)₂. S has degree 4, 0 lone pairs. FC=+2.
+        (4, 2) => Some((2, 0)),
+        _ => None, // Fallback to general rule for simple sulfides/thiols.
+    }
+}
+
 /// Calculates valence electrons, bonding electrons, and lone pairs for each atom.
 ///
 /// This function initializes the `ProcessingGraph` with basic electron distribution information
