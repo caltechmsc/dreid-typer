@@ -225,7 +225,6 @@ mod tests {
                 initial_graph.atoms.push(AtomNode {
                     id: i,
                     element: *element,
-                    formal_charge: 0,
                 });
                 atom_views.push(AtomView {
                     id: i,
