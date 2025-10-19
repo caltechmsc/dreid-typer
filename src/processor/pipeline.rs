@@ -72,11 +72,11 @@ mod tests {
     #[test]
     fn perceiving_methane_yields_expected_annotations() {
         let mut mg = MolecularGraph::new();
-        let c = mg.add_atom(Element::C, 0);
-        let h1 = mg.add_atom(Element::H, 0);
-        let h2 = mg.add_atom(Element::H, 0);
-        let h3 = mg.add_atom(Element::H, 0);
-        let h4 = mg.add_atom(Element::H, 0);
+        let c = mg.add_atom(Element::C);
+        let h1 = mg.add_atom(Element::H);
+        let h2 = mg.add_atom(Element::H);
+        let h3 = mg.add_atom(Element::H);
+        let h4 = mg.add_atom(Element::H);
 
         mg.add_bond(c, h1, BondOrder::Single).unwrap();
         mg.add_bond(c, h2, BondOrder::Single).unwrap();
@@ -100,7 +100,7 @@ mod tests {
         let mut mg = MolecularGraph::new();
         let mut atoms = vec![];
         for _ in 0..6 {
-            atoms.push(mg.add_atom(Element::C, 0));
+            atoms.push(mg.add_atom(Element::C));
         }
         for i in 0..6 {
             mg.add_bond(atoms[i], atoms[(i + 1) % 6], BondOrder::Aromatic)
