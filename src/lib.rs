@@ -27,15 +27,15 @@
 //!
 //! // 1. Define the molecule's connectivity using a `MolecularGraph`.
 //! let mut graph = MolecularGraph::new();
-//! let c1 = graph.add_atom(Element::C, 0); // CH3
-//! let c2 = graph.add_atom(Element::C, 0); // CH2
-//! let o = graph.add_atom(Element::O, 0);
-//! let h_c1_1 = graph.add_atom(Element::H, 0);
-//! let h_c1_2 = graph.add_atom(Element::H, 0);
-//! let h_c1_3 = graph.add_atom(Element::H, 0);
-//! let h_c2_1 = graph.add_atom(Element::H, 0);
-//! let h_c2_2 = graph.add_atom(Element::H, 0);
-//! let h_o = graph.add_atom(Element::H, 0);
+//! let c1 = graph.add_atom(Element::C); // CH3
+//! let c2 = graph.add_atom(Element::C); // CH2
+//! let o = graph.add_atom(Element::O);
+//! let h_c1_1 = graph.add_atom(Element::H);
+//! let h_c1_2 = graph.add_atom(Element::H);
+//! let h_c1_3 = graph.add_atom(Element::H);
+//! let h_c2_1 = graph.add_atom(Element::H);
+//! let h_c2_2 = graph.add_atom(Element::H);
+//! let h_o = graph.add_atom(Element::H);
 //!
 //! graph.add_bond(c1, c2, BondOrder::Single).unwrap();
 //! graph.add_bond(c2, o, BondOrder::Single).unwrap();
@@ -141,7 +141,7 @@ pub fn assign_topology(graph: &MolecularGraph) -> Result<MolecularTopology, Type
 ///
 /// // Define a simple molecule: a single Carbon atom.
 /// let mut graph = MolecularGraph::new();
-/// let c = graph.add_atom(Element::C, 0);
+/// let c = graph.add_atom(Element::C);
 ///
 /// // Define a custom, high-priority rule for a lone carbon atom.
 /// let custom_rules_toml = r#"
