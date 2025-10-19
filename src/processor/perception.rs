@@ -116,6 +116,31 @@ fn perceive_charge_and_lone_pairs(
     (formal_charge, lone_pairs)
 }
 
+/// Checks if an atom is the central atom of a nitro group (R-NO₂).
+///
+/// This function determines if a given atom is the nitrogen in a nitro functional group
+/// by checking its element, degree, and the number of oxygen neighbors. A nitro group
+/// consists of a nitrogen atom bonded to two oxygen atoms and one other group.
+///
+/// # Arguments
+///
+/// * `atom` - The atom view to check.
+/// * `graph` - The processing graph for adjacency information.
+///
+/// # Returns
+///
+/// `true` if the atom is the central nitrogen of a nitro group, `false` otherwise.
+fn is_nitro_nitrogen(atom: &super::graph::AtomView, graph: &ProcessingGraph) -> bool {
+    if atom.element == Element::N && atom.degree == 3 {
+        let oxygen_neighbors = graph.adjacency[atom.id]
+            .iter()
+            .filter(|(id, _)| graph.atoms[*id].element == Element::O)
+            .count();
+        return oxygen_neighbors == 2;
+    }
+    false
+}
+
 /// Calculates valence electrons, bonding electrons, and lone pairs for each atom.
 ///
 /// This function initializes the `ProcessingGraph` with basic electron distribution information
