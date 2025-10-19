@@ -18,7 +18,7 @@ To get started with DreidTyper, add it as a dependency in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-dreid-typer = "0.1.0"
+dreid-typer = "0.2.0"
 ```
 
 Then, you can use it in your Rust code as follows:
