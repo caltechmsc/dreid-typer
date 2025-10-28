@@ -1879,7 +1879,7 @@ pub const TETRAMETHYLTHIOUREA: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "CS",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "S",
@@ -1889,12 +1889,12 @@ pub const TETRAMETHYLTHIOUREA: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "N1",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "N2",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "C11",
@@ -2406,7 +2406,7 @@ pub const ADENOSINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "N6",
             element: Element::N,
-            expected_type: "N_3",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "C1'",
@@ -2709,7 +2709,7 @@ pub const PHOSPHATE_ESTER: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O_single_neg",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_3",
         },
         AtomBlueprint {
             label: "O_bridge1",
@@ -2842,17 +2842,17 @@ pub const ZINC_COMPLEX: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_3",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "C2",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "C3",
@@ -3188,7 +3188,7 @@ pub const PERCHLORATE_ANION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O4",
             element: Element::O,
-            expected_type: "O_3",
+            expected_type: "O_2",
         },
     ],
     bonds: &[
