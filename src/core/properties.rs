@@ -250,3 +250,42 @@ impl fmt::Display for Element {
         write!(f, "{:?}", self)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum BondOrder {
+    Single = 1,
+    Double = 2,
+    Triple = 3,
+    Aromatic = 4,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseBondOrderError(String);
+
+impl fmt::Display for ParseBondOrderError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid bond order: '{}'", self.0)
+    }
+}
+impl std::error::Error for ParseBondOrderError {}
+
+impl FromStr for BondOrder {
+    type Err = ParseBondOrderError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Single" => Ok(Self::Single),
+            "Double" => Ok(Self::Double),
+            "Triple" => Ok(Self::Triple),
+            "Aromatic" => Ok(Self::Aromatic),
+            _ => Err(ParseBondOrderError(s.to_string())),
+        }
+    }
+}
+
+impl fmt::Display for BondOrder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
