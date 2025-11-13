@@ -145,3 +145,116 @@ impl ImproperDihedral {
         Self { atom_ids }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::error::GraphValidationError;
+    use crate::core::properties::{BondOrder, Element};
+
+    fn graph_with_atoms(elements: &[Element]) -> MolecularGraph {
+        let mut graph = MolecularGraph::new();
+        for &element in elements {
+            graph.add_atom(element);
+        }
+        graph
+    }
+
+    #[test]
+    fn molecular_graph_add_atom_assigns_sequential_ids() {
+        let mut graph = MolecularGraph::new();
+
+        let carbon_id = graph.add_atom(Element::C);
+        let oxygen_id = graph.add_atom(Element::O);
+        let nitrogen_id = graph.add_atom(Element::N);
+
+        assert_eq!(carbon_id, 0);
+        assert_eq!(oxygen_id, 1);
+        assert_eq!(nitrogen_id, 2);
+        assert_eq!(graph.atoms.len(), 3);
+        assert_eq!(graph.atoms[0].element, Element::C);
+        assert_eq!(graph.atoms[1].element, Element::O);
+        assert_eq!(graph.atoms[2].element, Element::N);
+    }
+
+    #[test]
+    fn molecular_graph_add_bond_registers_edge() {
+        let mut graph = graph_with_atoms(&[Element::C, Element::O]);
+
+        let bond_id = graph
+            .add_bond(0, 1, BondOrder::Double)
+            .expect("adding a valid bond should succeed");
+
+        assert_eq!(bond_id, 0);
+        assert_eq!(graph.bonds.len(), 1);
+        assert_eq!(graph.bonds[0].atom_ids, (0, 1));
+        assert_eq!(graph.bonds[0].order, BondOrder::Double);
+    }
+
+    #[test]
+    fn molecular_graph_rejects_bond_with_missing_atom() {
+        let mut graph = graph_with_atoms(&[Element::C]);
+
+        let err = graph
+            .add_bond(0, 1, BondOrder::Single)
+            .expect_err("bonding to a missing atom should fail");
+
+        match err {
+            GraphValidationError::MissingAtom { atom_id } => assert_eq!(atom_id, 1),
+            _ => panic!("unexpected error returned: {err:?}"),
+        }
+    }
+
+    #[test]
+    fn molecular_graph_rejects_self_bonding() {
+        let mut graph = graph_with_atoms(&[Element::C]);
+
+        let err = graph
+            .add_bond(0, 0, BondOrder::Single)
+            .expect_err("self bonds should be rejected");
+
+        match err {
+            GraphValidationError::SelfBondingAtom { atom_id } => assert_eq!(atom_id, 0),
+            _ => panic!("unexpected error returned: {err:?}"),
+        }
+    }
+
+    #[test]
+    fn bond_new_sorts_atom_ids() {
+        let bond = Bond::new(4, 1, BondOrder::Triple);
+        assert_eq!(bond.atom_ids, (1, 4));
+        assert_eq!(bond.order, BondOrder::Triple);
+    }
+
+    #[test]
+    fn angle_new_orders_terminal_atoms() {
+        let angle = Angle::new(7, 3, 2);
+        assert_eq!(angle.atom_ids, (2, 3, 7));
+    }
+
+    #[test]
+    fn proper_dihedral_new_canonicalizes_orientation() {
+        let forward = ProperDihedral::new(1, 2, 3, 4);
+        let reversed = ProperDihedral::new(4, 3, 2, 1);
+
+        assert_eq!(forward.atom_ids, reversed.atom_ids);
+        assert_eq!(forward.atom_ids, (1, 2, 3, 4));
+    }
+
+    #[test]
+    fn improper_dihedral_new_sorts_plane_atoms() {
+        let improper = ImproperDihedral::new(9, 1, 5, 4);
+        assert_eq!(improper.atom_ids, (1, 4, 5, 9));
+    }
+
+    #[test]
+    fn molecular_topology_default_is_empty() {
+        let topology = MolecularTopology::default();
+
+        assert!(topology.atoms.is_empty());
+        assert!(topology.bonds.is_empty());
+        assert!(topology.angles.is_empty());
+        assert!(topology.propers.is_empty());
+        assert!(topology.impropers.is_empty());
+    }
+}
