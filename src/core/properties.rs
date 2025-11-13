@@ -289,3 +289,51 @@ impl fmt::Display for BondOrder {
         write!(f, "{:?}", self)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Hybridization {
+    /// sp hybridization (linear geometry).
+    SP,
+    /// sp² hybridization (trigonal planar geometry).
+    SP2,
+    /// sp³ hybridization (tetrahedral geometry).
+    SP3,
+    /// Resonant hybridization, indicating participation in a delocalized π-system.
+    Resonant,
+    /// Used for atoms where hybridization is not typically considered (e.g., ions, halogens).
+    None,
+    /// An initial or error state before perception is complete.
+    Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParseHybridizationError(String);
+
+impl fmt::Display for ParseHybridizationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid hybridization string: '{}'", self.0)
+    }
+}
+impl std::error::Error for ParseHybridizationError {}
+
+impl FromStr for Hybridization {
+    type Err = ParseHybridizationError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "SP" => Ok(Self::SP),
+            "SP2" => Ok(Self::SP2),
+            "SP3" => Ok(Self::SP3),
+            "Resonant" => Ok(Self::Resonant),
+            "None" => Ok(Self::None),
+            "Unknown" => Ok(Self::Unknown),
+            _ => Err(ParseHybridizationError(s.to_string())),
+        }
+    }
+}
+
+impl fmt::Display for Hybridization {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
