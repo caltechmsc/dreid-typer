@@ -1,5 +1,6 @@
 use std::fmt;
 use std::str::FromStr;
+use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u16)]
@@ -122,15 +123,9 @@ pub enum Element {
     Lr,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("invalid element symbol: '{0}'")]
 pub struct ParseElementError(String);
-
-impl fmt::Display for ParseElementError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid element symbol: '{}'", self.0)
-    }
-}
-impl std::error::Error for ParseElementError {}
 
 impl FromStr for Element {
     type Err = ParseElementError;
@@ -260,15 +255,9 @@ pub enum BondOrder {
     Aromatic = 4,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("invalid bond order: '{0}'")]
 pub struct ParseBondOrderError(String);
-
-impl fmt::Display for ParseBondOrderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid bond order: '{}'", self.0)
-    }
-}
-impl std::error::Error for ParseBondOrderError {}
 
 impl FromStr for BondOrder {
     type Err = ParseBondOrderError;
@@ -306,15 +295,9 @@ pub enum Hybridization {
     Unknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[error("invalid hybridization string: '{0}'")]
 pub struct ParseHybridizationError(String);
-
-impl fmt::Display for ParseHybridizationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid hybridization string: '{}'", self.0)
-    }
-}
-impl std::error::Error for ParseHybridizationError {}
 
 impl FromStr for Hybridization {
     type Err = ParseHybridizationError;
