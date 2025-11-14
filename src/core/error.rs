@@ -40,8 +40,8 @@ pub enum GraphValidationError {
 #[derive(Debug, Error)]
 pub enum PerceptionError {
     /// Failed to find a valid Kekulé structure for the aromatic systems in the molecule.
-    #[error("failed to assign a valid Kekulé structure to the aromatic system")]
-    KekulizationFailed,
+    #[error("failed to assign a valid Kekulé structure to the aromatic systems: {message}")]
+    KekulizationFailed { message: String },
 
     /// Failed to determine the hybridization state for an atom.
     #[error(
