@@ -3,7 +3,7 @@ use std::str::FromStr;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[repr(u16)]
+#[repr(u8)]
 pub enum Element {
     // --- Non-metals ---
     H = 1,
@@ -121,6 +121,23 @@ pub enum Element {
     Md,
     No,
     Lr,
+
+    // --- Superheavy Elements ---
+    Rf = 104,
+    Db,
+    Sg,
+    Bh,
+    Hs,
+    Mt,
+    Ds,
+    Rg,
+    Cn,
+    Nh,
+    Fl,
+    Mc,
+    Lv,
+    Ts,
+    Og,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -235,6 +252,21 @@ impl FromStr for Element {
             "Md" => Ok(Self::Md),
             "No" => Ok(Self::No),
             "Lr" => Ok(Self::Lr),
+            "Rf" => Ok(Self::Rf),
+            "Db" => Ok(Self::Db),
+            "Sg" => Ok(Self::Sg),
+            "Bh" => Ok(Self::Bh),
+            "Hs" => Ok(Self::Hs),
+            "Mt" => Ok(Self::Mt),
+            "Ds" => Ok(Self::Ds),
+            "Rg" => Ok(Self::Rg),
+            "Cn" => Ok(Self::Cn),
+            "Nh" => Ok(Self::Nh),
+            "Fl" => Ok(Self::Fl),
+            "Mc" => Ok(Self::Mc),
+            "Lv" => Ok(Self::Lv),
+            "Ts" => Ok(Self::Ts),
+            "Og" => Ok(Self::Og),
             _ => Err(ParseElementError(s.to_string())),
         }
     }
