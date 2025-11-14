@@ -278,6 +278,32 @@ impl fmt::Display for Element {
     }
 }
 
+impl Element {
+    pub fn valence_electrons(&self) -> Option<u8> {
+        use Element::*;
+        match self {
+            // Group 1
+            H | Li | Na | K | Rb | Cs | Fr => Some(1),
+            // Group 2
+            Be | Mg | Ca | Sr | Ba | Ra => Some(2),
+            // Group 13
+            B | Al | Ga | In | Tl => Some(3),
+            // Group 14
+            C | Si | Ge | Sn | Pb => Some(4),
+            // Group 15
+            N | P | As | Sb | Bi => Some(5),
+            // Group 16
+            O | S | Se | Te | Po => Some(6),
+            // Group 17
+            F | Cl | Br | I | At => Some(7),
+            // Group 18 (Noble Gases)
+            He | Ne | Ar | Kr | Xe | Rn => Some(8),
+            // For transition metals, lanthanides, actinides, valence is complex.
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum BondOrder {
