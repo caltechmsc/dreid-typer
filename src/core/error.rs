@@ -39,6 +39,10 @@ pub enum GraphValidationError {
 /// Errors that can occur during the multi-step chemical perception phase.
 #[derive(Debug, Error)]
 pub enum PerceptionError {
+    /// Failed to find a valid Kekulé structure for the aromatic systems in the molecule.
+    #[error("failed to assign a valid Kekulé structure to the aromatic system")]
+    KekulizationFailed,
+
     /// Failed to determine the hybridization state for an atom.
     #[error(
         "could not infer hybridization for atom ID {atom_id}: unhandled steric number or chemical environment"
