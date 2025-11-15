@@ -74,12 +74,13 @@ impl<'a> TyperEngine<'a> {
         for atom in &self.molecule.atoms {
             let current_priority = self.atom_states[atom.id].as_ref().map_or(-1, |(_, p)| *p);
 
-            if let Some(best_rule) = self.find_best_matching_rule(atom) {
-                if best_rule.priority > current_priority {
-                    self.atom_states[atom.id] =
-                        Some((best_rule.result_type.clone(), best_rule.priority));
-                    changes_count += 1;
-                }
+            if let Some(best_rule) = self
+                .find_best_matching_rule(atom)
+                .filter(|rule| rule.priority > current_priority)
+            {
+                self.atom_states[atom.id] =
+                    Some((best_rule.result_type.clone(), best_rule.priority));
+                changes_count += 1;
             }
         }
         changes_count
@@ -93,50 +94,53 @@ impl<'a> TyperEngine<'a> {
     }
 
     fn match_conditions(&self, atom: &AnnotatedAtom, conditions: &Conditions) -> bool {
-        if let Some(e) = conditions.element {
-            if e != atom.element {
-                return false;
-            }
+        if conditions.element.is_some_and(|e| e != atom.element) {
+            return false;
         }
-        if let Some(fc) = conditions.formal_charge {
-            if fc != atom.formal_charge {
-                return false;
-            }
+        if conditions
+            .formal_charge
+            .is_some_and(|fc| fc != atom.formal_charge)
+        {
+            return false;
         }
-        if let Some(d) = conditions.degree {
-            if d != atom.degree {
-                return false;
-            }
+        if conditions.degree.is_some_and(|d| d != atom.degree) {
+            return false;
         }
-        if let Some(lir) = conditions.is_in_ring {
-            if lir != atom.is_in_ring {
-                return false;
-            }
+        if conditions
+            .is_in_ring
+            .is_some_and(|lir| lir != atom.is_in_ring)
+        {
+            return false;
         }
-        if let Some(lp) = conditions.lone_pairs {
-            if lp != atom.lone_pairs {
-                return false;
-            }
+        if conditions
+            .lone_pairs
+            .is_some_and(|lp| lp != atom.lone_pairs)
+        {
+            return false;
         }
-        if let Some(h) = conditions.hybridization {
-            if h != atom.hybridization {
-                return false;
-            }
+        if conditions
+            .hybridization
+            .is_some_and(|h| h != atom.hybridization)
+        {
+            return false;
         }
-        if let Some(ia) = conditions.is_aromatic {
-            if ia != atom.is_aromatic {
-                return false;
-            }
+        if conditions
+            .is_aromatic
+            .is_some_and(|ia| ia != atom.is_aromatic)
+        {
+            return false;
         }
-        if let Some(iaa) = conditions.is_anti_aromatic {
-            if iaa != atom.is_anti_aromatic {
-                return false;
-            }
+        if conditions
+            .is_anti_aromatic
+            .is_some_and(|iaa| iaa != atom.is_anti_aromatic)
+        {
+            return false;
         }
-        if let Some(ir) = conditions.is_resonant {
-            if ir != atom.is_in_conjugated_system {
-                return false;
-            }
+        if conditions
+            .is_resonant
+            .is_some_and(|ir| ir != atom.is_in_conjugated_system)
+        {
+            return false;
         }
 
         if !conditions.neighbor_elements.is_empty()
