@@ -11,13 +11,13 @@ pub use model::AnnotatedMolecule;
 use crate::core::error::{PerceptionError, TyperError};
 use crate::core::graph::MolecularGraph;
 
+type PerceptionStepFn = fn(&mut AnnotatedMolecule) -> Result<(), PerceptionError>;
+type PerceptionStep = (&'static str, PerceptionStepFn);
+
 pub fn perceive(graph: &MolecularGraph) -> Result<AnnotatedMolecule, TyperError> {
     let mut molecule = AnnotatedMolecule::new(graph).map_err(TyperError::InvalidInput)?;
 
-    let pipeline: [(
-        &str,
-        fn(&mut AnnotatedMolecule) -> Result<(), PerceptionError>,
-    ); 6] = [
+    let pipeline: [PerceptionStep; 6] = [
         ("Rings", rings::perceive),
         ("Kekulization", kekulize::perceive),
         ("Electrons", electrons::perceive),
