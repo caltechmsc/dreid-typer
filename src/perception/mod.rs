@@ -6,7 +6,7 @@ mod model;
 mod resonance;
 mod rings;
 
-pub use model::AnnotatedMolecule;
+pub use model::{AnnotatedAtom, AnnotatedMolecule};
 
 use crate::core::error::{PerceptionError, TyperError};
 use crate::core::graph::MolecularGraph;
