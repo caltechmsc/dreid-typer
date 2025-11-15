@@ -45,10 +45,8 @@ fn assign_nitrone_groups(
             }
         }
 
-        if let (Some(c1), Some(o), Some(c2)) =
-            (double_bond_c_idx, single_bond_o_idx, single_bond_c_idx)
-        {
-            if !processed[c1] && !processed[o] && !processed[c2] {
+        match (double_bond_c_idx, single_bond_o_idx, single_bond_c_idx) {
+            (Some(c1), Some(o), Some(c2)) if !processed[c1] && !processed[o] && !processed[c2] => {
                 molecule.atoms[n_idx].formal_charge = 1;
                 molecule.atoms[n_idx].lone_pairs = 0;
                 molecule.atoms[o].formal_charge = -1;
@@ -57,6 +55,7 @@ fn assign_nitrone_groups(
                 processed[n_idx] = true;
                 processed[o] = true;
             }
+            _ => {}
         }
     }
     Ok(())
@@ -94,8 +93,10 @@ fn assign_nitro_groups(
             }
         }
 
-        if let (Some(o1), Some(o2)) = (double_bond_o_idx, single_bond_o_idx) {
-            if other_neighbor_count == 1 && !processed[o1] && !processed[o2] {
+        match (double_bond_o_idx, single_bond_o_idx) {
+            (Some(o1), Some(o2))
+                if other_neighbor_count == 1 && !processed[o1] && !processed[o2] =>
+            {
                 molecule.atoms[n_idx].formal_charge = 1;
                 molecule.atoms[n_idx].lone_pairs = 0;
 
@@ -109,6 +110,7 @@ fn assign_nitro_groups(
                 processed[o1] = true;
                 processed[o2] = true;
             }
+            _ => {}
         }
     }
     Ok(())
@@ -228,8 +230,8 @@ fn assign_carboxylate_anions(
             }
         }
 
-        if let (Some(o1), Some(o2)) = (double_bond_o_idx, single_bond_o_idx) {
-            if !processed[o1] && !processed[o2] {
+        match (double_bond_o_idx, single_bond_o_idx) {
+            (Some(o1), Some(o2)) if !processed[o1] && !processed[o2] => {
                 molecule.atoms[c_idx].formal_charge = 0;
                 molecule.atoms[c_idx].lone_pairs = 0;
 
@@ -243,6 +245,7 @@ fn assign_carboxylate_anions(
                 processed[o1] = true;
                 processed[o2] = true;
             }
+            _ => {}
         }
     }
     Ok(())
