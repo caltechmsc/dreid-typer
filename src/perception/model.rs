@@ -23,11 +23,14 @@ pub struct AnnotatedAtom {
     pub hybridization: Hybridization,
 }
 
+pub type Ring = Vec<usize>;
+
 #[derive(Debug, Clone)]
 pub struct AnnotatedMolecule {
     pub atoms: Vec<AnnotatedAtom>,
     pub bonds: Vec<BondEdge>,
     pub adjacency: Vec<Vec<(usize, BondOrder)>>,
+    pub rings: Vec<Ring>,
 }
 
 impl AnnotatedMolecule {
@@ -71,6 +74,7 @@ impl AnnotatedMolecule {
             atoms,
             bonds: graph.bonds.clone(),
             adjacency,
+            rings: Vec::new(),
         })
     }
 }
