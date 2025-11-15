@@ -84,17 +84,17 @@ fn build_propers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ProperDihedr
 fn build_impropers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ImproperDihedral> {
     let mut impropers = HashSet::new();
     for atom in &annotated_molecule.atoms {
-        if atom.degree == 3 {
-            if matches!(
+        if atom.degree == 3
+            && matches!(
                 atom.hybridization,
                 Hybridization::SP2 | Hybridization::Resonant
-            ) {
-                let neighbors = &annotated_molecule.adjacency[atom.id];
-                let p1 = neighbors[0].0;
-                let p2 = neighbors[1].0;
-                let p3 = neighbors[2].0;
-                impropers.insert(ImproperDihedral::new(p1, p2, atom.id, p3));
-            }
+            )
+        {
+            let neighbors = &annotated_molecule.adjacency[atom.id];
+            let p1 = neighbors[0].0;
+            let p2 = neighbors[1].0;
+            let p3 = neighbors[2].0;
+            impropers.insert(ImproperDihedral::new(p1, p2, atom.id, p3));
         }
     }
     impropers
