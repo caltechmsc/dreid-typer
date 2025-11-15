@@ -8,6 +8,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     assign_nitrone_groups(molecule, &mut processed)?;
     assign_nitro_groups(molecule, &mut processed)?;
     assign_sulfur_oxides(molecule, &mut processed)?;
+    assign_phosphorus_oxides(molecule, &mut processed)?;
 
     assign_general(molecule, &processed)?;
 
@@ -153,6 +154,41 @@ fn assign_sulfur_oxides(
                 }
             }
             _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn assign_phosphorus_oxides(
+    molecule: &mut AnnotatedMolecule,
+    processed: &mut [bool],
+) -> Result<(), PerceptionError> {
+    for p_idx in 0..molecule.atoms.len() {
+        if processed[p_idx]
+            || molecule.atoms[p_idx].element != Element::P
+            || molecule.atoms[p_idx].degree != 4
+        {
+            continue;
+        }
+
+        let double_bonded_oxygens: Vec<usize> = molecule.adjacency[p_idx]
+            .iter()
+            .filter(|&&(id, order)| {
+                molecule.atoms[id].element == Element::O && order == BondOrder::Double
+            })
+            .map(|&(id, _)| id)
+            .collect();
+
+        if double_bonded_oxygens.len() == 1 {
+            let o_idx = double_bonded_oxygens[0];
+            if !processed[o_idx] {
+                molecule.atoms[p_idx].formal_charge = 1;
+                molecule.atoms[p_idx].lone_pairs = 0;
+                molecule.atoms[o_idx].formal_charge = -1;
+                molecule.atoms[o_idx].lone_pairs = 3;
+                processed[p_idx] = true;
+                processed[o_idx] = true;
+            }
         }
     }
     Ok(())
