@@ -196,3 +196,173 @@ impl<'a> TyperEngine<'a> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+    use crate::core::properties::{BondOrder, Element, Hybridization};
+    use crate::perception::AnnotatedMolecule;
+
+    fn linear_ethene_like() -> AnnotatedMolecule {
+        let mut graph = MolecularGraph::new();
+        let c1 = graph.add_atom(Element::C);
+        let c2 = graph.add_atom(Element::C);
+        let h1 = graph.add_atom(Element::H);
+        let h2 = graph.add_atom(Element::H);
+
+        graph
+            .add_bond(c1, c2, BondOrder::Double)
+            .expect("valid C=C bond");
+        graph
+            .add_bond(c1, h1, BondOrder::Single)
+            .expect("valid C-H bond");
+        graph
+            .add_bond(c2, h2, BondOrder::Single)
+            .expect("valid C-H bond");
+
+        AnnotatedMolecule::new(&graph).expect("graph should be valid")
+    }
+
+    fn annotate_sp2_carbons(molecule: &mut AnnotatedMolecule) {
+        for atom in &mut molecule.atoms {
+            match atom.element {
+                Element::C => {
+                    atom.hybridization = Hybridization::SP2;
+                    atom.degree = 3;
+                }
+                Element::H => {
+                    atom.hybridization = Hybridization::None;
+                    atom.degree = 1;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn assign_types_for(
+        molecule: &mut AnnotatedMolecule,
+        rules: &[Rule],
+    ) -> Result<Vec<String>, AssignmentError> {
+        annotate_sp2_carbons(molecule);
+        assign_types(molecule, rules)
+    }
+
+    fn rule(name: &str, priority: i32, result_type: &str, conditions: Conditions) -> Rule {
+        Rule {
+            name: name.to_string(),
+            priority,
+            result_type: result_type.to_string(),
+            conditions,
+        }
+    }
+
+    fn condition() -> Conditions {
+        Conditions::default()
+    }
+
+    #[test]
+    fn assigns_simple_sp2_carbons_and_hydrogens() {
+        let mut molecule = linear_ethene_like();
+        let rules = vec![
+            rule(
+                "C_SP2",
+                10,
+                "C_R",
+                Conditions {
+                    element: Some(Element::C),
+                    hybridization: Some(Hybridization::SP2),
+                    ..Conditions::default()
+                },
+            ),
+            rule(
+                "H_DEFAULT",
+                1,
+                "H_",
+                Conditions {
+                    element: Some(Element::H),
+                    ..Conditions::default()
+                },
+            ),
+        ];
+
+        let types = assign_types_for(&mut molecule, &rules).expect("typing should succeed");
+        assert_eq!(types.len(), 4);
+        assert_eq!(types[0], "C_R");
+        assert_eq!(types[1], "C_R");
+        assert_eq!(types[2], "H_");
+        assert_eq!(types[3], "H_");
+    }
+
+    #[test]
+    fn neighbor_dependent_rules_require_multiple_rounds() {
+        let mut molecule = linear_ethene_like();
+        let mut neighbor_conditions = condition();
+        neighbor_conditions.element = Some(Element::H);
+
+        let mut carbon_neighbor_types = condition();
+        carbon_neighbor_types.element = Some(Element::C);
+        carbon_neighbor_types.hybridization = Some(Hybridization::SP2);
+
+        let mut hydrogens_require_carbon_type = condition();
+        hydrogens_require_carbon_type.element = Some(Element::H);
+        hydrogens_require_carbon_type
+            .neighbor_types
+            .insert("C_R".to_string(), 1);
+
+        let rules = vec![
+            rule("Carbon", 5, "C_R", carbon_neighbor_types),
+            rule("Hydrogen", 1, "H_", hydrogens_require_carbon_type),
+        ];
+
+        let types = assign_types_for(&mut molecule, &rules).expect("typing should converge");
+        assert_eq!(types[2], "H_");
+        assert_eq!(types[3], "H_");
+    }
+
+    #[test]
+    fn higher_priority_rule_overrides_lower_one() {
+        let mut molecule = linear_ethene_like();
+        let mut base_condition = condition();
+        base_condition.element = Some(Element::C);
+
+        let mut specific_condition = base_condition.clone();
+        specific_condition.hybridization = Some(Hybridization::SP2);
+
+        let rules = vec![
+            rule("BaseCarbon", 1, "C_BASE", base_condition),
+            rule("SpecificSp2", 10, "C_R", specific_condition),
+            rule(
+                "Hydrogens",
+                1,
+                "H_",
+                Conditions {
+                    element: Some(Element::H),
+                    ..Conditions::default()
+                },
+            ),
+        ];
+
+        let types = assign_types_for(&mut molecule, &rules).expect("typing should succeed");
+        assert!(types.iter().take(2).all(|t| t == "C_R"));
+    }
+
+    #[test]
+    fn returns_assignment_error_when_atoms_remain_untyped() {
+        let mut molecule = linear_ethene_like();
+        let rules = vec![rule(
+            "HydrogenOnly",
+            1,
+            "H_",
+            Conditions {
+                element: Some(Element::H),
+                ..Conditions::default()
+            },
+        )];
+
+        let err =
+            assign_types_for(&mut molecule, &rules).expect_err("carbons should remain untyped");
+        assert!(err.untyped_atom_ids.contains(&0));
+        assert!(err.untyped_atom_ids.contains(&1));
+    }
+}
