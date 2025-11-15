@@ -1,4 +1,4 @@
-use super::model::AnnotatedMolecule;
+use super::model::{AnnotatedMolecule, Ring};
 use crate::core::error::PerceptionError;
 use crate::core::properties::BondOrder;
 use std::collections::{HashMap, VecDeque};
@@ -26,10 +26,20 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
 
     let candidates = enumerate_cycle_candidates(molecule);
 
-    let sssr =
+    let sssr_candidates =
         select_minimal_cycle_basis(candidates, cyclomatic_number as usize, &bond_id_to_index);
 
-    annotate_molecule_with_rings(molecule, sssr);
+    let final_rings: Vec<Ring> = sssr_candidates
+        .into_iter()
+        .map(|c| {
+            let mut atom_ids = c.atom_ids;
+            atom_ids.sort_unstable();
+            atom_ids
+        })
+        .collect();
+    molecule.rings = final_rings;
+
+    annotate_atoms_with_ring_info(molecule);
 
     Ok(())
 }
@@ -97,20 +107,17 @@ fn select_minimal_cycle_basis(
     selected_rings
 }
 
-fn annotate_molecule_with_rings(molecule: &mut AnnotatedMolecule, rings: Vec<RingCandidate>) {
-    for ring in rings {
-        let ring_size = ring.atom_ids.len() as u8;
-        for atom_id in ring.atom_ids {
-            let props = &mut molecule.atoms[atom_id];
-            props.is_in_ring = true;
-            match props.smallest_ring_size {
-                Some(current_size) if ring_size < current_size => {
-                    props.smallest_ring_size = Some(ring_size);
+fn annotate_atoms_with_ring_info(molecule: &mut AnnotatedMolecule) {
+    for ring in &molecule.rings {
+        let ring_size = ring.len() as u8;
+        for &atom_id in ring {
+            if let Some(props) = molecule.atoms.get_mut(atom_id) {
+                props.is_in_ring = true;
+
+                let current_smallest = props.smallest_ring_size.get_or_insert(ring_size);
+                if ring_size < *current_smallest {
+                    *current_smallest = ring_size;
                 }
-                None => {
-                    props.smallest_ring_size = Some(ring_size);
-                }
-                _ => {}
             }
         }
     }
