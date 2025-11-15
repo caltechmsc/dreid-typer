@@ -13,6 +13,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     assign_ammonium_and_iminium(molecule, &mut processed)?;
     assign_onium_ions(molecule, &mut processed)?;
     assign_phosphonium_ions(molecule, &mut processed)?;
+    assign_enolate_phenate_anions(molecule, &mut processed)?;
 
     assign_general(molecule, &processed)?;
 
@@ -313,6 +314,40 @@ fn assign_phosphonium_ions(
             molecule.atoms[p_idx].formal_charge = 1;
             molecule.atoms[p_idx].lone_pairs = 0;
             processed[p_idx] = true;
+        }
+    }
+    Ok(())
+}
+
+fn assign_enolate_phenate_anions(
+    molecule: &mut AnnotatedMolecule,
+    processed: &mut [bool],
+) -> Result<(), PerceptionError> {
+    for o_idx in 0..molecule.atoms.len() {
+        if processed[o_idx]
+            || molecule.atoms[o_idx].element != Element::O
+            || molecule.atoms[o_idx].degree != 1
+        {
+            continue;
+        }
+
+        let (neighbor_id, order) = molecule.adjacency[o_idx][0];
+
+        if order != BondOrder::Single {
+            continue;
+        }
+
+        let neighbor = &molecule.atoms[neighbor_id];
+        if neighbor.element == Element::C {
+            let neighbor_is_sp2 = molecule.adjacency[neighbor_id]
+                .iter()
+                .any(|&(_, order)| order == BondOrder::Double);
+
+            if neighbor_is_sp2 {
+                molecule.atoms[o_idx].formal_charge = -1;
+                molecule.atoms[o_idx].lone_pairs = 3;
+                processed[o_idx] = true;
+            }
         }
     }
     Ok(())
