@@ -31,10 +31,11 @@ fn determine_hybridization(
         return Ok(Hybridization::None);
     }
 
-    if atom.is_in_conjugated_system && !atom.is_anti_aromatic {
-        if steric_number <= 3 || (steric_number == 4 && atom.lone_pairs > 0) {
-            return Ok(Hybridization::Resonant);
-        }
+    if atom.is_in_conjugated_system
+        && !atom.is_anti_aromatic
+        && (steric_number <= 3 || (steric_number == 4 && atom.lone_pairs > 0))
+    {
+        return Ok(Hybridization::Resonant);
     }
 
     if atom.is_aromatic {
