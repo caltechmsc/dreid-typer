@@ -12,6 +12,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     assign_carboxylate_anions(molecule, &mut processed)?;
     assign_ammonium_and_iminium(molecule, &mut processed)?;
     assign_onium_ions(molecule, &mut processed)?;
+    assign_phosphonium_ions(molecule, &mut processed)?;
 
     assign_general(molecule, &processed)?;
 
@@ -287,6 +288,31 @@ fn assign_onium_ions(
             molecule.atoms[idx].formal_charge = 1;
             molecule.atoms[idx].lone_pairs = 1;
             processed[idx] = true;
+        }
+    }
+    Ok(())
+}
+
+fn assign_phosphonium_ions(
+    molecule: &mut AnnotatedMolecule,
+    processed: &mut [bool],
+) -> Result<(), PerceptionError> {
+    for p_idx in 0..molecule.atoms.len() {
+        if processed[p_idx]
+            || molecule.atoms[p_idx].element != Element::P
+            || molecule.atoms[p_idx].degree != 4
+        {
+            continue;
+        }
+
+        let has_double_bond_o = molecule.adjacency[p_idx].iter().any(|&(id, order)| {
+            molecule.atoms[id].element == Element::O && order == BondOrder::Double
+        });
+
+        if !has_double_bond_o {
+            molecule.atoms[p_idx].formal_charge = 1;
+            molecule.atoms[p_idx].lone_pairs = 0;
+            processed[p_idx] = true;
         }
     }
     Ok(())
