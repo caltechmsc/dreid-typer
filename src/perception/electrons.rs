@@ -7,6 +7,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
 
     assign_nitrone_groups(molecule, &mut processed)?;
     assign_nitro_groups(molecule, &mut processed)?;
+    assign_sulfur_oxides(molecule, &mut processed)?;
 
     assign_general(molecule, &processed)?;
 
@@ -102,6 +103,56 @@ fn assign_nitro_groups(
                 processed[o1] = true;
                 processed[o2] = true;
             }
+        }
+    }
+    Ok(())
+}
+
+fn assign_sulfur_oxides(
+    molecule: &mut AnnotatedMolecule,
+    processed: &mut [bool],
+) -> Result<(), PerceptionError> {
+    for s_idx in 0..molecule.atoms.len() {
+        if processed[s_idx] || molecule.atoms[s_idx].element != Element::S {
+            continue;
+        }
+
+        let double_bonded_oxygens: Vec<usize> = molecule.adjacency[s_idx]
+            .iter()
+            .filter(|&&(id, order)| {
+                molecule.atoms[id].element == Element::O && order == BondOrder::Double
+            })
+            .map(|&(id, _)| id)
+            .collect();
+
+        match (molecule.atoms[s_idx].degree, double_bonded_oxygens.len()) {
+            (3, 1) => {
+                let o_idx = double_bonded_oxygens[0];
+                if !processed[o_idx] {
+                    molecule.atoms[s_idx].formal_charge = 1;
+                    molecule.atoms[s_idx].lone_pairs = 1;
+                    molecule.atoms[o_idx].formal_charge = -1;
+                    molecule.atoms[o_idx].lone_pairs = 3;
+                    processed[s_idx] = true;
+                    processed[o_idx] = true;
+                }
+            }
+            (4, 2) => {
+                let o1_idx = double_bonded_oxygens[0];
+                let o2_idx = double_bonded_oxygens[1];
+                if !processed[o1_idx] && !processed[o2_idx] {
+                    molecule.atoms[s_idx].formal_charge = 2;
+                    molecule.atoms[s_idx].lone_pairs = 0;
+                    molecule.atoms[o1_idx].formal_charge = -1;
+                    molecule.atoms[o1_idx].lone_pairs = 3;
+                    molecule.atoms[o2_idx].formal_charge = -1;
+                    molecule.atoms[o2_idx].lone_pairs = 3;
+                    processed[s_idx] = true;
+                    processed[o1_idx] = true;
+                    processed[o2_idx] = true;
+                }
+            }
+            _ => {}
         }
     }
     Ok(())
