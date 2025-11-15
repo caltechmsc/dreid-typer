@@ -1,3 +1,4 @@
+use serde::{Deserialize, Deserializer};
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
@@ -304,6 +305,16 @@ impl Element {
     }
 }
 
+impl<'de> Deserialize<'de> for Element {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(serde::de::Error::custom)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum BondOrder {
@@ -376,5 +387,15 @@ impl FromStr for Hybridization {
 impl fmt::Display for Hybridization {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+impl<'de> Deserialize<'de> for Hybridization {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Self::from_str(&s).map_err(serde::de::Error::custom)
     }
 }
