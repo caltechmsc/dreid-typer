@@ -5,8 +5,52 @@ use crate::core::properties::{BondOrder, Element};
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     let mut processed = vec![false; molecule.atoms.len()];
 
+    assign_nitrone_groups(molecule, &mut processed)?;
+
     assign_general(molecule, &processed)?;
 
+    Ok(())
+}
+
+fn assign_nitrone_groups(
+    molecule: &mut AnnotatedMolecule,
+    processed: &mut [bool],
+) -> Result<(), PerceptionError> {
+    for n_idx in 0..molecule.atoms.len() {
+        if processed[n_idx]
+            || molecule.atoms[n_idx].element != Element::N
+            || molecule.atoms[n_idx].degree != 3
+        {
+            continue;
+        }
+
+        let mut double_bond_c_idx = None;
+        let mut single_bond_o_idx = None;
+        let mut single_bond_c_idx = None;
+
+        for &(neighbor_id, order) in &molecule.adjacency[n_idx] {
+            match (molecule.atoms[neighbor_id].element, order) {
+                (Element::C, BondOrder::Double) => double_bond_c_idx = Some(neighbor_id),
+                (Element::O, BondOrder::Single) => single_bond_o_idx = Some(neighbor_id),
+                (Element::C, BondOrder::Single) => single_bond_c_idx = Some(neighbor_id),
+                _ => {}
+            }
+        }
+
+        if let (Some(c1), Some(o), Some(c2)) =
+            (double_bond_c_idx, single_bond_o_idx, single_bond_c_idx)
+        {
+            if !processed[c1] && !processed[o] && !processed[c2] {
+                molecule.atoms[n_idx].formal_charge = 1;
+                molecule.atoms[n_idx].lone_pairs = 0;
+                molecule.atoms[o].formal_charge = -1;
+                molecule.atoms[o].lone_pairs = 3;
+
+                processed[n_idx] = true;
+                processed[o] = true;
+            }
+        }
+    }
     Ok(())
 }
 
