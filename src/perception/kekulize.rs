@@ -1,7 +1,7 @@
 use super::model::AnnotatedMolecule;
 use crate::core::error::PerceptionError;
 use crate::core::properties::{BondOrder, Element};
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, VecDeque, hash_map::Entry};
 
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     let aromatic_bonds: Vec<usize> = molecule
@@ -104,10 +104,8 @@ impl<'a> KekuleSolver<'a> {
         for &order_choice in &[BondOrder::Double, BondOrder::Single] {
             self.assignments[k] = Some(order_choice);
 
-            if self.is_consistent(k) {
-                if self.backtrack(k + 1) {
-                    return true;
-                }
+            if self.is_consistent(k) && self.backtrack(k + 1) {
+                return true;
             }
         }
 
@@ -191,8 +189,8 @@ fn find_aromatic_systems(
                             })
                             .unwrap();
 
-                        if !visited_bonds.contains_key(&neighbor_bond.id) {
-                            visited_bonds.insert(neighbor_bond.id, true);
+                        if let Entry::Vacant(entry) = visited_bonds.entry(neighbor_bond.id) {
+                            entry.insert(true);
                             queue.push_back(neighbor_bond.id);
                         }
                     }
