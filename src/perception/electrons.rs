@@ -6,6 +6,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     let mut processed = vec![false; molecule.atoms.len()];
 
     assign_nitrone_groups(molecule, &mut processed)?;
+    assign_nitro_groups(molecule, &mut processed)?;
 
     assign_general(molecule, &processed)?;
 
@@ -48,6 +49,58 @@ fn assign_nitrone_groups(
 
                 processed[n_idx] = true;
                 processed[o] = true;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn assign_nitro_groups(
+    molecule: &mut AnnotatedMolecule,
+    processed: &mut [bool],
+) -> Result<(), PerceptionError> {
+    for n_idx in 0..molecule.atoms.len() {
+        if processed[n_idx]
+            || molecule.atoms[n_idx].element != Element::N
+            || molecule.atoms[n_idx].degree != 3
+        {
+            continue;
+        }
+
+        let mut double_bond_o_idx = None;
+        let mut single_bond_o_idx = None;
+        let mut other_neighbor_count = 0;
+
+        for &(neighbor_id, order) in &molecule.adjacency[n_idx] {
+            if molecule.atoms[neighbor_id].element == Element::O {
+                match order {
+                    BondOrder::Double if double_bond_o_idx.is_none() => {
+                        double_bond_o_idx = Some(neighbor_id)
+                    }
+                    BondOrder::Single if single_bond_o_idx.is_none() => {
+                        single_bond_o_idx = Some(neighbor_id)
+                    }
+                    _ => continue,
+                }
+            } else {
+                other_neighbor_count += 1;
+            }
+        }
+
+        if let (Some(o1), Some(o2)) = (double_bond_o_idx, single_bond_o_idx) {
+            if other_neighbor_count == 1 && !processed[o1] && !processed[o2] {
+                molecule.atoms[n_idx].formal_charge = 1;
+                molecule.atoms[n_idx].lone_pairs = 0;
+
+                molecule.atoms[o1].formal_charge = 0;
+                molecule.atoms[o1].lone_pairs = 2;
+
+                molecule.atoms[o2].formal_charge = -1;
+                molecule.atoms[o2].lone_pairs = 3;
+
+                processed[n_idx] = true;
+                processed[o1] = true;
+                processed[o2] = true;
             }
         }
     }
