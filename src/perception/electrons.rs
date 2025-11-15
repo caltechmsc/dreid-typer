@@ -10,6 +10,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     assign_sulfur_oxides(molecule, &mut processed)?;
     assign_phosphorus_oxides(molecule, &mut processed)?;
     assign_carboxylate_anions(molecule, &mut processed)?;
+    assign_ammonium_and_iminium(molecule, &mut processed)?;
 
     assign_general(molecule, &processed)?;
 
@@ -239,6 +240,33 @@ fn assign_carboxylate_anions(
                 processed[o1] = true;
                 processed[o2] = true;
             }
+        }
+    }
+    Ok(())
+}
+
+fn assign_ammonium_and_iminium(
+    molecule: &mut AnnotatedMolecule,
+    processed: &mut [bool],
+) -> Result<(), PerceptionError> {
+    for n_idx in 0..molecule.atoms.len() {
+        if processed[n_idx] || molecule.atoms[n_idx].element != Element::N {
+            continue;
+        }
+
+        let atom = &molecule.atoms[n_idx];
+        let has_double_bond = molecule.adjacency[n_idx]
+            .iter()
+            .any(|&(_, order)| order == BondOrder::Double);
+
+        if atom.degree == 4 {
+            molecule.atoms[n_idx].formal_charge = 1;
+            molecule.atoms[n_idx].lone_pairs = 0;
+            processed[n_idx] = true;
+        } else if atom.degree == 3 && has_double_bond {
+            molecule.atoms[n_idx].formal_charge = 1;
+            molecule.atoms[n_idx].lone_pairs = 0;
+            processed[n_idx] = true;
         }
     }
     Ok(())
