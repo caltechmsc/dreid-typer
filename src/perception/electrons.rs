@@ -252,24 +252,21 @@ fn assign_ammonium_and_iminium(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
 ) -> Result<(), PerceptionError> {
-    for n_idx in 0..molecule.atoms.len() {
-        if processed[n_idx] || molecule.atoms[n_idx].element != Element::N {
+    for (n_idx, processed_flag) in processed.iter_mut().enumerate() {
+        if *processed_flag || molecule.atoms[n_idx].element != Element::N {
             continue;
         }
 
-        let atom = &molecule.atoms[n_idx];
+        let degree = molecule.atoms[n_idx].degree;
         let has_double_bond = molecule.adjacency[n_idx]
             .iter()
             .any(|&(_, order)| order == BondOrder::Double);
 
-        if atom.degree == 4 {
-            molecule.atoms[n_idx].formal_charge = 1;
-            molecule.atoms[n_idx].lone_pairs = 0;
-            processed[n_idx] = true;
-        } else if atom.degree == 3 && has_double_bond {
-            molecule.atoms[n_idx].formal_charge = 1;
-            molecule.atoms[n_idx].lone_pairs = 0;
-            processed[n_idx] = true;
+        if degree == 4 || (degree == 3 && has_double_bond) {
+            let atom = &mut molecule.atoms[n_idx];
+            atom.formal_charge = 1;
+            atom.lone_pairs = 0;
+            *processed_flag = true;
         }
     }
     Ok(())
@@ -279,16 +276,18 @@ fn assign_onium_ions(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
 ) -> Result<(), PerceptionError> {
-    for idx in 0..molecule.atoms.len() {
-        if processed[idx] {
+    for (idx, processed_flag) in processed.iter_mut().enumerate() {
+        if *processed_flag {
             continue;
         }
 
-        let atom = &molecule.atoms[idx];
-        if (atom.element == Element::O || atom.element == Element::S) && atom.degree == 3 {
-            molecule.atoms[idx].formal_charge = 1;
-            molecule.atoms[idx].lone_pairs = 1;
-            processed[idx] = true;
+        let element = molecule.atoms[idx].element;
+        let degree = molecule.atoms[idx].degree;
+        if (element == Element::O || element == Element::S) && degree == 3 {
+            let atom_mut = &mut molecule.atoms[idx];
+            atom_mut.formal_charge = 1;
+            atom_mut.lone_pairs = 1;
+            *processed_flag = true;
         }
     }
     Ok(())
@@ -298,8 +297,8 @@ fn assign_phosphonium_ions(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
 ) -> Result<(), PerceptionError> {
-    for p_idx in 0..molecule.atoms.len() {
-        if processed[p_idx]
+    for (p_idx, processed_flag) in processed.iter_mut().enumerate() {
+        if *processed_flag
             || molecule.atoms[p_idx].element != Element::P
             || molecule.atoms[p_idx].degree != 4
         {
@@ -311,9 +310,10 @@ fn assign_phosphonium_ions(
         });
 
         if !has_double_bond_o {
-            molecule.atoms[p_idx].formal_charge = 1;
-            molecule.atoms[p_idx].lone_pairs = 0;
-            processed[p_idx] = true;
+            let atom = &mut molecule.atoms[p_idx];
+            atom.formal_charge = 1;
+            atom.lone_pairs = 0;
+            *processed_flag = true;
         }
     }
     Ok(())
@@ -323,8 +323,8 @@ fn assign_enolate_phenate_anions(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
 ) -> Result<(), PerceptionError> {
-    for o_idx in 0..molecule.atoms.len() {
-        if processed[o_idx]
+    for (o_idx, processed_flag) in processed.iter_mut().enumerate() {
+        if *processed_flag
             || molecule.atoms[o_idx].element != Element::O
             || molecule.atoms[o_idx].degree != 1
         {
@@ -344,9 +344,10 @@ fn assign_enolate_phenate_anions(
                 .any(|&(_, order)| order == BondOrder::Double);
 
             if neighbor_is_sp2 {
-                molecule.atoms[o_idx].formal_charge = -1;
-                molecule.atoms[o_idx].lone_pairs = 3;
-                processed[o_idx] = true;
+                let atom = &mut molecule.atoms[o_idx];
+                atom.formal_charge = -1;
+                atom.lone_pairs = 3;
+                *processed_flag = true;
             }
         }
     }
@@ -357,16 +358,16 @@ fn assign_general(
     molecule: &mut AnnotatedMolecule,
     processed: &[bool],
 ) -> Result<(), PerceptionError> {
-    for i in 0..molecule.atoms.len() {
-        if processed[i] {
+    for (i, processed_flag) in processed.iter().enumerate() {
+        if *processed_flag {
             continue;
         }
-        let atom = &molecule.atoms[i];
+        let element = molecule.atoms[i].element;
 
-        let valence = atom.element.valence_electrons().ok_or_else(|| {
+        let valence = element.valence_electrons().ok_or_else(|| {
             PerceptionError::Other(format!(
                 "valence electrons not defined for element {:?}",
-                atom.element
+                element
             ))
         })?;
 
@@ -378,11 +379,11 @@ fn assign_general(
         let mut lone_pairs = 0;
 
         let is_second_period = matches!(
-            atom.element,
+            element,
             Element::B | Element::C | Element::N | Element::O | Element::F
         );
 
-        if atom.element == Element::H {
+        if element == Element::H {
             let bonded_electrons = bonding_electrons.saturating_mul(2);
             if bonded_electrons <= 2 {
                 lone_pairs = (2 - bonded_electrons) / 2;
@@ -392,10 +393,8 @@ fn assign_general(
             if bonded_electrons <= 8 {
                 lone_pairs = (8 - bonded_electrons) / 2;
             }
-        } else {
-            if valence >= bonding_electrons {
-                lone_pairs = (valence - bonding_electrons) / 2;
-            }
+        } else if valence >= bonding_electrons {
+            lone_pairs = (valence - bonding_electrons) / 2;
         }
 
         let formal_charge = valence as i8 - bonding_electrons as i8 - (lone_pairs * 2) as i8;
