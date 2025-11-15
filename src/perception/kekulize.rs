@@ -136,14 +136,13 @@ impl<'a> KekuleSolver<'a> {
                 .unwrap();
 
             if *initial_order == BondOrder::Aromatic {
-                if let Some(pos) = self
+                if let Some(assigned_order) = self
                     .bond_indices
                     .iter()
                     .position(|&idx| self.molecule.bonds[idx].id == bond.id)
+                    .and_then(|pos| self.assignments[pos])
                 {
-                    if let Some(assigned_order) = self.assignments[pos] {
-                        current_valence += bond_order_to_valence(assigned_order);
-                    }
+                    current_valence += bond_order_to_valence(assigned_order);
                 }
             } else {
                 current_valence += bond_order_to_valence(*initial_order);
