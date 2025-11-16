@@ -1,8 +1,32 @@
+//! Resolves aromatic bonds into concrete single/double assignments via a Kekulé solver.
+//!
+//! The logic here isolates aromatic systems, validates that they sit inside rings, and runs a
+//! backtracking search that respects valence limits and heteroatom allowances before updating the
+//! annotated molecule in-place.
+
 use super::model::AnnotatedMolecule;
 use crate::core::error::PerceptionError;
 use crate::core::properties::{BondOrder, Element};
 use std::collections::{HashMap, VecDeque, hash_map::Entry};
 
+/// Converts aromatic bonds inside the molecule to alternating single/double assignments.
+///
+/// The pass first marks atoms attached to aromatic bonds as resonant, validates that each aromatic
+/// bond belongs to a ring, partitions the bonds into connected systems, and then runs a Kekulé
+/// solver per system.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule whose bond orders and adjacency lists are mutated in place.
+///
+/// # Returns
+///
+/// `Ok(())` when every aromatic system receives a valid assignment.
+///
+/// # Errors
+///
+/// Returns [`PerceptionError::KekulizationFailed`] when an aromatic bond lies outside a ring or no
+/// valid alternating assignment exists for a system.
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     let mut aromatic_bonds = Vec::new();
     let mut aromatic_pairs = Vec::new();
@@ -69,6 +93,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     Ok(())
 }
 
+/// Backtracking assignment helper that finds valid bond orders for one aromatic system.
 struct KekuleSolver<'a> {
     molecule: &'a AnnotatedMolecule,
     bond_indices: Vec<usize>,
@@ -76,6 +101,12 @@ struct KekuleSolver<'a> {
 }
 
 impl<'a> KekuleSolver<'a> {
+    /// Creates a solver scoped to the provided bond identifiers.
+    ///
+    /// # Arguments
+    ///
+    /// * `molecule` - Annotated molecule providing bond/atom metadata.
+    /// * `system_bond_ids` - Aromatic bond IDs belonging to one connected system.
     fn new(molecule: &'a AnnotatedMolecule, system_bond_ids: &[usize]) -> Self {
         let bond_indices: Vec<usize> = system_bond_ids
             .iter()
@@ -89,6 +120,11 @@ impl<'a> KekuleSolver<'a> {
         }
     }
 
+    /// Attempts to assign single/double orders to every bond in the system.
+    ///
+    /// # Returns
+    ///
+    /// Map of bond IDs to resolved orders, or `None` if no assignment satisfies the constraints.
     fn solve(&mut self) -> Option<HashMap<usize, BondOrder>> {
         if self.backtrack(0) {
             let solution = self
@@ -107,6 +143,15 @@ impl<'a> KekuleSolver<'a> {
         }
     }
 
+    /// Recursively assigns orders while pruning inconsistent branches.
+    ///
+    /// # Arguments
+    ///
+    /// * `k` - Index of the bond currently being assigned.
+    ///
+    /// # Returns
+    ///
+    /// `true` when a full assignment is found downstream.
     fn backtrack(&mut self, k: usize) -> bool {
         if k == self.assignments.len() {
             return true;
@@ -124,6 +169,7 @@ impl<'a> KekuleSolver<'a> {
         false
     }
 
+    /// Checks whether the partial assignment at index `k` respects valence constraints.
     fn is_consistent(&self, k: usize) -> bool {
         let bond_idx = self.bond_indices[k];
         let (u, v) = self.molecule.bonds[bond_idx].atom_ids;
@@ -131,6 +177,10 @@ impl<'a> KekuleSolver<'a> {
         self.is_valence_ok(u) && self.is_valence_ok(v)
     }
 
+    /// Verifies that the atom's accumulated valence does not exceed its maximum allowed value.
+    ///
+    /// Lone allowances let aromatic nitrogens/phosphorus carry at most one double bond while still
+    /// being counted as having valence one toward aromatic contributions.
     fn is_valence_ok(&self, atom_id: usize) -> bool {
         let max_valence = get_max_valence(self.molecule.atoms[atom_id].element);
         let mut current_valence = 0;
@@ -177,6 +227,16 @@ impl<'a> KekuleSolver<'a> {
     }
 }
 
+/// Groups aromatic bonds into connected systems for independent solving.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule providing adjacency and bond metadata.
+/// * `aromatic_bonds` - All bond IDs currently marked as aromatic.
+///
+/// # Returns
+///
+/// Vector of bond-ID lists, each representing one connected aromatic system.
 fn find_aromatic_systems(
     molecule: &AnnotatedMolecule,
     aromatic_bonds: &[usize],
@@ -225,6 +285,16 @@ fn find_aromatic_systems(
     systems
 }
 
+/// Ensures every aromatic bond resides entirely inside a perceived ring.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule containing ring flags.
+/// * `aromatic_bonds` - Bond IDs that must be validated.
+///
+/// # Errors
+///
+/// Returns [`PerceptionError::KekulizationFailed`] when any bond touches a non-ring atom.
 fn validate_aromatic_bonds_in_rings(
     molecule: &AnnotatedMolecule,
     aromatic_bonds: &[usize],
@@ -244,6 +314,15 @@ fn validate_aromatic_bonds_in_rings(
     Ok(())
 }
 
+/// Returns the maximum valence allowed for the provided element.
+///
+/// # Arguments
+///
+/// * `element` - Element whose typical valence limit should be enforced.
+///
+/// # Returns
+///
+/// Maximum valence counted toward aromatic assignments.
 fn get_max_valence(element: Element) -> u8 {
     match element {
         Element::H | Element::F | Element::Cl | Element::Br | Element::I => 1,
@@ -255,6 +334,15 @@ fn get_max_valence(element: Element) -> u8 {
     }
 }
 
+/// Converts a bond order into its valence contribution.
+///
+/// # Arguments
+///
+/// * `order` - Bond order being counted toward valence.
+///
+/// # Returns
+///
+/// Integer contribution consistent with typical valence bookkeeping.
 fn bond_order_to_valence(order: BondOrder) -> u8 {
     match order {
         BondOrder::Single => 1,
