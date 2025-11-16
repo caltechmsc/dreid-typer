@@ -1,7 +1,27 @@
+//! Identifies conjugated systems via Pauling perception and additional local heuristics.
+//!
+//! After the `pauling` library finds resonance systems, this module reinforces or suppresses
+//! conjugation flags for specific motifs such as amides, sulfonamides, halogen oxyanions, and
+//! sigma-bound sulfurs.
+
 use super::model::AnnotatedMolecule;
 use crate::core::error::PerceptionError;
 use crate::core::properties::{BondOrder, Element};
 
+/// Runs resonance perception and applies local adjustments for tricky motifs.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule whose atoms will be tagged as conjugated or not.
+///
+/// # Returns
+///
+/// `Ok(())` when all systems are processed.
+///
+/// # Errors
+///
+/// Propagates [`PerceptionError::PaulingError`] when the external library fails or
+/// [`PerceptionError::Other`] if it returns invalid atom identifiers.
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     let conjugated_systems =
         pauling::find_resonance_systems(molecule).map_err(PerceptionError::PaulingError)?;
@@ -24,6 +44,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     Ok(())
 }
 
+/// Applies supplemental resonance heuristics after `pauling` completes.
 fn apply_local_resonance_patterns(molecule: &mut AnnotatedMolecule) {
     mark_aromatic_atoms_conjugated(molecule);
     mark_amide_and_thioamide_systems(molecule);
@@ -32,6 +53,7 @@ fn apply_local_resonance_patterns(molecule: &mut AnnotatedMolecule) {
     demote_sigma_bound_sulfurs(molecule);
 }
 
+/// Ensures aromatic atoms are always marked as conjugated.
 fn mark_aromatic_atoms_conjugated(molecule: &mut AnnotatedMolecule) {
     for atom in &mut molecule.atoms {
         if atom.is_aromatic {
@@ -40,6 +62,11 @@ fn mark_aromatic_atoms_conjugated(molecule: &mut AnnotatedMolecule) {
     }
 }
 
+/// Adds amide/thioamide fragments to conjugated systems when lone-pair donors are present.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule to inspect.
 fn mark_amide_and_thioamide_systems(molecule: &mut AnnotatedMolecule) {
     for pivot_idx in 0..molecule.atoms.len() {
         if molecule.atoms[pivot_idx].element != Element::C {
@@ -90,6 +117,7 @@ fn mark_amide_and_thioamide_systems(molecule: &mut AnnotatedMolecule) {
     }
 }
 
+/// Marks sulfonamide sulfurs and nitrogens as conjugated when two S=O bonds exist.
 fn mark_sulfonamide_systems(molecule: &mut AnnotatedMolecule) {
     for s_idx in 0..molecule.atoms.len() {
         if molecule.atoms[s_idx].element != Element::S {
@@ -123,6 +151,7 @@ fn mark_sulfonamide_systems(molecule: &mut AnnotatedMolecule) {
     }
 }
 
+/// Clears conjugation on oxygens bonded to hypervalent halogens.
 fn suppress_halogen_oxyanion_conjugation(molecule: &mut AnnotatedMolecule) {
     for center_idx in 0..molecule.atoms.len() {
         if !matches!(
@@ -149,6 +178,7 @@ fn suppress_halogen_oxyanion_conjugation(molecule: &mut AnnotatedMolecule) {
     }
 }
 
+/// Removes conjugation flags from sulfurs that only participate in σ bonds.
 fn demote_sigma_bound_sulfurs(molecule: &mut AnnotatedMolecule) {
     for s_idx in 0..molecule.atoms.len() {
         let (element, is_conjugated) = {
@@ -174,6 +204,12 @@ fn demote_sigma_bound_sulfurs(molecule: &mut AnnotatedMolecule) {
     }
 }
 
+/// Helper that sets `is_in_conjugated_system` for each supplied atom.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule to modify.
+/// * `atom_ids` - Atom indices that should be marked as conjugated.
 fn mark_atoms_conjugated<const N: usize>(molecule: &mut AnnotatedMolecule, atom_ids: [usize; N]) {
     for atom_id in atom_ids {
         if let Some(atom) = molecule.atoms.get_mut(atom_id) {
