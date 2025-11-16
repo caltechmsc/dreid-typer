@@ -3038,3 +3038,56 @@ pub const CHOLINE_CATION: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const PERCHLORATE_ANION: MoleculeTestCase = MoleculeTestCase {
+    name: "ACMBPN - Perchlorate Anion",
+    atoms: &[
+        AtomBlueprint {
+            label: "CL",
+            element: Element::Cl,
+            expected_type: "Cl_",
+        },
+        AtomBlueprint {
+            label: "O1",
+            element: Element::O,
+            expected_type: "O_2",
+        },
+        AtomBlueprint {
+            label: "O2",
+            element: Element::O,
+            expected_type: "O_2",
+        },
+        AtomBlueprint {
+            label: "O3",
+            element: Element::O,
+            expected_type: "O_2",
+        },
+        AtomBlueprint {
+            label: "O4",
+            element: Element::O,
+            expected_type: "O_2",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "CL",
+            atom2_label: "O1",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "CL",
+            atom2_label: "O2",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "CL",
+            atom2_label: "O3",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "CL",
+            atom2_label: "O4",
+            order: BondOrder::Single,
+        },
+    ],
+};
