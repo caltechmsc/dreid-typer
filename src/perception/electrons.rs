@@ -1,7 +1,31 @@
+//! Assigns formal charges and lone pairs by recognizing charged motifs before falling back to
+//! element-based heuristics.
+//!
+//! The routines scan for well-known functional groups (nitro, sulfone, ammonium, etc.), mark their
+//! atoms as processed to avoid double counting, and finally run a general valence-based pass for the
+//! remaining atoms.
+
 use super::model::AnnotatedMolecule;
 use crate::core::error::PerceptionError;
 use crate::core::properties::{BondOrder, Element};
 
+/// Runs the electron perception pipeline on the annotated molecule.
+///
+/// Specialized passes label recognizable charged fragments first so the generic valence pass can
+/// operate only on leftover atoms without clobbering explicit assignments.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule whose atoms will receive charges and lone pairs.
+///
+/// # Returns
+///
+/// `Ok(())` once all perception passes finish successfully.
+///
+/// # Errors
+///
+/// Propagates any [`PerceptionError`] emitted by helper routines (currently only `assign_general`
+/// can error if an element lacks valence data).
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     let mut processed = vec![false; molecule.atoms.len()];
 
@@ -21,6 +45,16 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     Ok(())
 }
 
+/// Detects nitrones and applies the canonical charge distribution.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule to inspect and mutate.
+/// * `processed` - Scratch mask indicating atoms already assigned by previous passes.
+///
+/// # Returns
+///
+/// `Ok(())`; this routine never emits an error.
 fn assign_nitrone_groups(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -62,6 +96,16 @@ fn assign_nitrone_groups(
     Ok(())
 }
 
+/// Labels nitro groups with the expected +1/N and -1/O assignment.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule to inspect.
+/// * `processed` - Mask tracking atoms already handled.
+///
+/// # Returns
+///
+/// Always returns `Ok(())`.
 fn assign_nitro_groups(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -117,6 +161,16 @@ fn assign_nitro_groups(
     Ok(())
 }
 
+/// Handles sulfoxide and sulfone motifs, setting sulfur and oxygen charges.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule being mutated.
+/// * `processed` - Mask updated for sulfur/oxygen atoms already visited.
+///
+/// # Returns
+///
+/// `Ok(())` after all sulfur patterns are applied.
 fn assign_sulfur_oxides(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -167,6 +221,16 @@ fn assign_sulfur_oxides(
     Ok(())
 }
 
+/// Assigns charges to halogen oxyanion oxygens, distinguishing single vs. double bonds.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule under inspection.
+/// * `processed` - Mutable mask used to avoid reassigning oxygens.
+///
+/// # Returns
+///
+/// `Ok(())` when the pass completes.
 fn assign_halogen_oxyanions(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -209,6 +273,16 @@ fn assign_halogen_oxyanions(
     Ok(())
 }
 
+/// Captures phosphoryl species with a single P=O double bond and applies +1/-1 charges.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule to mutate.
+/// * `processed` - Mask marking atoms that should not be revisited later.
+///
+/// # Returns
+///
+/// Always returns `Ok(())`.
 fn assign_phosphorus_oxides(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -244,6 +318,16 @@ fn assign_phosphorus_oxides(
     Ok(())
 }
 
+/// Detects carboxylate anions and assigns the single-bonded oxygen a -1 charge.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule to examine.
+/// * `processed` - Mask updated for atoms within the recognized carboxylate.
+///
+/// # Returns
+///
+/// `Ok(())` when complete.
 fn assign_carboxylate_anions(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -296,6 +380,16 @@ fn assign_carboxylate_anions(
     Ok(())
 }
 
+/// Marks ammonium/iminium nitrogens as positively charged when geometry criteria match.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule containing candidate nitrogens.
+/// * `processed` - Mask tracking which atoms have already been finalized.
+///
+/// # Returns
+///
+/// `Ok(())`; the function never errors.
 fn assign_ammonium_and_iminium(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -320,6 +414,16 @@ fn assign_ammonium_and_iminium(
     Ok(())
 }
 
+/// Handles oxonium/sulfonium (onium) ions by enforcing +1 charge and lone pairs.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule.
+/// * `processed` - Mask preventing repeated assignment.
+///
+/// # Returns
+///
+/// `Ok(())` after the pass finishes.
 fn assign_onium_ions(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -345,6 +449,16 @@ fn assign_onium_ions(
     Ok(())
 }
 
+/// Detects tetravalent phosphorus centers lacking P=O and labels phosphonium ions.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule being mutated.
+/// * `processed` - Mask ensuring atoms are only assigned once.
+///
+/// # Returns
+///
+/// Always returns `Ok(())`.
 fn assign_phosphonium_ions(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -371,6 +485,16 @@ fn assign_phosphonium_ions(
     Ok(())
 }
 
+/// Marks enolates and phenates by giving terminal oxygens a -1 charge when attached to sp² carbon.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule being inspected.
+/// * `processed` - Mask recording atoms that no longer need processing.
+///
+/// # Returns
+///
+/// `Ok(())` when done.
 fn assign_enolate_phenate_anions(
     molecule: &mut AnnotatedMolecule,
     processed: &mut [bool],
@@ -406,6 +530,20 @@ fn assign_enolate_phenate_anions(
     Ok(())
 }
 
+/// Fallback valence-based assignment for atoms not matched by specialized rules.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule whose remaining atoms get charges/lone pairs.
+/// * `processed` - Mask denoting which atoms should be skipped (already solved).
+///
+/// # Returns
+///
+/// `Ok(())` once complete.
+///
+/// # Errors
+///
+/// Returns [`PerceptionError::Other`] if an element lacks a `valence_electrons` definition.
 fn assign_general(
     molecule: &mut AnnotatedMolecule,
     processed: &[bool],
@@ -458,6 +596,15 @@ fn assign_general(
     Ok(())
 }
 
+/// Converts a bond order into its valence contribution for generic bookkeeping.
+///
+/// # Arguments
+///
+/// * `order` - Bond order encountered when summing bonding electrons.
+///
+/// # Returns
+///
+/// Valence contribution counted toward an atom's bonding electron total.
 fn bond_order_to_valence(order: BondOrder) -> u8 {
     match order {
         BondOrder::Single => 1,
