@@ -1088,3 +1088,136 @@ pub const DEOXYADENOSINE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const DINUCLEOTIDE_BACKBONE: MoleculeTestCase = MoleculeTestCase {
+    name: "Dinucleotide Backbone Fragment",
+    atoms: &[
+        AtomBlueprint {
+            label: "C_up",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "O3'_up",
+            element: Element::O,
+            expected_type: "O_3",
+        },
+        AtomBlueprint {
+            label: "P",
+            element: Element::P,
+            expected_type: "P_3",
+        },
+        AtomBlueprint {
+            label: "O1P",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "O2P",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "O5'_down",
+            element: Element::O,
+            expected_type: "O_3",
+        },
+        AtomBlueprint {
+            label: "C_down",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "H_up1",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_up2",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_up3",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_down1",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_down2",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_down3",
+            element: Element::H,
+            expected_type: "H_",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "C_up",
+            atom2_label: "O3'_up",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "O3'_up",
+            atom2_label: "P",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O5'_down",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "O5'_down",
+            atom2_label: "C_down",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O1P",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O2P",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_up",
+            atom2_label: "H_up1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_up",
+            atom2_label: "H_up2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_up",
+            atom2_label: "H_up3",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_down",
+            atom2_label: "H_down1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_down",
+            atom2_label: "H_down2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_down",
+            atom2_label: "H_down3",
+            order: BondOrder::Single,
+        },
+    ],
+};
