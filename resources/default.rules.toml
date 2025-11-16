@@ -39,6 +39,12 @@ priority = 400
 type = "O_R"
 conditions = { element = "O", hybridization = "Resonant" }
 
+[[rule]]
+name = "S_Resonant"
+priority = 400
+type = "S_R"
+conditions = { element = "S", hybridization = "Resonant" }
+
 # ------------------------------------------------------------------------------
 # §3. Geometry-Based Rules (Standard Hierarchy: SP > SP2 > SP3)
 #    These rules map directly from the perceived hybridization state.
