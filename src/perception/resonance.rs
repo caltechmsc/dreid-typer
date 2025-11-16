@@ -297,6 +297,41 @@ mod tests {
         )
     }
 
+    fn thioamide_fragment() -> AnnotatedMolecule {
+        build_molecule(
+            &[Element::N, Element::C, Element::S, Element::N],
+            &[
+                (0, 1, BondOrder::Single),
+                (1, 2, BondOrder::Double),
+                (1, 3, BondOrder::Single),
+            ],
+        )
+    }
+
+    fn sulfonamide_fragment() -> AnnotatedMolecule {
+        build_molecule(
+            &[Element::S, Element::O, Element::O, Element::N, Element::C],
+            &[
+                (0, 1, BondOrder::Double),
+                (0, 2, BondOrder::Double),
+                (0, 3, BondOrder::Single),
+                (0, 4, BondOrder::Single),
+            ],
+        )
+    }
+
+    fn perchlorate_fragment() -> AnnotatedMolecule {
+        build_molecule(
+            &[Element::Cl, Element::O, Element::O, Element::O, Element::O],
+            &[
+                (0, 1, BondOrder::Double),
+                (0, 2, BondOrder::Double),
+                (0, 3, BondOrder::Double),
+                (0, 4, BondOrder::Single),
+            ],
+        )
+    }
+
     #[test]
     fn linear_diene_marks_expected_chain_atoms() {
         let molecule = run_resonance(butadiene());
@@ -325,5 +360,116 @@ mod tests {
     fn saturated_hexane_has_no_conjugation() {
         let molecule = run_resonance(hexane());
         assert_conjugated_atoms(&molecule, &[]);
+    }
+
+    #[test]
+    fn thioamide_like_system_marks_expected_atoms() {
+        let mut molecule = thioamide_fragment();
+        super::super::electrons::perceive(&mut molecule)
+            .expect("electron perception should succeed for thioamide fragment");
+        let molecule = run_resonance(molecule);
+
+        assert!(
+            molecule.atoms[0].is_in_conjugated_system,
+            "first nitrogen should be conjugated"
+        );
+        assert!(
+            molecule.atoms[1].is_in_conjugated_system,
+            "carbon should be conjugated"
+        );
+        assert!(
+            molecule.atoms[2].is_in_conjugated_system,
+            "sulfur should be conjugated"
+        );
+        assert!(
+            molecule.atoms[3].is_in_conjugated_system,
+            "second nitrogen should be conjugated"
+        );
+    }
+
+    #[test]
+    fn sulfonamide_nitrogen_becomes_conjugated() {
+        let mut molecule = sulfonamide_fragment();
+        super::super::electrons::perceive(&mut molecule)
+            .expect("electron perception should succeed for sulfonamide fragment");
+        let molecule = run_resonance(molecule);
+
+        assert!(
+            molecule.atoms[0].is_in_conjugated_system,
+            "sulfur should be conjugated"
+        );
+        assert!(
+            molecule.atoms[3].is_in_conjugated_system,
+            "nitrogen should be conjugated"
+        );
+    }
+
+    #[test]
+    fn halogen_oxyanions_demote_terminal_oxygens() {
+        let mut molecule = perchlorate_fragment();
+        for oxygen_idx in 1..4 {
+            molecule.atoms[oxygen_idx].is_in_conjugated_system = true;
+        }
+        apply_local_resonance_patterns(&mut molecule);
+
+        for oxygen_idx in 1..4 {
+            assert!(
+                !molecule.atoms[oxygen_idx].is_in_conjugated_system,
+                "oxygen {oxygen_idx} should not remain conjugated"
+            );
+        }
+    }
+
+    #[test]
+    fn aromatic_atoms_are_forced_into_conjugation() {
+        let mut molecule = benzene_ring();
+        for idx in 0..6 {
+            molecule.atoms[idx].is_aromatic = true;
+            molecule.atoms[idx].is_in_conjugated_system = false;
+        }
+
+        apply_local_resonance_patterns(&mut molecule);
+
+        assert_conjugated_atoms(&molecule, &[0, 1, 2, 3, 4, 5]);
+    }
+
+    #[test]
+    fn sigma_bound_sulfurs_remain_non_conjugated() {
+        let mut molecule = build_molecule(
+            &[Element::S, Element::C, Element::C, Element::S, Element::C],
+            &[
+                (0, 1, BondOrder::Single),
+                (1, 2, BondOrder::Double),
+                (2, 3, BondOrder::Single),
+                (3, 4, BondOrder::Single),
+            ],
+        );
+
+        for atom in &mut molecule.atoms {
+            atom.is_in_conjugated_system = true;
+        }
+
+        apply_local_resonance_patterns(&mut molecule);
+
+        assert!(
+            !molecule.atoms[0].is_in_conjugated_system,
+            "terminal thioether sulfur should be demoted"
+        );
+        assert!(
+            !molecule.atoms[3].is_in_conjugated_system,
+            "second thioether sulfur should be demoted"
+        );
+        assert!(
+            molecule.atoms[1].is_in_conjugated_system,
+            "sp2 carbon should remain conjugated"
+        );
+        assert!(
+            molecule.atoms[2].is_in_conjugated_system,
+            "allylic carbon should remain conjugated"
+        );
+        assert!(
+            molecule.atoms[4].is_in_conjugated_system,
+            "downstream carbon should remain untouched"
+        );
     }
 }
