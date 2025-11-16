@@ -2178,3 +2178,106 @@ pub const DIMETHYL_SULFOXIDE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const METHANESULFONAMIDE: MoleculeTestCase = MoleculeTestCase {
+    name: "ACISUL - Methanesulfonamide",
+    atoms: &[
+        AtomBlueprint {
+            label: "S",
+            element: Element::S,
+            expected_type: "S_3",
+        },
+        AtomBlueprint {
+            label: "O1",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "O2",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "N",
+            element: Element::N,
+            expected_type: "N_R",
+        },
+        AtomBlueprint {
+            label: "C",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "H_Na",
+            element: Element::H,
+            expected_type: "H_HB",
+        },
+        AtomBlueprint {
+            label: "H_Nb",
+            element: Element::H,
+            expected_type: "H_HB",
+        },
+        AtomBlueprint {
+            label: "H_Ca",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Cb",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Cc",
+            element: Element::H,
+            expected_type: "H_",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "S",
+            atom2_label: "O1",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "S",
+            atom2_label: "O2",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "S",
+            atom2_label: "N",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "S",
+            atom2_label: "C",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N",
+            atom2_label: "H_Na",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N",
+            atom2_label: "H_Nb",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C",
+            atom2_label: "H_Ca",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C",
+            atom2_label: "H_Cb",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C",
+            atom2_label: "H_Cc",
+            order: BondOrder::Single,
+        },
+    ],
+};
