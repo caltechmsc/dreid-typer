@@ -61,6 +61,79 @@ mod tests {
         graph
     }
 
+    fn acridine_graph() -> MolecularGraph {
+        let mut graph = MolecularGraph::new();
+        let c1 = graph.add_atom(Element::C);
+        let c2 = graph.add_atom(Element::C);
+        let c3 = graph.add_atom(Element::C);
+        let c4 = graph.add_atom(Element::C);
+        let c5 = graph.add_atom(Element::C);
+        let c6 = graph.add_atom(Element::C);
+        let c7 = graph.add_atom(Element::C);
+        let c8 = graph.add_atom(Element::C);
+        let c9 = graph.add_atom(Element::C);
+        let n10 = graph.add_atom(Element::N);
+        let c11 = graph.add_atom(Element::C);
+        let c12 = graph.add_atom(Element::C);
+        let c13 = graph.add_atom(Element::C);
+        let c14 = graph.add_atom(Element::C);
+
+        let h1 = graph.add_atom(Element::H);
+        let h2 = graph.add_atom(Element::H);
+        let h3 = graph.add_atom(Element::H);
+        let h4 = graph.add_atom(Element::H);
+        let h7 = graph.add_atom(Element::H);
+        let h8 = graph.add_atom(Element::H);
+        let h11 = graph.add_atom(Element::H);
+        let h12 = graph.add_atom(Element::H);
+        let h13 = graph.add_atom(Element::H);
+        let h14 = graph.add_atom(Element::H);
+
+        let aromatic_edges = [
+            (c1, c2),
+            (c2, c3),
+            (c3, c4),
+            (c4, c5),
+            (c5, c6),
+            (c6, c1),
+            (c5, c7),
+            (c7, c8),
+            (c8, c9),
+            (c9, n10),
+            (n10, c6),
+            (n10, c11),
+            (c11, c12),
+            (c12, c13),
+            (c13, c14),
+            (c14, c9),
+        ];
+        for &(u, v) in &aromatic_edges {
+            graph
+                .add_bond(u, v, BondOrder::Aromatic)
+                .expect("valid aromatic bond in acridine core");
+        }
+
+        let single_edges = [
+            (c1, h1),
+            (c2, h2),
+            (c3, h3),
+            (c4, h4),
+            (c7, h7),
+            (c8, h8),
+            (c11, h11),
+            (c12, h12),
+            (c13, h13),
+            (c14, h14),
+        ];
+        for &(u, v) in &single_edges {
+            graph
+                .add_bond(u, v, BondOrder::Single)
+                .expect("valid sigma bond in acridine");
+        }
+
+        graph
+    }
+
     fn aromatic_bond_outside_ring_graph() -> MolecularGraph {
         let mut graph = MolecularGraph::new();
         let c1 = graph.add_atom(Element::C);
@@ -118,6 +191,91 @@ mod tests {
                 .all(|bond| bond.order != BondOrder::Aromatic),
             "all aromatic bonds should be Kekulé-expanded"
         );
+    }
+
+    #[test]
+    fn perception_pipeline_marks_acridine_as_aromatic() {
+        let graph = acridine_graph();
+        let molecule = perceive(&graph).expect("perception pipeline should succeed");
+
+        assert!(
+            molecule.rings.len() >= 3,
+            "acridine should yield multiple rings, found {}",
+            molecule.rings.len()
+        );
+
+        let doubleless: Vec<_> = molecule
+            .atoms
+            .iter()
+            .enumerate()
+            .filter(|(_, atom)| atom.element != Element::H)
+            .filter(|&(idx, _)| {
+                !molecule.adjacency[idx]
+                    .iter()
+                    .filter(|&&(neighbor_id, _)| molecule.atoms[neighbor_id].is_in_ring)
+                    .any(|&(_, order)| order == BondOrder::Double)
+            })
+            .map(|(idx, _)| idx)
+            .collect();
+        assert!(
+            doubleless
+                .iter()
+                .all(|&idx| molecule.atoms[idx].is_resonant),
+            "heavy ring atoms without double bonds must originate from aromatic input: {:?}",
+            doubleless
+        );
+
+        let resonant_heavy: Vec<_> = molecule
+            .atoms
+            .iter()
+            .enumerate()
+            .filter(|(_, atom)| atom.element != Element::H)
+            .filter(|(_, atom)| atom.is_resonant)
+            .map(|(idx, _)| idx)
+            .collect();
+
+        assert_eq!(
+            resonant_heavy.len(),
+            14,
+            "all heavy atoms in acridine should be flagged resonant"
+        );
+
+        let non_ring_heavy: Vec<_> = molecule
+            .atoms
+            .iter()
+            .enumerate()
+            .filter(|(_, atom)| atom.element != Element::H)
+            .filter(|(_, atom)| !atom.is_in_ring)
+            .map(|(idx, _)| idx)
+            .collect();
+
+        assert!(
+            non_ring_heavy.is_empty(),
+            "every heavy atom in acridine should belong to a ring: {:?}",
+            non_ring_heavy
+        );
+
+        let aromatic_heavy: Vec<_> = molecule
+            .atoms
+            .iter()
+            .enumerate()
+            .filter(|(_, atom)| atom.element != Element::H)
+            .filter(|(_, atom)| atom.is_aromatic)
+            .map(|(idx, _)| idx)
+            .collect();
+
+        assert_eq!(
+            aromatic_heavy.len(),
+            14,
+            "all heavy atoms in acridine should be aromatic"
+        );
+
+        for idx in aromatic_heavy {
+            assert!(
+                molecule.atoms[idx].is_in_conjugated_system,
+                "aromatic atom {idx} should be marked conjugated"
+            );
+        }
     }
 
     #[test]
