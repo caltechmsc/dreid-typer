@@ -1,5 +1,6 @@
 use super::model::AnnotatedMolecule;
 use crate::core::error::PerceptionError;
+use crate::core::properties::{BondOrder, Element};
 
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     let conjugated_systems =
@@ -18,7 +19,161 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
         }
     }
 
+    apply_local_resonance_patterns(molecule);
+
     Ok(())
+}
+
+fn apply_local_resonance_patterns(molecule: &mut AnnotatedMolecule) {
+    mark_aromatic_atoms_conjugated(molecule);
+    mark_amide_and_thioamide_systems(molecule);
+    mark_sulfonamide_systems(molecule);
+    suppress_halogen_oxyanion_conjugation(molecule);
+    demote_sigma_bound_sulfurs(molecule);
+}
+
+fn mark_aromatic_atoms_conjugated(molecule: &mut AnnotatedMolecule) {
+    for atom in &mut molecule.atoms {
+        if atom.is_aromatic {
+            atom.is_in_conjugated_system = true;
+        }
+    }
+}
+
+fn mark_amide_and_thioamide_systems(molecule: &mut AnnotatedMolecule) {
+    for pivot_idx in 0..molecule.atoms.len() {
+        if molecule.atoms[pivot_idx].element != Element::C {
+            continue;
+        }
+
+        let pi_partners: Vec<_> = molecule.adjacency[pivot_idx]
+            .iter()
+            .filter(|&&(_, order)| order == BondOrder::Double)
+            .filter_map(|&(neighbor_id, _)| {
+                let neighbor = &molecule.atoms[neighbor_id];
+                matches!(neighbor.element, Element::O | Element::S).then_some(neighbor_id)
+            })
+            .collect();
+
+        if pi_partners.is_empty() {
+            continue;
+        }
+
+        let hetero_donors: Vec<_> = molecule.adjacency[pivot_idx]
+            .iter()
+            .filter(|&&(_, order)| order == BondOrder::Single)
+            .filter_map(|&(neighbor_id, _)| {
+                let neighbor = &molecule.atoms[neighbor_id];
+                if neighbor_id != pivot_idx
+                    && matches!(neighbor.element, Element::N | Element::O | Element::S)
+                    && neighbor.lone_pairs > 0
+                {
+                    Some(neighbor_id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if hetero_donors.is_empty() {
+            continue;
+        }
+
+        mark_atoms_conjugated(molecule, [pivot_idx]);
+
+        for pi_partner in pi_partners {
+            mark_atoms_conjugated(molecule, [pi_partner]);
+            for &donor in &hetero_donors {
+                mark_atoms_conjugated(molecule, [donor]);
+            }
+        }
+    }
+}
+
+fn mark_sulfonamide_systems(molecule: &mut AnnotatedMolecule) {
+    for s_idx in 0..molecule.atoms.len() {
+        if molecule.atoms[s_idx].element != Element::S {
+            continue;
+        }
+
+        let double_bonded_oxygens: Vec<_> = molecule.adjacency[s_idx]
+            .iter()
+            .filter(|&&(_, order)| order == BondOrder::Double)
+            .filter_map(|&(neighbor_id, _)| {
+                (molecule.atoms[neighbor_id].element == Element::O).then_some(neighbor_id)
+            })
+            .collect();
+
+        if double_bonded_oxygens.len() < 2 {
+            continue;
+        }
+
+        let sulfonamide_neighbors: Vec<_> = molecule.adjacency[s_idx]
+            .iter()
+            .filter(|&&(_, order)| order == BondOrder::Single)
+            .filter_map(|&(neighbor_id, _)| {
+                let neighbor = &molecule.atoms[neighbor_id];
+                (neighbor.element == Element::N && neighbor.lone_pairs > 0).then_some(neighbor_id)
+            })
+            .collect();
+
+        for neighbor_id in sulfonamide_neighbors {
+            mark_atoms_conjugated(molecule, [s_idx, neighbor_id]);
+        }
+    }
+}
+
+fn suppress_halogen_oxyanion_conjugation(molecule: &mut AnnotatedMolecule) {
+    for center_idx in 0..molecule.atoms.len() {
+        if !matches!(
+            molecule.atoms[center_idx].element,
+            Element::Cl | Element::Br | Element::I
+        ) {
+            continue;
+        }
+
+        let oxygen_neighbors: Vec<_> = molecule.adjacency[center_idx]
+            .iter()
+            .filter_map(|&(neighbor_id, _)| {
+                (molecule.atoms[neighbor_id].element == Element::O).then_some(neighbor_id)
+            })
+            .collect();
+
+        if oxygen_neighbors.len() >= 3 {
+            for oxygen_idx in oxygen_neighbors {
+                if let Some(atom) = molecule.atoms.get_mut(oxygen_idx) {
+                    atom.is_in_conjugated_system = false;
+                }
+            }
+        }
+    }
+}
+
+fn demote_sigma_bound_sulfurs(molecule: &mut AnnotatedMolecule) {
+    for s_idx in 0..molecule.atoms.len() {
+        let atom = &molecule.atoms[s_idx];
+        if atom.element != Element::S || !atom.is_in_conjugated_system {
+            continue;
+        }
+
+        let has_pi_bond = molecule.adjacency[s_idx]
+            .iter()
+            .any(|&(_, order)| order != BondOrder::Single);
+
+        if !has_pi_bond {
+            if let Some(atom_mut) = molecule.atoms.get_mut(s_idx) {
+                atom_mut.is_in_conjugated_system = false;
+            }
+        }
+    }
+}
+
+fn mark_atoms_conjugated<const N: usize>(molecule: &mut AnnotatedMolecule, atom_ids: [usize; N]) {
+    for atom_id in atom_ids {
+        if let Some(atom) = molecule.atoms.get_mut(atom_id) {
+            atom.is_in_conjugated_system = true;
+        }
+    }
 }
 
 #[cfg(test)]
