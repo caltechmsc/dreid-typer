@@ -972,3 +972,131 @@ pub const DECALIN: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const ABAXES: MoleculeTestCase = MoleculeTestCase {
+    name: "ABAXES - 1,4-dithiacyclohex-2-ene",
+    atoms: &[
+        AtomBlueprint {
+            label: "S1",
+            element: Element::S,
+            expected_type: "S_3",
+        },
+        AtomBlueprint {
+            label: "C2",
+            element: Element::C,
+            expected_type: "C_R",
+        },
+        AtomBlueprint {
+            label: "C3",
+            element: Element::C,
+            expected_type: "C_R",
+        },
+        AtomBlueprint {
+            label: "S4",
+            element: Element::S,
+            expected_type: "S_3",
+        },
+        AtomBlueprint {
+            label: "C5",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C6",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "H2",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H3",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H51",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H52",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H61",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H62",
+            element: Element::H,
+            expected_type: "H_",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "S1",
+            atom2_label: "C2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "C3",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "S4",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "S4",
+            atom2_label: "C5",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C6",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "S1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "H2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "H3",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "H51",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "H52",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "H61",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "H62",
+            order: BondOrder::Single,
+        },
+    ],
+};
