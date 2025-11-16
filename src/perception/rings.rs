@@ -1,8 +1,26 @@
+//! Detects rings and records small-set cycle representatives for subsequent perception stages.
+//!
+//! This module builds a minimal cycle basis from the molecular graph so aromaticity, resonance,
+//! and hybridization passes can quickly determine ring membership and sizes.
+
 use super::model::{AnnotatedMolecule, Ring};
 use crate::core::error::PerceptionError;
 use crate::core::properties::BondOrder;
 use std::collections::{HashMap, VecDeque};
 
+/// Computes ring information for the supplied annotated molecule.
+///
+/// Runs connected-component counting, enumerates simple cycle candidates, chooses a minimal cycle
+/// basis, and marks atoms with ring membership metadata.
+///
+/// # Arguments
+///
+/// * `molecule` - Mutable annotated molecule that will receive ring annotations.
+///
+/// # Returns
+///
+/// `Ok(())` whether rings exist or not; the step keeps the `Result` signature to match the broader
+/// perception pipeline but currently never emits [`PerceptionError`].
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     let num_atoms = molecule.atoms.len();
     if num_atoms == 0 {
@@ -44,12 +62,25 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     Ok(())
 }
 
+/// Cycle descriptor storing both atom and bond identifiers.
 struct RingCandidate {
+    /// Ordered atom identifiers along the candidate cycle.
     atom_ids: Vec<usize>,
+    /// Ordered bond identifiers along the candidate cycle.
     bond_ids: Vec<usize>,
+    /// Cycle length measured in edges.
     len: usize,
 }
 
+/// Enumerates simple cycles by removing each bond and searching for alternate paths.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule whose adjacency and bonds will be analyzed.
+///
+/// # Returns
+///
+/// Collection of candidate rings containing atom and bond identifiers.
 fn enumerate_cycle_candidates(molecule: &AnnotatedMolecule) -> Vec<RingCandidate> {
     let mut candidates = Vec::new();
 
@@ -75,6 +106,17 @@ fn enumerate_cycle_candidates(molecule: &AnnotatedMolecule) -> Vec<RingCandidate
     candidates
 }
 
+/// Selects up to `cyclomatic_number` cycles forming a minimal basis using Gaussian elimination.
+///
+/// # Arguments
+///
+/// * `candidates` - Candidate cycles sorted by length.
+/// * `cyclomatic_number` - Target number of independent cycles to keep.
+/// * `bond_id_to_index` - Mapping from bond IDs to dense indices for bit-vector math.
+///
+/// # Returns
+///
+/// Minimal cycle basis expressed as a subset of the input candidates.
 fn select_minimal_cycle_basis(
     mut candidates: Vec<RingCandidate>,
     cyclomatic_number: usize,
@@ -107,6 +149,11 @@ fn select_minimal_cycle_basis(
     selected_rings
 }
 
+/// Marks atoms as ring members and records their smallest ring size.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule updated in-place.
 fn annotate_atoms_with_ring_info(molecule: &mut AnnotatedMolecule) {
     for ring in &molecule.rings {
         let ring_size = ring.len() as u8;
@@ -123,12 +170,28 @@ fn annotate_atoms_with_ring_info(molecule: &mut AnnotatedMolecule) {
     }
 }
 
+/// Stores the path discovered between two atoms when a bond is removed.
 struct PathData {
+    /// Atom identifiers along the path (excluding the destination, which is implied).
     atom_ids: Vec<usize>,
+    /// Bond identifiers traversed along the path.
     bond_ids: Vec<usize>,
+    /// Path length measured in edges.
     len: usize,
 }
 
+/// BFS-based shortest path search that optionally excludes one bond from consideration.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule providing adjacency and bond metadata.
+/// * `start_id` - Starting atom identifier.
+/// * `end_id` - Destination atom identifier.
+/// * `excluded_bond_id` - Optional bond ID to ignore, simulating its removal.
+///
+/// # Returns
+///
+/// A [`PathData`] instance if a route exists or `None` when the nodes disconnect.
 fn shortest_path_bfs(
     molecule: &AnnotatedMolecule,
     start_id: usize,
@@ -196,6 +259,16 @@ fn shortest_path_bfs(
     })
 }
 
+/// Counts the number of connected components in the molecular graph.
+///
+/// # Arguments
+///
+/// * `num_atoms` - Number of atoms in the graph.
+/// * `adjacency` - Neighbor list for each atom.
+///
+/// # Returns
+///
+/// Count of disjoint components.
 fn count_components(num_atoms: usize, adjacency: &[Vec<(usize, BondOrder)>]) -> usize {
     let mut visited = vec![false; num_atoms];
     let mut components = 0;
@@ -217,13 +290,21 @@ fn count_components(num_atoms: usize, adjacency: &[Vec<(usize, BondOrder)>]) -> 
     components
 }
 
+/// Sparse bit vector used for Gaussian elimination over GF(2).
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct BitVec {
+    /// Packed bit storage.
     data: Vec<u64>,
+    /// Number of significant bits represented by the vector.
     size: usize,
 }
 
 impl BitVec {
+    /// Creates a zero-initialized bit vector with the requested number of bits.
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - Number of significant bits to represent.
     fn new(size: usize) -> Self {
         let words = size.div_ceil(64);
         Self {
@@ -232,6 +313,12 @@ impl BitVec {
         }
     }
 
+    /// Builds a bit vector with ones at positions mapped from the provided bond identifiers.
+    ///
+    /// # Arguments
+    ///
+    /// * `bond_ids` - Bonds participating in the cycle.
+    /// * `bond_id_to_index` - Dense index lookup for bonds.
     fn from_bond_ids(bond_ids: &[usize], bond_id_to_index: &HashMap<usize, usize>) -> Self {
         let mut bitvec = Self::new(bond_id_to_index.len());
         for bond_id in bond_ids {
@@ -246,6 +333,11 @@ impl BitVec {
         bitvec
     }
 
+    /// XORs the bit vector with another vector of equal length.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - Right-hand operand.
     fn xor(&mut self, other: &Self) {
         debug_assert_eq!(self.data.len(), other.data.len());
         for (a, b) in self.data.iter_mut().zip(&other.data) {
@@ -253,6 +345,11 @@ impl BitVec {
         }
     }
 
+    /// Tests whether the bit at `index` is set.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - Position to inspect.
     fn test(&self, index: usize) -> bool {
         if index >= self.size {
             return false;
@@ -262,6 +359,11 @@ impl BitVec {
         (self.data[word_idx] & (1u64 << bit_idx)) != 0
     }
 
+    /// Returns the index of the most significant set bit, if any.
+    ///
+    /// # Returns
+    ///
+    /// `Some(index)` when a set bit exists or `None` when the vector is zero.
     fn leading_one(&self) -> Option<usize> {
         for (word_idx_rev, &word) in self.data.iter().enumerate().rev() {
             if word != 0 {
