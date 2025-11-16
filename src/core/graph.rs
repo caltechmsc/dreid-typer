@@ -48,7 +48,7 @@ impl MolecularGraph {
     /// # Examples
     ///
     /// ```
-    /// use dreid_typer::core::graph::MolecularGraph;
+    /// use dreid_typer::MolecularGraph;
     /// let graph = MolecularGraph::new();
     /// assert!(graph.atoms.is_empty());
     /// assert!(graph.bonds.is_empty());
@@ -70,8 +70,7 @@ impl MolecularGraph {
     /// # Examples
     ///
     /// ```
-    /// use dreid_typer::core::graph::MolecularGraph;
-    /// use dreid_typer::core::properties::Element;
+    /// use dreid_typer::{Element, MolecularGraph};
     /// let mut graph = MolecularGraph::new();
     /// let carbon_id = graph.add_atom(Element::C);
     /// assert_eq!(carbon_id, 0);
@@ -103,8 +102,7 @@ impl MolecularGraph {
     /// # Examples
     ///
     /// ```
-    /// use dreid_typer::core::graph::MolecularGraph;
-    /// use dreid_typer::core::properties::{BondOrder, Element};
+    /// use dreid_typer::{BondOrder, Element, MolecularGraph};
     /// let mut graph = MolecularGraph::new();
     /// let c = graph.add_atom(Element::C);
     /// let o = graph.add_atom(Element::O);
