@@ -2692,3 +2692,136 @@ pub const ADENOSINE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const PHOSPHATE_ESTER: MoleculeTestCase = MoleculeTestCase {
+    name: "AEBDOD10 - Phosphate Ester",
+    atoms: &[
+        AtomBlueprint {
+            label: "P",
+            element: Element::P,
+            expected_type: "P_3",
+        },
+        AtomBlueprint {
+            label: "O_double",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "O_single_neg",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "O_bridge1",
+            element: Element::O,
+            expected_type: "O_3",
+        },
+        AtomBlueprint {
+            label: "O_bridge2",
+            element: Element::O,
+            expected_type: "O_3",
+        },
+        AtomBlueprint {
+            label: "C1",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C2",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "H_C1a",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C1b",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C1c",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C2a",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C2b",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C2c",
+            element: Element::H,
+            expected_type: "H_",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O_double",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O_single_neg",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O_bridge1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O_bridge2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "O_bridge1",
+            atom2_label: "C1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "O_bridge2",
+            atom2_label: "C2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "H_C1a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "H_C1b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "H_C1c",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "H_C2a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "H_C2b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "H_C2c",
+            order: BondOrder::Single,
+        },
+    ],
+};
