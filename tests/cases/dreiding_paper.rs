@@ -2825,3 +2825,216 @@ pub const PHOSPHATE_ESTER: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const CHOLINE_CATION: MoleculeTestCase = MoleculeTestCase {
+    name: "ACHTAR10 - Choline Cation",
+    atoms: &[
+        AtomBlueprint {
+            label: "N_quat",
+            element: Element::N,
+            expected_type: "N_3",
+        },
+        AtomBlueprint {
+            label: "C_Me1",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C_Me2",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C_Me3",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C_ethyl1",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C_ethyl2",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "O_hydroxyl",
+            element: Element::O,
+            expected_type: "O_3",
+        },
+        AtomBlueprint {
+            label: "H_Me1a",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Me1b",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Me1c",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Me2a",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Me2b",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Me2c",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Me3a",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Me3b",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_Me3c",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_CE1a",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_CE1b",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_CE2a",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_CE2b",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_OH",
+            element: Element::H,
+            expected_type: "H_HB",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "N_quat",
+            atom2_label: "C_Me1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N_quat",
+            atom2_label: "C_Me2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N_quat",
+            atom2_label: "C_Me3",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N_quat",
+            atom2_label: "C_ethyl1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_Me1",
+            atom2_label: "H_Me1a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_Me1",
+            atom2_label: "H_Me1b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_Me1",
+            atom2_label: "H_Me1c",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_Me2",
+            atom2_label: "H_Me2a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_Me2",
+            atom2_label: "H_Me2b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_Me2",
+            atom2_label: "H_Me2c",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_Me3",
+            atom2_label: "H_Me3a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_Me3",
+            atom2_label: "H_Me3b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_Me3",
+            atom2_label: "H_Me3c",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_ethyl1",
+            atom2_label: "C_ethyl2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_ethyl1",
+            atom2_label: "H_CE1a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_ethyl1",
+            atom2_label: "H_CE1b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_ethyl2",
+            atom2_label: "O_hydroxyl",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_ethyl2",
+            atom2_label: "H_CE2a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_ethyl2",
+            atom2_label: "H_CE2b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "O_hydroxyl",
+            atom2_label: "H_OH",
+            order: BondOrder::Single,
+        },
+    ],
+};
