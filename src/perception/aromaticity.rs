@@ -1,8 +1,26 @@
+//! Evaluates fused ring systems to determine whether the atoms are aromatic, anti-aromatic, or neither.
+//!
+//! The module groups rings, builds localized models that count π-electrons under planarity
+//! assumptions, and sets per-atom flags that later perception stages consume.
+
 use super::model::{AnnotatedAtom, AnnotatedMolecule, Ring};
 use crate::core::error::PerceptionError;
 use crate::core::properties::BondOrder;
 use std::collections::{HashMap, HashSet};
 
+/// Runs aromaticity perception over all ring systems present in the molecule.
+///
+/// The procedure clusters rings that share atoms, evaluates each cluster as a whole, falls back to
+/// ring-by-ring evaluation when mixed behavior occurs, and annotates atoms as aromatic or
+/// anti-aromatic accordingly.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule whose atom flags should be updated.
+///
+/// # Returns
+///
+/// `Ok(())` once every ring system has been processed or when no rings exist.
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     if molecule.rings.is_empty() {
         return Ok(());
@@ -35,6 +53,12 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     Ok(())
 }
 
+/// Evaluates each ring independently when a fused system lacks uniform behavior.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule to mutate.
+/// * `system_indices` - Indices of rings belonging to the fused system.
 fn evaluate_rings_individually(molecule: &mut AnnotatedMolecule, system_indices: &[usize]) {
     for &ring_idx in system_indices {
         let ring_atoms: HashSet<_> = molecule.rings[ring_idx].iter().copied().collect();
@@ -52,14 +76,25 @@ fn evaluate_rings_individually(molecule: &mut AnnotatedMolecule, system_indices:
     }
 }
 
+/// Local model capturing the atoms and π-electron count for a ring system.
 struct AromaticityModel<'a> {
+    /// Annotated molecule providing adjacency information.
     molecule: &'a AnnotatedMolecule,
+    /// Atom IDs forming the current system under evaluation.
     atoms: HashSet<usize>,
+    /// Computed π-electron count, if evaluation succeeded.
     pi_electrons: Option<u32>,
+    /// Flag describing whether the atoms satisfy the planarity heuristic.
     is_potentially_planar: bool,
 }
 
 impl<'a> AromaticityModel<'a> {
+    /// Constructs the model and immediately evaluates planarity and π-electrons.
+    ///
+    /// # Arguments
+    ///
+    /// * `molecule` - Annotated molecule backing the model.
+    /// * `system_atoms` - Atom IDs representing a ring system.
     fn new(molecule: &'a AnnotatedMolecule, system_atoms: &HashSet<usize>) -> Self {
         let mut model = Self {
             molecule,
@@ -71,6 +106,7 @@ impl<'a> AromaticityModel<'a> {
         model
     }
 
+    /// Returns `true` when the Huckel 4n+2 rule is satisfied.
     fn is_aromatic(&self) -> bool {
         if !self.is_potentially_planar {
             return false;
@@ -78,6 +114,7 @@ impl<'a> AromaticityModel<'a> {
         matches!(self.pi_electrons, Some(pi) if pi > 0 && (pi - 2) % 4 == 0)
     }
 
+    /// Returns `true` when the Huckel 4n rule indicates anti-aromaticity.
     fn is_anti_aromatic(&self) -> bool {
         if !self.is_potentially_planar || self.has_cross_conjugation() {
             return false;
@@ -85,6 +122,7 @@ impl<'a> AromaticityModel<'a> {
         matches!(self.pi_electrons, Some(pi) if pi > 0 && pi % 4 == 0)
     }
 
+    /// Computes planarity and π-electron counts, caching the results on the struct.
     fn evaluate(&mut self) {
         if !self
             .atoms
@@ -109,24 +147,28 @@ impl<'a> AromaticityModel<'a> {
         self.pi_electrons = Some(pi_count);
     }
 
+    /// Checks if an atom participates in a double bond within the ring system.
     fn atom_has_endocyclic_double(&self, atom_id: usize) -> bool {
         self.molecule.adjacency[atom_id]
             .iter()
             .any(|&(n_id, order)| order == BondOrder::Double && self.atoms.contains(&n_id))
     }
 
+    /// Checks if an atom carries a double bond outside the ring system.
     fn atom_has_exocyclic_double(&self, atom_id: usize) -> bool {
         self.molecule.adjacency[atom_id]
             .iter()
             .any(|&(n_id, order)| order == BondOrder::Double && !self.atoms.contains(&n_id))
     }
 
+    /// Detects cross-conjugation, which prevents anti-aromatic classification.
     fn has_cross_conjugation(&self) -> bool {
         self.atoms
             .iter()
             .any(|&atom_id| self.atom_has_exocyclic_double(atom_id))
     }
 
+    /// Computes each atom's π contribution using bond, lone-pair, and resonance flags.
     fn count_pi_contribution(&self, atom_id: usize) -> Option<u32> {
         let atom = &self.molecule.atoms[atom_id];
         let has_endocyclic_double_bond = self.atom_has_endocyclic_double(atom_id);
@@ -159,6 +201,7 @@ impl<'a> AromaticityModel<'a> {
     }
 }
 
+/// Heuristic planarity test derived from steric number rules.
 fn is_potentially_planar(atom: &AnnotatedAtom) -> bool {
     let steric_number = atom.degree + atom.lone_pairs;
     match steric_number {
@@ -168,6 +211,7 @@ fn is_potentially_planar(atom: &AnnotatedAtom) -> bool {
     }
 }
 
+/// Groups rings into fused systems via shared atoms.
 fn find_ring_systems(rings: &[Ring]) -> Vec<Vec<usize>> {
     if rings.is_empty() {
         return vec![];
@@ -198,6 +242,7 @@ fn find_ring_systems(rings: &[Ring]) -> Vec<Vec<usize>> {
     systems
 }
 
+/// Builds an adjacency list between rings that share at least one atom.
 fn build_ring_adjacency(rings: &[Ring]) -> Vec<Vec<usize>> {
     let mut atom_to_rings: HashMap<usize, Vec<usize>> = HashMap::new();
     for (ring_idx, ring) in rings.iter().enumerate() {
