@@ -27,10 +27,29 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
             for &atom_id in &system_atoms {
                 molecule.atoms[atom_id].is_anti_aromatic = true;
             }
+        } else {
+            evaluate_rings_individually(molecule, &system_indices);
         }
     }
 
     Ok(())
+}
+
+fn evaluate_rings_individually(molecule: &mut AnnotatedMolecule, system_indices: &[usize]) {
+    for &ring_idx in system_indices {
+        let ring_atoms: HashSet<_> = molecule.rings[ring_idx].iter().copied().collect();
+        let ring_model = AromaticityModel::new(molecule, &ring_atoms);
+
+        if ring_model.is_aromatic() {
+            for &atom_id in &ring_atoms {
+                molecule.atoms[atom_id].is_aromatic = true;
+            }
+        } else if ring_model.is_anti_aromatic() {
+            for &atom_id in &ring_atoms {
+                molecule.atoms[atom_id].is_anti_aromatic = true;
+            }
+        }
+    }
 }
 
 struct AromaticityModel<'a> {
@@ -129,6 +148,10 @@ impl<'a> AromaticityModel<'a> {
         }
 
         if has_exocyclic_double_bond {
+            return Some(1);
+        }
+
+        if atom.is_resonant && atom.is_in_ring {
             return Some(1);
         }
 
