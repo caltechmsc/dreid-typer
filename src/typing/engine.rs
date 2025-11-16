@@ -138,7 +138,7 @@ impl<'a> TyperEngine<'a> {
         }
         if conditions
             .is_resonant
-            .is_some_and(|ir| ir != atom.is_in_conjugated_system)
+            .is_some_and(|ir| ir != atom.is_resonant)
         {
             return false;
         }
