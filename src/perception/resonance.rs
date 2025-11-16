@@ -151,8 +151,12 @@ fn suppress_halogen_oxyanion_conjugation(molecule: &mut AnnotatedMolecule) {
 
 fn demote_sigma_bound_sulfurs(molecule: &mut AnnotatedMolecule) {
     for s_idx in 0..molecule.atoms.len() {
-        let atom = &molecule.atoms[s_idx];
-        if atom.element != Element::S || !atom.is_in_conjugated_system {
+        let (element, is_conjugated) = {
+            let atom = &molecule.atoms[s_idx];
+            (atom.element, atom.is_in_conjugated_system)
+        };
+
+        if element != Element::S || !is_conjugated {
             continue;
         }
 
@@ -160,10 +164,12 @@ fn demote_sigma_bound_sulfurs(molecule: &mut AnnotatedMolecule) {
             .iter()
             .any(|&(_, order)| order != BondOrder::Single);
 
-        if !has_pi_bond {
-            if let Some(atom_mut) = molecule.atoms.get_mut(s_idx) {
-                atom_mut.is_in_conjugated_system = false;
-            }
+        if has_pi_bond {
+            continue;
+        }
+
+        if let Some(atom_mut) = molecule.atoms.get_mut(s_idx) {
+            atom_mut.is_in_conjugated_system = false;
         }
     }
 }
