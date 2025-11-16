@@ -60,7 +60,7 @@ impl<'a> AromaticityModel<'a> {
     }
 
     fn is_anti_aromatic(&self) -> bool {
-        if !self.is_potentially_planar {
+        if !self.is_potentially_planar || self.has_cross_conjugation() {
             return false;
         }
         matches!(self.pi_electrons, Some(pi) if pi > 0 && pi % 4 == 0)
@@ -90,16 +90,28 @@ impl<'a> AromaticityModel<'a> {
         self.pi_electrons = Some(pi_count);
     }
 
+    fn atom_has_endocyclic_double(&self, atom_id: usize) -> bool {
+        self.molecule.adjacency[atom_id]
+            .iter()
+            .any(|&(n_id, order)| order == BondOrder::Double && self.atoms.contains(&n_id))
+    }
+
+    fn atom_has_exocyclic_double(&self, atom_id: usize) -> bool {
+        self.molecule.adjacency[atom_id]
+            .iter()
+            .any(|&(n_id, order)| order == BondOrder::Double && !self.atoms.contains(&n_id))
+    }
+
+    fn has_cross_conjugation(&self) -> bool {
+        self.atoms
+            .iter()
+            .any(|&atom_id| self.atom_has_exocyclic_double(atom_id))
+    }
+
     fn count_pi_contribution(&self, atom_id: usize) -> Option<u32> {
         let atom = &self.molecule.atoms[atom_id];
-
-        let has_endocyclic_double_bond = self.molecule.adjacency[atom_id]
-            .iter()
-            .any(|&(n_id, order)| order == BondOrder::Double && self.atoms.contains(&n_id));
-
-        let has_exocyclic_double_bond = self.molecule.adjacency[atom_id]
-            .iter()
-            .any(|&(n_id, order)| order == BondOrder::Double && !self.atoms.contains(&n_id));
+        let has_endocyclic_double_bond = self.atom_has_endocyclic_double(atom_id);
+        let has_exocyclic_double_bond = self.atom_has_exocyclic_double(atom_id);
 
         if has_endocyclic_double_bond {
             return Some(1);
