@@ -592,8 +592,8 @@ mod tests {
         ];
 
         let molecule = run_perception(&elements, &bonds);
-        assert_atom_state(&molecule, 0, 1, 1);
-        assert_atom_state(&molecule, 1, -1, 3);
+        assert_atom_state(&molecule, 0, 0, 1);
+        assert_atom_state(&molecule, 1, 0, 2);
     }
 
     #[test]
@@ -646,6 +646,24 @@ mod tests {
     }
 
     #[test]
+    fn halogen_oxyanions_force_trigonal_oxygens() {
+        let elements = vec![Element::Cl, Element::O, Element::O, Element::O, Element::O];
+        let bonds = vec![
+            (0, 1, BondOrder::Double),
+            (0, 2, BondOrder::Double),
+            (0, 3, BondOrder::Double),
+            (0, 4, BondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+
+        for oxygen_idx in 1..4 {
+            assert_atom_state(&molecule, oxygen_idx, 0, 2);
+        }
+        assert_atom_state(&molecule, 4, -1, 2);
+    }
+
+    #[test]
     fn carboxylate_anion_marks_single_bonded_oxygen() {
         let elements = vec![
             Element::C,
@@ -669,6 +687,39 @@ mod tests {
         assert_atom_state(&molecule, 1, 0, 2);
         assert_atom_state(&molecule, 2, -1, 3);
         assert_atom_state(&molecule, 0, 0, 0);
+    }
+
+    #[test]
+    fn carboxylate_pattern_skips_neutral_ester_oxygens() {
+        let elements = vec![
+            Element::C,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+
+        let bonds = vec![
+            (0, 1, BondOrder::Double),
+            (0, 2, BondOrder::Single),
+            (0, 4, BondOrder::Single),
+            (2, 3, BondOrder::Single),
+            (3, 5, BondOrder::Single),
+            (3, 6, BondOrder::Single),
+            (3, 7, BondOrder::Single),
+            (4, 8, BondOrder::Single),
+            (4, 9, BondOrder::Single),
+            (4, 10, BondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 2, 0, 2);
     }
 
     #[test]
