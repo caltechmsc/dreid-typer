@@ -2281,3 +2281,76 @@ pub const METHANESULFONAMIDE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const CHLOROACETYL_CHLORIDE: MoleculeTestCase = MoleculeTestCase {
+    name: "ACHNAP10 - Chloroacetyl chloride",
+    atoms: &[
+        AtomBlueprint {
+            label: "C_alpha",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "Cl_alpha",
+            element: Element::Cl,
+            expected_type: "Cl_",
+        },
+        AtomBlueprint {
+            label: "C_carbonyl",
+            element: Element::C,
+            expected_type: "C_R",
+        },
+        AtomBlueprint {
+            label: "O_carbonyl",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "Cl_carbonyl",
+            element: Element::Cl,
+            expected_type: "Cl_",
+        },
+        AtomBlueprint {
+            label: "H_alpha1",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_alpha2",
+            element: Element::H,
+            expected_type: "H_",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "C_alpha",
+            atom2_label: "Cl_alpha",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_alpha",
+            atom2_label: "C_carbonyl",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_carbonyl",
+            atom2_label: "O_carbonyl",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "C_carbonyl",
+            atom2_label: "Cl_carbonyl",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_alpha",
+            atom2_label: "H_alpha1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C_alpha",
+            atom2_label: "H_alpha2",
+            order: BondOrder::Single,
+        },
+    ],
+};
