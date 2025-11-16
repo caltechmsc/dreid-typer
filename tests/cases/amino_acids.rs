@@ -2224,3 +2224,206 @@ pub const GLUTAMATE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         },
     ],
 };
+
+pub const GLUTAMINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
+    name: "Glutamine Zwitterion",
+    atoms: &[
+        AtomBlueprint {
+            label: "N",
+            element: Element::N,
+            expected_type: "N_3",
+        },
+        AtomBlueprint {
+            label: "CA",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C",
+            element: Element::C,
+            expected_type: "C_R",
+        },
+        AtomBlueprint {
+            label: "O1",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "O2",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "CB",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "CG",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "CD",
+            element: Element::C,
+            expected_type: "C_R",
+        },
+        AtomBlueprint {
+            label: "OE1",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "NE2",
+            element: Element::N,
+            expected_type: "N_R",
+        },
+        AtomBlueprint {
+            label: "H1",
+            element: Element::H,
+            expected_type: "H_HB",
+        },
+        AtomBlueprint {
+            label: "H2",
+            element: Element::H,
+            expected_type: "H_HB",
+        },
+        AtomBlueprint {
+            label: "H3",
+            element: Element::H,
+            expected_type: "H_HB",
+        },
+        AtomBlueprint {
+            label: "HA",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "HB1",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "HB2",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "HG1",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "HG2",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "HE21",
+            element: Element::H,
+            expected_type: "H_HB",
+        },
+        AtomBlueprint {
+            label: "HE22",
+            element: Element::H,
+            expected_type: "H_HB",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "N",
+            atom2_label: "CA",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CA",
+            atom2_label: "C",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C",
+            atom2_label: "O1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C",
+            atom2_label: "O2",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "CA",
+            atom2_label: "CB",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CB",
+            atom2_label: "CG",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CG",
+            atom2_label: "CD",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CD",
+            atom2_label: "OE1",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "CD",
+            atom2_label: "NE2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N",
+            atom2_label: "H1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N",
+            atom2_label: "H2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "N",
+            atom2_label: "H3",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CA",
+            atom2_label: "HA",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CB",
+            atom2_label: "HB1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CB",
+            atom2_label: "HB2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CG",
+            atom2_label: "HG1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "CG",
+            atom2_label: "HG2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "NE2",
+            atom2_label: "HE21",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "NE2",
+            atom2_label: "HE22",
+            order: BondOrder::Single,
+        },
+    ],
+};
