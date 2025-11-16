@@ -1,39 +1,81 @@
+//! Internal model shared across perception stages to annotate atoms, bonds, rings, and adjacency.
+//!
+//! The structures defined here wrap the raw `MolecularGraph` with mutable fields that each
+//! perception pass enriches before the typing engine consumes them.
+
 use crate::core::error::GraphValidationError;
 use crate::core::graph::{BondEdge, MolecularGraph};
 use crate::core::properties::{BondOrder, Element, Hybridization};
 
+/// Perception-friendly atom record that stores both graph identity and inferred properties.
 #[derive(Debug, Clone)]
 pub struct AnnotatedAtom {
+    /// Zero-based identifier matching the source [`MolecularGraph`].
     pub id: usize,
+    /// Chemical element of the atom.
     pub element: Element,
 
+    /// Current formal charge assigned by electron perception.
     pub formal_charge: i8,
+    /// Number of lone pairs tracked for hybridization and resonance logic.
     pub lone_pairs: u8,
+    /// Graph degree computed during adjacency building.
     pub degree: u8,
 
+    /// Whether the atom lies on any ring identified so far.
     pub is_in_ring: bool,
+    /// Size of the smallest ring containing the atom, if any.
     pub smallest_ring_size: Option<u8>,
 
+    /// Flag set once aromaticity perception confirms Huckel criteria for this atom.
     pub is_aromatic: bool,
+    /// Flag set for anti-aromatic atoms that should avoid resonance promotion.
     pub is_anti_aromatic: bool,
 
+    /// Indicates participation in any conjugated system detected by resonance perception.
     pub is_in_conjugated_system: bool,
+    /// Marks atoms that can delocalize electrons even if not fully aromatic.
     pub is_resonant: bool,
+    /// Steric number derived from lone pairs and neighbors for VSEPR calculations.
     pub steric_number: u8,
+    /// Current hybridization assignment, defaulting to [`Hybridization::Unknown`].
     pub hybridization: Hybridization,
 }
 
+/// Convenience alias representing a ring as a list of atom identifiers.
 pub type Ring = Vec<usize>;
 
+/// Annotated molecular container combining atom metadata, bonds, adjacency, and ring sets.
 #[derive(Debug, Clone)]
 pub struct AnnotatedMolecule {
+    /// All atoms with perception-specific annotations.
     pub atoms: Vec<AnnotatedAtom>,
+    /// Copy of the graph bonds for downstream trait implementations.
     pub bonds: Vec<BondEdge>,
+    /// Adjacency list capturing neighbor IDs and bond orders.
     pub adjacency: Vec<Vec<(usize, BondOrder)>>,
+    /// Collection of rings discovered during perception.
     pub rings: Vec<Ring>,
 }
 
 impl AnnotatedMolecule {
+    /// Builds an annotated molecule from a validated [`MolecularGraph`].
+    ///
+    /// Initializes adjacency lists for every atom, clones the bond list, and seeds default
+    /// annotations that later perception passes will populate.
+    ///
+    /// # Arguments
+    ///
+    /// * `graph` - Source molecular graph supplied by the caller.
+    ///
+    /// # Returns
+    ///
+    /// A new [`AnnotatedMolecule`] containing adjacency, cloned bonds, and zeroed annotations.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`GraphValidationError::MissingAtom`] if any bond endpoint references an atom index
+    /// outside the graph's atom list.
     pub fn new(graph: &MolecularGraph) -> Result<Self, GraphValidationError> {
         let mut adjacency = vec![vec![]; graph.atoms.len()];
         for bond in &graph.bonds {
