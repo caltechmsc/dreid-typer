@@ -1,0 +1,225 @@
+use super::super::{AtomBlueprint, BondBlueprint, MoleculeTestCase};
+use dreid_typer::{BondOrder, Element};
+
+pub const ACBUOL: MoleculeTestCase = MoleculeTestCase {
+    name: "ACBUOL - Cyclobutane Lactone",
+    atoms: &[
+        AtomBlueprint {
+            label: "C1",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C2",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C3",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C4",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "C5",
+            element: Element::C,
+            expected_type: "C_R",
+        },
+        AtomBlueprint {
+            label: "O1",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "O2",
+            element: Element::O,
+            expected_type: "O_R",
+        },
+        AtomBlueprint {
+            label: "C6",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "O3",
+            element: Element::O,
+            expected_type: "O_3",
+        },
+        AtomBlueprint {
+            label: "C7",
+            element: Element::C,
+            expected_type: "C_3",
+        },
+        AtomBlueprint {
+            label: "O4",
+            element: Element::O,
+            expected_type: "O_3",
+        },
+        AtomBlueprint {
+            label: "H_C1",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C2",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C3",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C4",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C6a",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C6b",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C7a",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C7b",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_C7c",
+            element: Element::H,
+            expected_type: "H_",
+        },
+        AtomBlueprint {
+            label: "H_O4",
+            element: Element::H,
+            expected_type: "H_HB",
+        },
+    ],
+    bonds: &[
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "C2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "C3",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "C4",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "C1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "C5",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "O3",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "O4",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "C6",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "O1",
+            order: BondOrder::Double,
+        },
+        BondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "O2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "O2",
+            atom2_label: "C6",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "O3",
+            atom2_label: "C7",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C1",
+            atom2_label: "H_C1",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "H_C2",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C3",
+            atom2_label: "H_C3",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "H_C4",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "H_C6a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "H_C6b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "H_C7a",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "H_C7b",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "H_C7c",
+            order: BondOrder::Single,
+        },
+        BondBlueprint {
+            atom1_label: "O4",
+            atom2_label: "H_O4",
+            order: BondOrder::Single,
+        },
+    ],
+};
