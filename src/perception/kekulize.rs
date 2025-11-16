@@ -4,15 +4,26 @@ use crate::core::properties::{BondOrder, Element};
 use std::collections::{HashMap, VecDeque, hash_map::Entry};
 
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
-    let aromatic_bonds: Vec<usize> = molecule
-        .bonds
-        .iter()
-        .filter(|b| b.order == BondOrder::Aromatic)
-        .map(|b| b.id)
-        .collect();
+    let mut aromatic_bonds = Vec::new();
+    let mut aromatic_pairs = Vec::new();
+    for bond in &molecule.bonds {
+        if bond.order == BondOrder::Aromatic {
+            aromatic_bonds.push(bond.id);
+            aromatic_pairs.push(bond.atom_ids);
+        }
+    }
 
     if aromatic_bonds.is_empty() {
         return Ok(());
+    }
+
+    for (u, v) in aromatic_pairs {
+        if let Some(atom) = molecule.atoms.get_mut(u) {
+            atom.is_resonant = true;
+        }
+        if let Some(atom) = molecule.atoms.get_mut(v) {
+            atom.is_resonant = true;
+        }
     }
 
     validate_aromatic_bonds_in_rings(molecule, &aromatic_bonds)?;
@@ -123,6 +134,8 @@ impl<'a> KekuleSolver<'a> {
     fn is_valence_ok(&self, atom_id: usize) -> bool {
         let max_valence = get_max_valence(self.molecule.atoms[atom_id].element);
         let mut current_valence = 0;
+        let mut aromatic_double_allowance = 0u8;
+        let element = self.molecule.atoms[atom_id].element;
 
         for (neighbor_id, initial_order) in &self.molecule.adjacency[atom_id] {
             let bond = self
@@ -142,7 +155,18 @@ impl<'a> KekuleSolver<'a> {
                     .position(|&idx| self.molecule.bonds[idx].id == bond.id)
                     .and_then(|pos| self.assignments[pos])
                 {
-                    current_valence += bond_order_to_valence(assigned_order);
+                    let contribution = if matches!(element, Element::N | Element::P)
+                        && assigned_order == BondOrder::Double
+                    {
+                        if aromatic_double_allowance >= 1 {
+                            return false;
+                        }
+                        aromatic_double_allowance += 1;
+                        1
+                    } else {
+                        bond_order_to_valence(assigned_order)
+                    };
+                    current_valence += contribution;
                 }
             } else {
                 current_valence += bond_order_to_valence(*initial_order);
