@@ -8,6 +8,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     assign_nitrone_groups(molecule, &mut processed)?;
     assign_nitro_groups(molecule, &mut processed)?;
     assign_sulfur_oxides(molecule, &mut processed)?;
+    assign_halogen_oxyanions(molecule, &mut processed)?;
     assign_phosphorus_oxides(molecule, &mut processed)?;
     assign_carboxylate_anions(molecule, &mut processed)?;
     assign_ammonium_and_iminium(molecule, &mut processed)?;
@@ -125,44 +126,86 @@ fn assign_sulfur_oxides(
             continue;
         }
 
-        let double_bonded_oxygens: Vec<usize> = molecule.adjacency[s_idx]
+        let oxygen_neighbors: Vec<(usize, BondOrder)> = molecule.adjacency[s_idx]
             .iter()
-            .filter(|&&(id, order)| {
-                molecule.atoms[id].element == Element::O && order == BondOrder::Double
-            })
+            .filter(|&&(id, _)| molecule.atoms[id].element == Element::O)
+            .cloned()
+            .collect();
+
+        let double_bonded_oxygens: Vec<usize> = oxygen_neighbors
+            .iter()
+            .filter(|&&(_, order)| order == BondOrder::Double)
             .map(|&(id, _)| id)
             .collect();
 
-        match (molecule.atoms[s_idx].degree, double_bonded_oxygens.len()) {
-            (3, 1) => {
-                let o_idx = double_bonded_oxygens[0];
-                if !processed[o_idx] {
-                    molecule.atoms[s_idx].formal_charge = 1;
-                    molecule.atoms[s_idx].lone_pairs = 1;
-                    molecule.atoms[o_idx].formal_charge = -1;
-                    molecule.atoms[o_idx].lone_pairs = 3;
-                    processed[s_idx] = true;
-                    processed[o_idx] = true;
-                }
+        if molecule.atoms[s_idx].degree == 3 && oxygen_neighbors.len() == 1 {
+            let (o_idx, _) = oxygen_neighbors[0];
+            if !processed[o_idx] {
+                molecule.atoms[s_idx].formal_charge = 0;
+                molecule.atoms[s_idx].lone_pairs = 1;
+                molecule.atoms[o_idx].formal_charge = 0;
+                molecule.atoms[o_idx].lone_pairs = 2;
+                processed[s_idx] = true;
+                processed[o_idx] = true;
             }
-            (4, 2) => {
-                let o1_idx = double_bonded_oxygens[0];
-                let o2_idx = double_bonded_oxygens[1];
-                if !processed[o1_idx] && !processed[o2_idx] {
-                    molecule.atoms[s_idx].formal_charge = 2;
-                    molecule.atoms[s_idx].lone_pairs = 0;
-                    molecule.atoms[o1_idx].formal_charge = -1;
-                    molecule.atoms[o1_idx].lone_pairs = 3;
-                    molecule.atoms[o2_idx].formal_charge = -1;
-                    molecule.atoms[o2_idx].lone_pairs = 3;
-                    processed[s_idx] = true;
-                    processed[o1_idx] = true;
-                    processed[o2_idx] = true;
-                }
+        } else if molecule.atoms[s_idx].degree == 4 && double_bonded_oxygens.len() == 2 {
+            let o1_idx = double_bonded_oxygens[0];
+            let o2_idx = double_bonded_oxygens[1];
+            if !processed[o1_idx] && !processed[o2_idx] {
+                molecule.atoms[s_idx].formal_charge = 2;
+                molecule.atoms[s_idx].lone_pairs = 0;
+                molecule.atoms[o1_idx].formal_charge = -1;
+                molecule.atoms[o1_idx].lone_pairs = 3;
+                molecule.atoms[o2_idx].formal_charge = -1;
+                molecule.atoms[o2_idx].lone_pairs = 3;
+                processed[s_idx] = true;
+                processed[o1_idx] = true;
+                processed[o2_idx] = true;
             }
-            _ => {}
         }
     }
+    Ok(())
+}
+
+fn assign_halogen_oxyanions(
+    molecule: &mut AnnotatedMolecule,
+    processed: &mut [bool],
+) -> Result<(), PerceptionError> {
+    for center_idx in 0..molecule.atoms.len() {
+        if processed[center_idx] {
+            continue;
+        }
+
+        if !matches!(
+            molecule.atoms[center_idx].element,
+            Element::Cl | Element::Br | Element::I
+        ) {
+            continue;
+        }
+
+        let oxygen_neighbors: Vec<(usize, BondOrder)> = molecule.adjacency[center_idx]
+            .iter()
+            .filter(|&&(neighbor_id, _)| molecule.atoms[neighbor_id].element == Element::O)
+            .map(|&(neighbor_id, order)| (neighbor_id, order))
+            .collect();
+
+        if oxygen_neighbors.len() < 3 {
+            continue;
+        }
+
+        for &(oxygen_idx, order) in &oxygen_neighbors {
+            if processed[oxygen_idx] {
+                continue;
+            }
+
+            let oxygen = &mut molecule.atoms[oxygen_idx];
+            oxygen.lone_pairs = 2;
+            oxygen.formal_charge = if order == BondOrder::Single { -1 } else { 0 };
+
+            processed[oxygen_idx] = true;
+        }
+    }
+
     Ok(())
 }
 
@@ -231,7 +274,9 @@ fn assign_carboxylate_anions(
         }
 
         match (double_bond_o_idx, single_bond_o_idx) {
-            (Some(o1), Some(o2)) if !processed[o1] && !processed[o2] => {
+            (Some(o1), Some(o2))
+                if !processed[o1] && !processed[o2] && molecule.atoms[o2].degree == 1 =>
+            {
                 molecule.atoms[c_idx].formal_charge = 0;
                 molecule.atoms[c_idx].lone_pairs = 0;
 
@@ -286,7 +331,11 @@ fn assign_onium_ions(
 
         let element = molecule.atoms[idx].element;
         let degree = molecule.atoms[idx].degree;
-        if (element == Element::O || element == Element::S) && degree == 3 {
+        let has_pi_bond = molecule.adjacency[idx]
+            .iter()
+            .any(|&(_, order)| order != BondOrder::Single);
+
+        if (element == Element::O || element == Element::S) && degree == 3 && !has_pi_bond {
             let atom_mut = &mut molecule.atoms[idx];
             atom_mut.formal_charge = 1;
             atom_mut.lone_pairs = 1;
