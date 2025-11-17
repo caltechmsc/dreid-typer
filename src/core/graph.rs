@@ -163,6 +163,7 @@ pub struct Atom {
     pub hybridization: Hybridization,
 }
 
+/// Bond entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Bond {
     /// The IDs of the two atoms, sorted to ensure a canonical representation.
@@ -178,6 +179,7 @@ impl Bond {
     }
 }
 
+/// Angle entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Angle {
     /// The IDs of the three atoms (`end1`, `center`, `end2`), with end atoms sorted.
@@ -195,6 +197,7 @@ impl Angle {
     }
 }
 
+/// Proper dihedral entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProperDihedral {
     /// The IDs of the four atoms (`a-b-c-d`), sorted lexicographically.
@@ -210,6 +213,7 @@ impl ProperDihedral {
     }
 }
 
+/// Improper dihedral entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImproperDihedral {
     /// The IDs of the four atoms (`plane1`, `plane2`, `center`, `plane3`),
