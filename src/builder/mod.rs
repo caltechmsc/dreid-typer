@@ -1,8 +1,27 @@
+//! Converts annotated molecules and assigned atom types into a full molecular topology.
+//!
+//! The builder stage takes the perception output and typing assignments, emitting atoms, bonds,
+//! angles, proper dihedrals, and improper dihedrals expected by downstream force-field tooling.
+
 use crate::core::graph::{Angle, Atom, Bond, ImproperDihedral, MolecularTopology, ProperDihedral};
 use crate::core::properties::Hybridization;
 use crate::perception::AnnotatedMolecule;
 use std::collections::HashSet;
 
+/// Builds the `MolecularTopology` aggregate from perception results and atom-type labels.
+///
+/// This function effectively serializes the `AnnotatedMolecule` into the graph structures used
+/// by force-field consumers by delegating to specialized helpers for each topology term.
+///
+/// # Arguments
+///
+/// * `annotated_molecule` - Molecule carrying ring, hybridization, and bonding metadata.
+/// * `atom_types` - Slice of final atom-type names aligned with the molecule's atom ordering.
+///
+/// # Returns
+///
+/// A populated [`MolecularTopology`] containing atoms, bonds, angles, proper dihedrals, and
+/// improper dihedrals.
 pub fn build_topology(
     annotated_molecule: &AnnotatedMolecule,
     atom_types: &[String],
@@ -22,6 +41,12 @@ pub fn build_topology(
     }
 }
 
+/// Creates the atom list with element, type, and hybridization copies.
+///
+/// # Arguments
+///
+/// * `annotated_molecule` - Source molecule whose atoms provide structural metadata.
+/// * `atom_types` - Slice of assigned atom-type labels.
 fn build_atoms(annotated_molecule: &AnnotatedMolecule, atom_types: &[String]) -> Vec<Atom> {
     annotated_molecule
         .atoms
@@ -35,6 +60,7 @@ fn build_atoms(annotated_molecule: &AnnotatedMolecule, atom_types: &[String]) ->
         .collect()
 }
 
+/// Extracts unique bonds from the annotated molecule.
 fn build_bonds(annotated_molecule: &AnnotatedMolecule) -> HashSet<Bond> {
     annotated_molecule
         .bonds
@@ -43,6 +69,7 @@ fn build_bonds(annotated_molecule: &AnnotatedMolecule) -> HashSet<Bond> {
         .collect()
 }
 
+/// Generates all angle triplets by enumerating neighbor pairs around each atom.
 fn build_angles(annotated_molecule: &AnnotatedMolecule) -> HashSet<Angle> {
     let mut angles = HashSet::new();
     for j in 0..annotated_molecule.atoms.len() {
@@ -61,6 +88,7 @@ fn build_angles(annotated_molecule: &AnnotatedMolecule) -> HashSet<Angle> {
     angles
 }
 
+/// Builds proper dihedrals by extending each bond to its neighboring atoms.
 fn build_propers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ProperDihedral> {
     let mut propers = HashSet::new();
     for bond_jk in &annotated_molecule.bonds {
@@ -81,6 +109,7 @@ fn build_propers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ProperDihedr
     propers
 }
 
+/// Builds improper dihedrals for planar degree-three centers with SP2-like hybridization.
 fn build_impropers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ImproperDihedral> {
     let mut impropers = HashSet::new();
     for atom in &annotated_molecule.atoms {
