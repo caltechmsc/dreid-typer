@@ -1,9 +1,32 @@
+//! Evaluates DREIDING typing rules over annotated molecules until atoms converge on types.
+//!
+//! The engine sorts the rules by priority, iteratively applies them while respecting
+//! neighbor-dependent constraints, and reports any atoms that fail to obtain an assignment.
+
 use super::rules::{Conditions, Rule};
 use crate::core::error::AssignmentError;
 use crate::core::properties::Element;
 use crate::perception::{AnnotatedAtom, AnnotatedMolecule};
 use std::collections::HashMap;
 
+/// Applies the rule deck to an annotated molecule and returns the assigned atom types.
+///
+/// The function instantiates an internal [`TyperEngine`], sorts the incoming rules by priority,
+/// and runs iterative rounds until no new assignments occur or the maximum round budget is
+/// exhausted.
+///
+/// # Arguments
+///
+/// * `molecule` - Fully perceived molecule containing the annotations consumed by each rule.
+/// * `rules` - Ordered list of rules to consider. Priority is enforced within the function.
+///
+/// # Returns
+///
+/// Vector of atom-type strings aligned with `molecule.atoms`.
+///
+/// # Errors
+///
+/// Returns [`AssignmentError`] if the engine exceeds the round limit or leaves any atoms untyped.
 pub fn assign_types(
     molecule: &AnnotatedMolecule,
     rules: &[Rule],
@@ -12,13 +35,23 @@ pub fn assign_types(
     engine.run()
 }
 
+/// Internal helper that owns iteration state while applying rules.
 struct TyperEngine<'a> {
+    /// Annotated molecule referenced throughout evaluation.
     molecule: &'a AnnotatedMolecule,
+    /// Rule pointers sorted by priority (and name as tiebreaker) for deterministic iteration.
     sorted_rules: Vec<&'a Rule>,
+    /// Current assignment per atom, storing the type name and the priority of the rule that set it.
     atom_states: Vec<Option<(String, i32)>>,
 }
 
 impl<'a> TyperEngine<'a> {
+    /// Creates a typing engine with rules sorted by priority and name.
+    ///
+    /// # Arguments
+    ///
+    /// * `molecule` - Annotated molecule to type.
+    /// * `rules` - Rule slice provided by callers.
     fn new(molecule: &'a AnnotatedMolecule, rules: &'a [Rule]) -> Self {
         let mut sorted_rules: Vec<&'a Rule> = rules.iter().collect();
         sorted_rules.sort_by(|a, b| {
@@ -34,6 +67,11 @@ impl<'a> TyperEngine<'a> {
         }
     }
 
+    /// Executes iterative rounds until no more updates occur or the iteration cap is reached.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AssignmentError`] when the engine hits the round limit or atoms remain untyped.
     fn run(&mut self) -> Result<Vec<String>, AssignmentError> {
         let mut rounds = 0;
         const MAX_ROUNDS: u32 = 100;
@@ -68,6 +106,11 @@ impl<'a> TyperEngine<'a> {
         }
     }
 
+    /// Performs a single pass over all atoms, applying higher-priority rules when possible.
+    ///
+    /// # Returns
+    ///
+    /// Number of atoms whose assignment changed during the round.
     fn run_single_round(&mut self) -> usize {
         let mut changes_count = 0;
 
@@ -86,6 +129,9 @@ impl<'a> TyperEngine<'a> {
         changes_count
     }
 
+    /// Finds the first rule whose conditions match the provided atom.
+    ///
+    /// Rules are evaluated in the pre-sorted priority order, so the first match is the best match.
     fn find_best_matching_rule(&self, atom: &AnnotatedAtom) -> Option<&'a Rule> {
         self.sorted_rules
             .iter()
@@ -93,6 +139,9 @@ impl<'a> TyperEngine<'a> {
             .copied()
     }
 
+    /// Evaluates whether an atom satisfies the condition filters of a rule.
+    ///
+    /// Checks scalar fields first and then verifies neighbor requirements if present.
     fn match_conditions(&self, atom: &AnnotatedAtom, conditions: &Conditions) -> bool {
         if conditions.element.is_some_and(|e| e != atom.element) {
             return false;
@@ -157,6 +206,12 @@ impl<'a> TyperEngine<'a> {
         true
     }
 
+    /// Compares the element counts of adjacent atoms to the expected map.
+    ///
+    /// # Arguments
+    ///
+    /// * `atom` - Atom whose neighbors are inspected.
+    /// * `expected` - Map of element counts required by the rule.
     fn match_neighbor_elements(
         &self,
         atom: &AnnotatedAtom,
@@ -173,6 +228,12 @@ impl<'a> TyperEngine<'a> {
             .all(|(element, &count)| actual_counts.get(element).copied().unwrap_or(0) == count)
     }
 
+    /// Validates neighbor type assignments against the expected type-count map.
+    ///
+    /// # Arguments
+    ///
+    /// * `atom` - Atom whose neighbors must already hold types.
+    /// * `expected` - Map of type labels and required counts.
     fn match_neighbor_types(&self, atom: &AnnotatedAtom, expected: &HashMap<String, u8>) -> bool {
         let mut actual_counts: HashMap<&str, u8> = HashMap::new();
         for &(neighbor_id, _) in &self.molecule.adjacency[atom.id] {
@@ -186,6 +247,11 @@ impl<'a> TyperEngine<'a> {
         })
     }
 
+    /// Builds an [`AssignmentError`] describing the atoms left untyped along with iteration count.
+    ///
+    /// # Arguments
+    ///
+    /// * `rounds_completed` - Number of rounds executed before the failure was detected.
     fn build_error(&self, rounds_completed: u32) -> AssignmentError {
         let untyped_atom_ids = self
             .atom_states
