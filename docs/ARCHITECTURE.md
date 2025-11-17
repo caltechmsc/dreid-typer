@@ -2,7 +2,7 @@
 
 This document provides an in-depth guide to the internal design and implementation of the `dreid-typer` library. It is intended for developers who wish to contribute to the project, integrate it into larger systems, or understand the technical details of modern chemical informatics software.
 
-The architecture is guided by principles of **modularity**, **extensibility**, **correctness**, and **performance**. It translates raw chemical connectivity into a simulation-ready topology through a deterministic, multi-stage process.
+The architecture is guided by principles of **modularity**, **extensibility**, **correctness**, and **performance**. It translates raw chemical connectivity into a simulation-ready topology through a deterministic, three-stage pipeline where each stage has a single responsibility and exposes a narrow API.
 
 ## High-Level Architecture: The Three-Phase Pipeline
 
@@ -17,15 +17,15 @@ graph TD
     end
 
     subgraph Phase 1: Chemical Perception
-        PerceptionPhase{"processor::perceive"}
+        PerceptionPhase{"perception::perceive"}
     end
 
     subgraph Internal Workspace
-        ProcessingGraph["ProcessingGraph<br><i>(Chemically-Aware)</i>"]
+        Annotated["AnnotatedMolecule<br><i>(Chemically Annotated)</i>"]
     end
 
     subgraph Phase 2: Atom Typing
-        TypingPhase{"Iterative Rule Engine<br><i>(processor::assign_types)</i>"}
+        TypingPhase{"typing::engine::assign_types"}
         AtomTypes((Atom Types))
     end
 
@@ -38,29 +38,29 @@ graph TD
     end
 
     InputGraph --> PerceptionPhase;
-    PerceptionPhase -- "Enriches with<br>hybridization, aromaticity, etc." --> ProcessingGraph;
+    PerceptionPhase -- "Annotates rings, charges, lone pairs, etc." --> Annotated;
 
-    ProcessingGraph -- "Provides chemical context" --> TypingPhase;
+    Annotated -- "Provides chemical context" --> TypingPhase;
     TypingPhase -- "Assigns a type to each atom" --> AtomTypes;
 
-    ProcessingGraph -- "Provides geometry context" --> BuilderPhase;
+    Annotated -- "Provides geometry + resonance context" --> BuilderPhase;
     AtomTypes -- "Provides atom type info" --> BuilderPhase;
 
     BuilderPhase -- "Generates bonds, angles, dihedrals" --> OutputTopology;
 ```
 
-- **Phase 1: Perception:** This initial stage transforms the raw, user-provided connectivity (`MolecularGraph`) into a chemically intelligent `ProcessingGraph`. It's where the library "understands" the chemistry of the molecule by annotating atoms with properties like hybridization, ring membership, and aromaticity.
+- **Phase 1: Perception (`perception::perceive`):** Takes the raw `MolecularGraph` and emits an `AnnotatedMolecule`. Six ordered passes (rings, kekulization, electrons, aromaticity, resonance, hybridization) enrich each atom with bonding, charge, lone-pair, ring, and delocalization metadata. The output is immutable and shared with later stages.
 
-- **Phase 2: Typing:** A sophisticated, iterative rule engine runs on the `ProcessingGraph`. It assigns a definitive DREIDING atom type to each atom by matching its perceived properties against a prioritized set of rules.
+- **Phase 2: Typing (`typing::engine::assign_types`):** Runs a deterministic fixed-point solver over the `AnnotatedMolecule`. It evaluates TOML rules parsed via `typing::rules::parse_rules`, honoring priorities and neighbor-dependent constraints until every atom is assigned a DREIDING type.
 
-- **Phase 3: Building:** The final stage consumes the `ProcessingGraph` and the assigned atom types to construct the `MolecularTopology`. This involves generating the complete list of bonds, angles, and dihedrals required by a simulation engine.
+- **Phase 3: Building (`builder::build_topology`):** Consumes the annotated atoms plus the final type vector to produce a canonical `MolecularTopology`. Helper routines enumerate bonds, angles, proper/ improper dihedrals, and collapse duplicates using canonical ordering so downstream engines receive stable identifiers.
 
 ## Directory of Architectural Documents
 
 For a deeper dive into each component and the design rationale behind it, please refer to the following documents:
 
-- **[Core Pipeline & Data Structures](./01_pipeline.md):** Describes the data flow and the crucial role of the `MolecularGraph`, `ProcessingGraph`, and `MolecularTopology` structures.
-- **[Phase 1: Chemical Perception](./02_perception.md):** Details the algorithms for ring detection, aromaticity, and the powerful hybrid approach of using a generic engine alongside an expert template system.
-- **[Phase 2: The Typing Engine](./03_typing_engine.md):** Explains the iterative, priority-based algorithm that ensures deterministic and correct type assignment, even in context-dependent scenarios.
-- **[Phase 3: The Topology Builder](./04_topology_builder.md):** Outlines the procedures for generating angles and dihedrals, including the concept of canonical representation.
-- **[Reference: The DREIDING Rule System](./05_rule_system.md):** A complete reference for the TOML rule syntax and the default ruleset.
+- **[Core Pipeline & Data Structures](./01_pipeline.md):** Describes the `MolecularGraph → AnnotatedMolecule → MolecularTopology` flow and the invariants enforced between stages.
+- **[Phase 1: Chemical Perception](./02_perception.md):** Details the six perception passes, including how resonance state and hybridization are inferred from ring analyses and charge bookkeeping.
+- **[Phase 2: The Typing Engine](./03_typing_engine.md):** Explains the fixed-point solver, rule priorities, and how neighbor-dependent conditions converge deterministically.
+- **[Phase 3: The Topology Builder](./04_topology_builder.md):** Outlines the canonical term generation strategy and helper utilities used to collapse symmetry.
+- **[Reference: The DREIDING Rule System](./05_rule_system.md):** A complete reference for the TOML rule syntax, condition keys, and the packaged ruleset.

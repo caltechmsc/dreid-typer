@@ -1,84 +1,54 @@
-//! Core data structures for representing molecular graphs and topologies.
+//! Represents the molecular connectivity primitives shared across perception and
+//! typing, plus the canonical topology emitted after typing completes.
 //!
-//! This module defines the fundamental types used throughout the dreid-typer library,
-//! including the input `MolecularGraph` for chemical connectivity and the output
-//! `MolecularTopology` with assigned atom types and perceived structural elements.
-//! These structures form the basis of the three-phase pipeline: perception, typing, and building.
+//! The types exposed here allow callers to construct raw graphs, run the
+//! perception pipeline, and inspect the resulting atoms, bonds, angles, and
+//! torsions in a consistent, serializable format.
 
-use super::{BondOrder, Element, Hybridization};
+use super::error::GraphValidationError;
+use super::properties::{BondOrder, Element, Hybridization};
 
-/// Represents an atom in a molecular graph with its basic properties.
-///
-/// This struct is used as a node in the `MolecularGraph` to store essential
-/// information about each atom, including its unique identifier and chemical element.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Stores the identifier and element for a single atom within a
+/// [`MolecularGraph`].
+#[derive(Debug, Clone)]
 pub struct AtomNode {
-    /// The unique identifier for this atom within the graph.
+    /// Zero-based identifier assigned when the atom is inserted into the graph.
     pub id: usize,
-    /// The chemical element of this atom.
+    /// Chemical element represented by this node.
     pub element: Element,
 }
 
-/// Represents a bond between two atoms in a molecular graph.
-///
-/// This struct is used as an edge in the `MolecularGraph` to define the connectivity
-/// and bond order between atoms.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+/// Captures a bond between two atoms inside a [`MolecularGraph`].
+#[derive(Debug, Clone)]
 pub struct BondEdge {
-    /// The unique identifier for this bond within the graph.
+    /// Zero-based identifier assigned sequentially as bonds are inserted.
     pub id: usize,
-    /// The identifiers of the two atoms connected by this bond, stored as a tuple.
+    /// Tuple of atom IDs that this bond connects.
     pub atom_ids: (usize, usize),
-    /// The order of this bond (single, double, triple, etc.).
+    /// Bond multiplicity recorded for the edge.
     pub order: BondOrder,
 }
 
-/// A simple representation of a molecule's connectivity as a graph.
-///
-/// This struct serves as the input to the dreid-typer pipeline, containing only
-/// the basic chemical connectivity information: atoms with their elements and
-/// bonds with their orders. It does not include any derived
-/// properties like hybridization or atom types.
-///
-/// # Examples
-///
-/// Creating a simple methane molecule:
-///
-/// ```
-/// use dreid_typer::{MolecularGraph, Element, BondOrder};
-///
-/// let mut graph = MolecularGraph::new();
-/// let carbon = graph.add_atom(Element::C);
-/// let hydrogen1 = graph.add_atom(Element::H);
-/// let hydrogen2 = graph.add_atom(Element::H);
-/// let hydrogen3 = graph.add_atom(Element::H);
-/// let hydrogen4 = graph.add_atom(Element::H);
-///
-/// graph.add_bond(carbon, hydrogen1, BondOrder::Single).unwrap();
-/// graph.add_bond(carbon, hydrogen2, BondOrder::Single).unwrap();
-/// graph.add_bond(carbon, hydrogen3, BondOrder::Single).unwrap();
-/// graph.add_bond(carbon, hydrogen4, BondOrder::Single).unwrap();
-/// ```
-#[derive(Debug, Clone, PartialEq, Default)]
+/// Mutable graph of atoms and bonds supplied to the perception pipeline.
+#[derive(Debug, Clone, Default)]
 pub struct MolecularGraph {
-    /// The list of atoms in the molecule.
+    /// Collection of all atoms currently present in the graph.
     pub atoms: Vec<AtomNode>,
-    /// The list of bonds connecting the atoms.
+    /// Collection of all bonds currently present in the graph.
     pub bonds: Vec<BondEdge>,
 }
 
 impl MolecularGraph {
-    /// Creates a new, empty molecular graph.
+    /// Creates an empty graph ready for atom and bond insertion.
     ///
     /// # Returns
     ///
-    /// A new `MolecularGraph` instance with no atoms or bonds.
+    /// A `MolecularGraph` with zero atoms and bonds.
     ///
     /// # Examples
     ///
     /// ```
     /// use dreid_typer::MolecularGraph;
-    ///
     /// let graph = MolecularGraph::new();
     /// assert!(graph.atoms.is_empty());
     /// assert!(graph.bonds.is_empty());
@@ -87,28 +57,23 @@ impl MolecularGraph {
         Self::default()
     }
 
-    /// Adds a new atom to the molecular graph.
-    ///
-    /// The atom is assigned a unique ID based on the current number of atoms,
-    /// and its properties are stored in the graph.
+    /// Adds a new atom with the provided [`Element`] and returns its ID.
     ///
     /// # Arguments
     ///
-    /// * `element` - The chemical element of the atom.
+    /// * `element` - Chemical element to assign to the node.
     ///
     /// # Returns
     ///
-    /// The unique ID assigned to the newly added atom.
+    /// The zero-based identifier for the newly inserted atom.
     ///
     /// # Examples
     ///
     /// ```
-    /// use dreid_typer::{MolecularGraph, Element};
-    ///
+    /// use dreid_typer::{Element, MolecularGraph};
     /// let mut graph = MolecularGraph::new();
-    /// let atom_id = graph.add_atom(Element::C);
-    /// assert_eq!(atom_id, 0);
-    /// assert_eq!(graph.atoms.len(), 1);
+    /// let carbon_id = graph.add_atom(Element::C);
+    /// assert_eq!(carbon_id, 0);
     /// ```
     pub fn add_atom(&mut self, element: Element) -> usize {
         let id = self.atoms.len();
@@ -116,35 +81,32 @@ impl MolecularGraph {
         id
     }
 
-    /// Adds a new bond between two atoms in the molecular graph.
-    ///
-    /// The bond is validated to ensure both atom IDs are valid and not the same.
-    /// If successful, the bond is assigned a unique ID and added to the graph.
+    /// Adds a bond between two existing atoms.
     ///
     /// # Arguments
     ///
-    /// * `atom1_id` - The ID of the first atom in the bond.
-    /// * `atom2_id` - The ID of the second atom in the bond.
-    /// * `order` - The bond order (single, double, etc.).
+    /// * `atom1_id` - Identifier of the first atom.
+    /// * `atom2_id` - Identifier of the second atom.
+    /// * `order` - Bond multiplicity to record.
     ///
     /// # Returns
     ///
-    /// A `Result` containing the unique ID of the newly added bond on success,
-    /// or an error message as a string slice on failure.
+    /// The zero-based identifier assigned to the new bond.
     ///
     /// # Errors
     ///
-    /// Returns an error if either atom ID is out of bounds or if the atoms are the same.
+    /// Returns [`GraphValidationError::MissingAtom`] if either atom ID has not
+    /// been inserted, or [`GraphValidationError::SelfBondingAtom`] if both IDs
+    /// refer to the same atom.
     ///
     /// # Examples
     ///
     /// ```
-    /// use dreid_typer::{MolecularGraph, Element, BondOrder};
-    ///
+    /// use dreid_typer::{BondOrder, Element, MolecularGraph};
     /// let mut graph = MolecularGraph::new();
-    /// let atom1 = graph.add_atom(Element::C);
-    /// let atom2 = graph.add_atom(Element::C);
-    /// let bond_id = graph.add_bond(atom1, atom2, BondOrder::Single).unwrap();
+    /// let c = graph.add_atom(Element::C);
+    /// let o = graph.add_atom(Element::O);
+    /// let bond_id = graph.add_bond(c, o, BondOrder::Double).unwrap();
     /// assert_eq!(bond_id, 0);
     /// ```
     pub fn add_bond(
@@ -152,13 +114,17 @@ impl MolecularGraph {
         atom1_id: usize,
         atom2_id: usize,
         order: BondOrder,
-    ) -> Result<usize, &'static str> {
-        if atom1_id >= self.atoms.len() || atom2_id >= self.atoms.len() {
-            return Err("Cannot add bond: atom ID is out of bounds");
+    ) -> Result<usize, GraphValidationError> {
+        if atom1_id >= self.atoms.len() {
+            return Err(GraphValidationError::MissingAtom { atom_id: atom1_id });
+        }
+        if atom2_id >= self.atoms.len() {
+            return Err(GraphValidationError::MissingAtom { atom_id: atom2_id });
         }
         if atom1_id == atom2_id {
-            return Err("Cannot add bond: an atom cannot bond to itself");
+            return Err(GraphValidationError::SelfBondingAtom { atom_id: atom1_id });
         }
+
         let id = self.bonds.len();
         self.bonds.push(BondEdge {
             id,
@@ -169,326 +135,210 @@ impl MolecularGraph {
     }
 }
 
-/// Represents an atom in the final molecular topology with assigned properties.
-///
-/// This struct extends the basic atom information with the assigned DREIDING
-/// atom type and hybridization state, as determined by the typing phase.
+/// Canonical topology produced after the typer assigns atom types and torsions.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct MolecularTopology {
+    /// A list of all atoms with their final assigned properties.
+    pub atoms: Vec<Atom>,
+    /// A list of all bonds.
+    pub bonds: Vec<Bond>,
+    /// A list of all three-atom angles.
+    pub angles: Vec<Angle>,
+    /// A list of all proper dihedral angles (torsions).
+    pub propers: Vec<ProperDihedral>,
+    /// A list of all improper dihedral angles (out-of-plane bends).
+    pub impropers: Vec<ImproperDihedral>,
+}
+
+/// Atom entry emitted in the final topology, combining identity and typing.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Atom {
-    /// The unique identifier for this atom.
+    /// The unique identifier of the atom.
     pub id: usize,
-    /// The chemical element of this atom.
+    /// The chemical element.
     pub element: Element,
-    /// The assigned DREIDING force field atom type.
+    /// The final, assigned DREIDING atom type string.
     pub atom_type: String,
-    /// The hybridization state of this atom.
+    /// The perceived hybridization state.
     pub hybridization: Hybridization,
 }
 
-/// Represents a bond in the molecular topology.
-///
-/// This struct defines a bond between two atoms with its order, used in the
-/// final topology output.
+/// Bond entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Bond {
-    /// The identifiers of the two atoms connected by this bond, sorted in ascending order.
+    /// The IDs of the two atoms, sorted to ensure a canonical representation.
     pub atom_ids: (usize, usize),
-    /// The order of this bond.
+    /// The order of the bond.
     pub order: BondOrder,
 }
 
 impl Bond {
-    /// Creates a new bond between two atoms.
-    ///
-    /// The atom IDs are automatically sorted to ensure consistent representation.
-    ///
-    /// # Arguments
-    ///
-    /// * `id1` - The ID of the first atom.
-    /// * `id2` - The ID of the second atom.
-    /// * `order` - The bond order.
-    ///
-    /// # Returns
-    ///
-    /// A new `Bond` instance with sorted atom IDs.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use dreid_typer::{Bond, BondOrder};
-    ///
-    /// let bond = Bond::new(2, 1, BondOrder::Single);
-    /// assert_eq!(bond.atom_ids, (1, 2));
-    /// ```
     pub fn new(id1: usize, id2: usize, order: BondOrder) -> Self {
-        if id1 < id2 {
-            Self {
-                atom_ids: (id1, id2),
-                order,
-            }
-        } else {
-            Self {
-                atom_ids: (id2, id1),
-                order,
-            }
-        }
+        let atom_ids = if id1 < id2 { (id1, id2) } else { (id2, id1) };
+        Self { atom_ids, order }
     }
 }
 
-/// Represents an angle formed by three atoms in the molecular topology.
-///
-/// An angle is defined by two bonds sharing a common central atom.
+/// Angle entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Angle {
-    /// The identifiers of the three atoms forming the angle, with the central atom in the middle.
+    /// The IDs of the three atoms (`end1`, `center`, `end2`), with end atoms sorted.
     pub atom_ids: (usize, usize, usize),
 }
 
 impl Angle {
-    /// Creates a new angle between three atoms.
-    ///
-    /// The outer atom IDs are sorted to ensure consistent representation.
-    ///
-    /// # Arguments
-    ///
-    /// * `id1` - The ID of the first outer atom.
-    /// * `center_id` - The ID of the central atom.
-    /// * `id2` - The ID of the second outer atom.
-    ///
-    /// # Returns
-    ///
-    /// A new `Angle` instance with sorted outer atom IDs.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use dreid_typer::Angle;
-    ///
-    /// let angle = Angle::new(3, 1, 2);
-    /// assert_eq!(angle.atom_ids, (2, 1, 3));
-    /// ```
     pub fn new(id1: usize, center_id: usize, id2: usize) -> Self {
-        if id1 < id2 {
-            Self {
-                atom_ids: (id1, center_id, id2),
-            }
+        let atom_ids = if id1 < id2 {
+            (id1, center_id, id2)
         } else {
-            Self {
-                atom_ids: (id2, center_id, id1),
-            }
-        }
+            (id2, center_id, id1)
+        };
+        Self { atom_ids }
     }
 }
 
-/// Represents a proper dihedral angle in the molecular topology.
-///
-/// A proper dihedral is defined by four atoms in a chain, measuring the
-/// torsion angle around the central bond.
+/// Proper dihedral entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProperDihedral {
-    /// The identifiers of the four atoms defining the dihedral, in order.
+    /// The IDs of the four atoms (`a-b-c-d`), sorted lexicographically.
     pub atom_ids: (usize, usize, usize, usize),
 }
 
 impl ProperDihedral {
-    /// Creates a new proper dihedral from four atoms.
-    ///
-    /// The atom sequence is chosen to be lexicographically smallest between
-    /// the forward and reverse representations.
-    ///
-    /// # Arguments
-    ///
-    /// * `id1` - The ID of the first atom.
-    /// * `id2` - The ID of the second atom.
-    /// * `id3` - The ID of the third atom.
-    /// * `id4` - The ID of the fourth atom.
-    ///
-    /// # Returns
-    ///
-    /// A new `ProperDihedral` instance.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use dreid_typer::ProperDihedral;
-    ///
-    /// let dihedral = ProperDihedral::new(4, 3, 2, 1);
-    /// assert_eq!(dihedral.atom_ids, (1, 2, 3, 4));
-    /// ```
-    pub fn new(id1: usize, id2: usize, id3: usize, id4: usize) -> Self {
-        let forward = (id1, id2, id3, id4);
-        let reverse = (id4, id3, id2, id1);
-        if forward <= reverse {
-            Self { atom_ids: forward }
-        } else {
-            Self { atom_ids: reverse }
-        }
+    pub fn new(a: usize, b: usize, c: usize, d: usize) -> Self {
+        let fwd = (a, b, c, d);
+        let rev = (d, c, b, a);
+        let atom_ids = if fwd <= rev { fwd } else { rev };
+        Self { atom_ids }
     }
 }
 
-/// Represents an improper dihedral angle in the molecular topology.
-///
-/// An improper dihedral measures the out-of-plane angle for atoms like those
-/// in carbonyl groups or aromatic rings.
+/// Improper dihedral entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImproperDihedral {
-    /// The identifiers of the four atoms defining the improper dihedral.
+    /// The IDs of the four atoms (`plane1`, `plane2`, `center`, `plane3`),
+    /// with plane atoms sorted.
     pub atom_ids: (usize, usize, usize, usize),
 }
 
 impl ImproperDihedral {
-    /// Creates a new improper dihedral from four atoms.
-    ///
-    /// The three plane atoms are sorted to ensure consistent representation.
-    ///
-    /// # Arguments
-    ///
-    /// * `plane_id1` - The ID of the first plane atom.
-    /// * `plane_id2` - The ID of the second plane atom.
-    /// * `center_id` - The ID of the central atom.
-    /// * `plane_id3` - The ID of the third plane atom.
-    ///
-    /// # Returns
-    ///
-    /// A new `ImproperDihedral` instance with sorted plane atoms.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use dreid_typer::ImproperDihedral;
-    ///
-    /// let dihedral = ImproperDihedral::new(4, 2, 1, 3);
-    /// assert_eq!(dihedral.atom_ids, (2, 3, 1, 4));
-    /// ```
-    pub fn new(plane_id1: usize, plane_id2: usize, center_id: usize, plane_id3: usize) -> Self {
-        let mut plane_ids = [plane_id1, plane_id2, plane_id3];
+    pub fn new(p1: usize, p2: usize, center: usize, p3: usize) -> Self {
+        let mut plane_ids = [p1, p2, p3];
         plane_ids.sort_unstable();
-        Self {
-            atom_ids: (plane_ids[0], plane_ids[1], center_id, plane_ids[2]),
-        }
+        let atom_ids = (plane_ids[0], plane_ids[1], center, plane_ids[2]);
+        Self { atom_ids }
     }
-}
-
-/// The complete molecular topology with assigned atom types and structural elements.
-///
-/// This struct represents the final output of the dreid-typer pipeline,
-/// containing all atoms with their DREIDING types, plus the perceived bonds,
-/// angles, and dihedrals needed for force field calculations.
-#[derive(Debug, Clone, PartialEq, Default)]
-pub struct MolecularTopology {
-    /// The list of atoms with their assigned types and properties.
-    pub atoms: Vec<Atom>,
-    /// The list of bonds in the molecule.
-    pub bonds: Vec<Bond>,
-    /// The list of angles formed by bonded atom triplets.
-    pub angles: Vec<Angle>,
-    /// The list of proper dihedral angles.
-    pub proper_dihedrals: Vec<ProperDihedral>,
-    /// The list of improper dihedral angles.
-    pub improper_dihedrals: Vec<ImproperDihedral>,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::{BondOrder, Element};
+    use crate::core::error::GraphValidationError;
+    use crate::core::properties::{BondOrder, Element};
 
-    #[test]
-    fn molecular_graph_new_is_empty() {
-        let graph = MolecularGraph::new();
-        assert!(graph.atoms.is_empty());
-        assert!(graph.bonds.is_empty());
+    fn graph_with_atoms(elements: &[Element]) -> MolecularGraph {
+        let mut graph = MolecularGraph::new();
+        for &element in elements {
+            graph.add_atom(element);
+        }
+        graph
     }
 
     #[test]
-    fn molecular_graph_add_atom() {
+    fn molecular_graph_add_atom_assigns_sequential_ids() {
         let mut graph = MolecularGraph::new();
-        let atom_id_1 = graph.add_atom(Element::C);
-        assert_eq!(atom_id_1, 0);
-        assert_eq!(graph.atoms.len(), 1);
-        assert_eq!(graph.atoms[0].id, 0);
+
+        let carbon_id = graph.add_atom(Element::C);
+        let oxygen_id = graph.add_atom(Element::O);
+        let nitrogen_id = graph.add_atom(Element::N);
+
+        assert_eq!(carbon_id, 0);
+        assert_eq!(oxygen_id, 1);
+        assert_eq!(nitrogen_id, 2);
+        assert_eq!(graph.atoms.len(), 3);
         assert_eq!(graph.atoms[0].element, Element::C);
-
-        let atom_id_2 = graph.add_atom(Element::H);
-        assert_eq!(atom_id_2, 1);
-        assert_eq!(graph.atoms.len(), 2);
-        assert_eq!(graph.atoms[1].id, 1);
-        assert_eq!(graph.atoms[1].element, Element::H);
+        assert_eq!(graph.atoms[1].element, Element::O);
+        assert_eq!(graph.atoms[2].element, Element::N);
     }
 
     #[test]
-    fn molecular_graph_add_bond_succeeds() {
-        let mut graph = MolecularGraph::new();
-        graph.add_atom(Element::C);
-        graph.add_atom(Element::C);
-        let bond_id = graph.add_bond(0, 1, BondOrder::Single).unwrap();
+    fn molecular_graph_add_bond_registers_edge() {
+        let mut graph = graph_with_atoms(&[Element::C, Element::O]);
+
+        let bond_id = graph
+            .add_bond(0, 1, BondOrder::Double)
+            .expect("adding a valid bond should succeed");
+
         assert_eq!(bond_id, 0);
         assert_eq!(graph.bonds.len(), 1);
         assert_eq!(graph.bonds[0].atom_ids, (0, 1));
-        assert_eq!(graph.bonds[0].order, BondOrder::Single);
+        assert_eq!(graph.bonds[0].order, BondOrder::Double);
     }
 
     #[test]
-    fn molecular_graph_add_bond_with_out_of_bounds_atom_id() {
-        let mut graph = MolecularGraph::new();
-        graph.add_atom(Element::C);
-        let result = graph.add_bond(0, 1, BondOrder::Single);
-        assert!(result.is_err());
+    fn molecular_graph_rejects_bond_with_missing_atom() {
+        let mut graph = graph_with_atoms(&[Element::C]);
+
+        let err = graph
+            .add_bond(0, 1, BondOrder::Single)
+            .expect_err("bonding to a missing atom should fail");
+
+        match err {
+            GraphValidationError::MissingAtom { atom_id } => assert_eq!(atom_id, 1),
+            _ => panic!("unexpected error returned: {err:?}"),
+        }
     }
 
     #[test]
-    fn molecular_graph_add_bond_to_itself() {
-        let mut graph = MolecularGraph::new();
-        graph.add_atom(Element::C);
-        let result = graph.add_bond(0, 0, BondOrder::Single);
-        assert!(result.is_err());
+    fn molecular_graph_rejects_self_bonding() {
+        let mut graph = graph_with_atoms(&[Element::C]);
+
+        let err = graph
+            .add_bond(0, 0, BondOrder::Single)
+            .expect_err("self bonds should be rejected");
+
+        match err {
+            GraphValidationError::SelfBondingAtom { atom_id } => assert_eq!(atom_id, 0),
+            _ => panic!("unexpected error returned: {err:?}"),
+        }
     }
 
     #[test]
     fn bond_new_sorts_atom_ids() {
-        let bond = Bond::new(2, 1, BondOrder::Single);
-        assert_eq!(bond.atom_ids, (1, 2));
+        let bond = Bond::new(4, 1, BondOrder::Triple);
+        assert_eq!(bond.atom_ids, (1, 4));
+        assert_eq!(bond.order, BondOrder::Triple);
     }
 
     #[test]
-    fn bond_new_with_pre_sorted_atom_ids() {
-        let bond = Bond::new(1, 2, BondOrder::Single);
-        assert_eq!(bond.atom_ids, (1, 2));
+    fn angle_new_orders_terminal_atoms() {
+        let angle = Angle::new(7, 3, 2);
+        assert_eq!(angle.atom_ids, (2, 3, 7));
     }
 
     #[test]
-    fn angle_new_sorts_outer_atom_ids() {
-        let angle = Angle::new(3, 1, 2);
-        assert_eq!(angle.atom_ids, (2, 1, 3));
+    fn proper_dihedral_new_canonicalizes_orientation() {
+        let forward = ProperDihedral::new(1, 2, 3, 4);
+        let reversed = ProperDihedral::new(4, 3, 2, 1);
+
+        assert_eq!(forward.atom_ids, reversed.atom_ids);
+        assert_eq!(forward.atom_ids, (1, 2, 3, 4));
     }
 
     #[test]
-    fn angle_new_with_pre_sorted_outer_atom_ids() {
-        let angle = Angle::new(2, 1, 3);
-        assert_eq!(angle.atom_ids, (2, 1, 3));
+    fn improper_dihedral_new_sorts_plane_atoms() {
+        let improper = ImproperDihedral::new(9, 1, 5, 4);
+        assert_eq!(improper.atom_ids, (1, 4, 5, 9));
     }
 
     #[test]
-    fn proper_dihedral_new_chooses_lexicographically_smallest_representation() {
-        let dihedral = ProperDihedral::new(4, 3, 2, 1);
-        assert_eq!(dihedral.atom_ids, (1, 2, 3, 4));
-    }
+    fn molecular_topology_default_is_empty() {
+        let topology = MolecularTopology::default();
 
-    #[test]
-    fn proper_dihedral_new_with_lexicographically_smallest_representation() {
-        let dihedral = ProperDihedral::new(1, 2, 3, 4);
-        assert_eq!(dihedral.atom_ids, (1, 2, 3, 4));
-    }
-
-    #[test]
-    fn improper_dihedral_new_sorts_plane_ids() {
-        let dihedral = ImproperDihedral::new(4, 2, 1, 3);
-        assert_eq!(dihedral.atom_ids, (2, 3, 1, 4));
-    }
-
-    #[test]
-    fn improper_dihedral_new_with_sorted_plane_ids() {
-        let dihedral = ImproperDihedral::new(1, 2, 3, 4);
-        assert_eq!(dihedral.atom_ids, (1, 2, 3, 4));
+        assert!(topology.atoms.is_empty());
+        assert!(topology.bonds.is_empty());
+        assert!(topology.angles.is_empty());
+        assert!(topology.propers.is_empty());
+        assert!(topology.impropers.is_empty());
     }
 }

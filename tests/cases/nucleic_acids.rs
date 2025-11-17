@@ -37,12 +37,12 @@ pub const URACIL: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O4",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -165,12 +165,12 @@ pub const THYMINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O4",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "C7",
@@ -323,12 +323,12 @@ pub const CYTOSINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "N4",
             element: Element::N,
-            expected_type: "N_3",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -476,7 +476,7 @@ pub const ADENINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "N6",
             element: Element::N,
-            expected_type: "N_3",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "H2",
@@ -639,12 +639,12 @@ pub const GUANINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O6",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "N2",
             element: Element::N,
-            expected_type: "N_3",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -812,7 +812,7 @@ pub const DEOXYADENOSINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "N6",
             element: Element::N,
-            expected_type: "N_3",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "H2",
@@ -1110,12 +1110,12 @@ pub const DINUCLEOTIDE_BACKBONE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O1P",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2P",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O5'_down",

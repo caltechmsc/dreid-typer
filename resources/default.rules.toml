@@ -1,12 +1,12 @@
 # ==============================================================================
 #  Official DREIDING Atom Typing Ruleset for dreid-typer
-#  Version: 1.0.0
-#  Author: Tony Kan, William A. Goddard III
+#  Version: 2.0.0
+#  Authors: Tony Kan, William A. Goddard III
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# §1. Special Hydrogen Types (Highest Priority)
-#    These rules rely on iterative typing of their neighbors.
+# §1. Special Topology Rules (Highest Priority)
+#    These identify unique bonding patterns that override all other chemistry.
 # ------------------------------------------------------------------------------
 
 [[rule]]
@@ -16,185 +16,198 @@ type = "H_b"
 conditions = { element = "H", degree = 2, neighbor_elements = { B = 2 } }
 
 # ------------------------------------------------------------------------------
-# §2. Aromatic Types (High Priority)
-#    Aromaticity is a strong, non-local feature that should be typed first.
+# §2. Generalized Resonance Rules (High Priority)
+#    `Hybridization::Resonant` is the most powerful classifier, capturing all
+#    atoms in delocalized pi-systems (aromatic, carboxylates, amides, etc.).
 # ------------------------------------------------------------------------------
 
 [[rule]]
-name = "C_Aromatic"
+name = "C_Resonant"
 priority = 400
 type = "C_R"
-conditions = { element = "C", is_aromatic = true }
+conditions = { element = "C", hybridization = "Resonant" }
 
 [[rule]]
-name = "N_Aromatic"
+name = "N_Resonant"
 priority = 400
 type = "N_R"
-conditions = { element = "N", is_aromatic = true }
+conditions = { element = "N", hybridization = "Resonant" }
+
+[[rule]]
+name = "O_Resonant"
+priority = 400
+type = "O_R"
+conditions = { element = "O", hybridization = "Resonant" }
+
+[[rule]]
+name = "S_Resonant"
+priority = 400
+type = "S_R"
+conditions = { element = "S", hybridization = "Resonant" }
 
 # ------------------------------------------------------------------------------
-# §3. Master Rules Based on Geometry (Steric Numbers)
-#    Directly Mapping VSEPR Theory to the DREIDING Type.
+# §3. Geometry-Based Rules (Standard Hierarchy: SP > SP2 > SP3)
+#    These rules map directly from the perceived hybridization state.
 # ------------------------------------------------------------------------------
 
 [[rule]]
 name = "C_Linear_SP"
 priority = 300
 type = "C_1"
-conditions = { element = "C", steric_number = 2 }
+conditions = { element = "C", hybridization = "SP" }
 
 [[rule]]
 name = "N_Linear_SP"
 priority = 300
 type = "N_1"
-conditions = { element = "N", steric_number = 2 }
+conditions = { element = "N", hybridization = "SP" }
 
 [[rule]]
 name = "C_Trigonal_SP2"
 priority = 200
 type = "C_2"
-conditions = { element = "C", steric_number = 3, is_aromatic = false }
+conditions = { element = "C", hybridization = "SP2" }
 
 [[rule]]
 name = "N_Trigonal_SP2"
 priority = 200
 type = "N_2"
-conditions = { element = "N", steric_number = 3, is_aromatic = false }
+conditions = { element = "N", hybridization = "SP2" }
 
 [[rule]]
 name = "O_Trigonal_SP2"
 priority = 200
 type = "O_2"
-conditions = { element = "O", steric_number = 3 }
-
-[[rule]]
-name = "B_Trigonal_SP2"
-priority = 200
-type = "B_2"
-conditions = { element = "B", steric_number = 3 }
+conditions = { element = "O", hybridization = "SP2" }
 
 [[rule]]
 name = "S_Trigonal_SP2"
 priority = 200
 type = "S_2"
-conditions = { element = "S", steric_number = 3, is_aromatic = false }
+conditions = { element = "S", hybridization = "SP2" }
+
+[[rule]]
+name = "B_Trigonal_SP2"
+priority = 200
+type = "B_2"
+conditions = { element = "B", hybridization = "SP2" }
 
 [[rule]]
 name = "C_Tetrahedral_SP3"
 priority = 100
 type = "C_3"
-conditions = { element = "C", steric_number = 4 }
+conditions = { element = "C", hybridization = "SP3" }
 
 [[rule]]
 name = "N_Tetrahedral_SP3"
 priority = 100
 type = "N_3"
-conditions = { element = "N", steric_number = 4 }
+conditions = { element = "N", hybridization = "SP3" }
 
 [[rule]]
 name = "O_Tetrahedral_SP3"
 priority = 100
 type = "O_3"
-conditions = { element = "O", steric_number = 4 }
+conditions = { element = "O", hybridization = "SP3" }
 
 [[rule]]
 name = "P_Tetrahedral_SP3"
 priority = 100
 type = "P_3"
-conditions = { element = "P", steric_number = 4 }
+conditions = { element = "P", hybridization = "SP3" }
 
 [[rule]]
-name = "S_Default_SP3"
+name = "S_Tetrahedral_SP3"
 priority = 100
 type = "S_3"
 conditions = { element = "S", hybridization = "SP3" }
 
 [[rule]]
-name = "Si_Tetrahedral_SP3"
-priority = 100
-type = "Si3"
-conditions = { element = "Si", steric_number = 4 }
-
-[[rule]]
 name = "B_Tetrahedral_SP3"
 priority = 100
 type = "B_3"
-conditions = { element = "B", steric_number = 4 }
+conditions = { element = "B", hybridization = "SP3" }
+
+[[rule]]
+name = "Si_Tetrahedral_SP3"
+priority = 101
+type = "Si3"
+conditions = { element = "Si", hybridization = "SP3" }
 
 [[rule]]
 name = "Al_Tetrahedral_SP3"
-priority = 100
+priority = 101
 type = "Al3"
-conditions = { element = "Al", steric_number = 4 }
+conditions = { element = "Al", hybridization = "SP3" }
 
 [[rule]]
 name = "Ge_Tetrahedral_SP3"
-priority = 100
+priority = 101
 type = "Ge3"
-conditions = { element = "Ge", steric_number = 4 }
+conditions = { element = "Ge", hybridization = "SP3" }
 
 [[rule]]
 name = "As_Tetrahedral_SP3"
-priority = 100
+priority = 101
 type = "As3"
-conditions = { element = "As", steric_number = 4 }
+conditions = { element = "As", hybridization = "SP3" }
 
 [[rule]]
 name = "Se_Tetrahedral_SP3"
-priority = 100
+priority = 101
 type = "Se3"
-conditions = { element = "Se", steric_number = 4 }
+conditions = { element = "Se", hybridization = "SP3" }
 
 [[rule]]
 name = "Sn_Tetrahedral_SP3"
-priority = 100
+priority = 101
 type = "Sn3"
-conditions = { element = "Sn", steric_number = 4 }
+conditions = { element = "Sn", hybridization = "SP3" }
 
 [[rule]]
 name = "Sb_Tetrahedral_SP3"
-priority = 100
+priority = 101
 type = "Sb3"
-conditions = { element = "Sb", steric_number = 4 }
+conditions = { element = "Sb", hybridization = "SP3" }
 
 [[rule]]
 name = "Te_Tetrahedral_SP3"
-priority = 100
+priority = 101
 type = "Te3"
-conditions = { element = "Te", steric_number = 4 }
+conditions = { element = "Te", hybridization = "SP3" }
 
 # ------------------------------------------------------------------------------
-# §4. Iterational Rules (High Priority, Depends on Neighbor Type)
-#    Rules executed after the neighbor type is determined.
+# §4. Hydrogen Types
+#    These rules depend on the hydrogen's neighbor.
 # ------------------------------------------------------------------------------
-
-[[rule]]
-name = "O_Aromatic_Or_Conjugated"
-priority = 401
-type = "O_R"
-conditions = { element = "O", hybridization = "Resonant" }
 
 [[rule]]
 name = "H_Donor_On_Oxygen"
-priority = 250
+priority = 80
 type = "H_HB"
-conditions = { element = "H", degree = 1, neighbor_elements = { O = 1 } }
+conditions = { element = "H", neighbor_elements = { O = 1 } }
 
 [[rule]]
 name = "H_Donor_On_Nitrogen"
-priority = 249
+priority = 79
 type = "H_HB"
-conditions = { element = "H", degree = 1, neighbor_elements = { N = 1 } }
+conditions = { element = "H", neighbor_elements = { N = 1 } }
 
 [[rule]]
 name = "H_Donor_On_Sulfur"
-priority = 240
+priority = 78
 type = "H_HB"
-conditions = { element = "H", degree = 1, neighbor_elements = { S = 1 } }
+conditions = { element = "H", neighbor_elements = { S = 1 } }
+
+[[rule]]
+name = "H_Standard_Default"
+priority = 1
+type = "H_"
+conditions = { element = "H" }
 
 # ------------------------------------------------------------------------------
-# §5. Fallback Rules (Low Priority)
-#    Generic rules to ensure all atoms are typed.
+# §5. Halogens (Medium-Low Priority)
+#    These are typically terminal atoms with `Hybridization::None`.
 # ------------------------------------------------------------------------------
 
 [[rule]]
@@ -222,77 +235,66 @@ type = "I_"
 conditions = { element = "I" }
 
 # ------------------------------------------------------------------------------
-# §6. Metals & Ions (Low Priority)
-#    These are typically isolated atoms (degree=0).
+# §6. Metals and Ions (Low Priority)
+#    These are often isolated or have `Hybridization::None`.
 # ------------------------------------------------------------------------------
 
 [[rule]]
-name = "Ion_Na"
+name = "Metal_Na"
 priority = 20
 type = "Na"
 conditions = { element = "Na" }
 
 [[rule]]
-name = "Ion_Ca"
+name = "Metal_Ca"
 priority = 20
 type = "Ca"
 conditions = { element = "Ca" }
 
 [[rule]]
-name = "Ion_Fe"
+name = "Metal_Fe"
 priority = 20
 type = "Fe"
 conditions = { element = "Fe" }
 
 [[rule]]
-name = "Ion_Zn"
+name = "Metal_Zn"
 priority = 20
 type = "Zn"
 conditions = { element = "Zn" }
 
 [[rule]]
-name = "Ion_Mg"
+name = "Metal_Mg"
 priority = 20
 type = "Mg"
 conditions = { element = "Mg" }
 
 [[rule]]
-name = "Ion_Mn"
+name = "Metal_Mn"
 priority = 20
 type = "Mn"
 conditions = { element = "Mn" }
 
 [[rule]]
-name = "Ion_Ti"
+name = "Metal_Ti"
 priority = 20
 type = "Ti"
 conditions = { element = "Ti" }
 
 [[rule]]
-name = "Ion_Tc"
+name = "Metal_Tc"
 priority = 20
 type = "Tc"
 conditions = { element = "Tc" }
 
 [[rule]]
-name = "Ion_Ru"
+name = "Metal_Ru"
 priority = 20
 type = "Ru"
 conditions = { element = "Ru" }
 
 [[rule]]
-name = "Ion_Hg"
+name = "Metal_Hg"
 priority = 20
 type = "Hg"
 conditions = { element = "Hg" }
-
-# ------------------------------------------------------------------------------
-# §7. Standard Hydrogen Default (Lowest Priority)
-#    This rule catches any hydrogen atom not already typed as acidic or bridging.
-# ------------------------------------------------------------------------------
-
-[[rule]]
-name = "H_Standard_Default"
-priority = 1
-type = "H_"
-conditions = { element = "H" }

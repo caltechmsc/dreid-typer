@@ -1,80 +1,96 @@
 # Phase 2: The Typing Engine
 
-The Typing Engine is the decision-making core of the `dreid-typer` library. Its sole responsibility is to assign a definitive DREIDING atom type to every atom in the molecule. It operates on the chemically-aware `ProcessingGraph` produced by the Perception phase and uses a sophisticated algorithm to resolve types, even in complex, context-dependent scenarios.
+Once perception has produced an `AnnotatedMolecule`, the typing engine converts that chemical knowledge into concrete DREIDING atom types. The heart of this stage is the `TyperEngine` in `typing::engine`, which evaluates a prioritized TOML rule set until every atom has a stable type.
 
-This document details the challenges of atom typing and the design of the iterative, priority-based engine that solves them.
+## Inputs, Outputs, and Data Flow
 
-## The Challenge of Context-Dependent Typing
+- **Input graph:** the immutable `AnnotatedMolecule` emitted by `perception::perceive`. Each atom carries element, hybridization, charges, lone pairs, ring flags, resonance flags, and adjacency.
+- **Rules:** a slice of `typing::rules::Rule` structs, typically `rules::get_default_rules()` but extendable with custom TOML files via `rules::parse_rules`.
+- **Output:** a `Vec<String>` containing the final DREIDING type for each atom (index-aligned with the original `MolecularGraph`). These strings are later fused into the final `MolecularTopology`.
 
-Atom typing is not always a simple, local decision. The correct type for an atom can often depend on the types of its neighbors. A classic example is the hydrogen atom:
+The engine never mutates the molecule. It only reads the perceived properties as predicates for rules.
 
-- A hydrogen bonded to a carbon is typically a standard type (`H_`).
-- A hydrogen bonded to an oxygen or nitrogen is a special type capable of hydrogen bonding (`H_HB`).
+## Rule Structure Recap
 
-This creates a "chicken-and-egg" problem: to type the hydrogen, we need to know the type of its neighbor, but the neighbor's type might also be in the process of being determined. A simple, one-pass approach to rule matching is insufficient to solve this.
+Every rule declares:
 
-## The Solution: An Iterative, Priority-Based Engine
+```toml
+[[rule]]
+name = "N_aromatic"
+priority = 400
+type = "N_R"
+[rule.conditions]
+element = "N"
+is_aromatic = true
+```
 
-To address this challenge, `dreid-typer` implements a **deterministic fixed-point iteration algorithm** within the `TyperEngine`. This engine ensures that type information propagates throughout the molecule until a stable, self-consistent state is reached.
+Key aspects used by the engine:
 
-The engine's logic is governed by two fundamental principles: **priority** and **iteration**.
+- **Priority (i32):** higher numbers dominate. After parsing, rules are sorted descending by priority, then by name for determinism.
+- **Conditions:** a `Conditions` struct containing optional scalar filters (`element`, `degree`, `hybridization`, `is_aromatic`, etc.) plus two hash maps:
+  - `neighbor_elements`: exact counts of neighboring elements.
+  - `neighbor_types`: exact counts of _typed_ neighbors, enabling context-dependent logic (e.g., “needs two `C_R` atoms attached”).
+
+Missing keys mean “don't care”, so even a fully generic fallback rule like `H_` is just `{ element = "H" }`.
+
+## Fixed-point Iteration
+
+The central challenge is that `neighbor_types` refers to the very output we are computing. To break the circular dependency, the engine performs deterministic rounds:
+
+1. **Initialization:** every atom starts untyped. The `atom_states` array tracks `(type_name, priority)` for atoms that have been assigned.
+2. **Round execution:** for each atom, find the first rule whose conditions match the current molecule and the current neighbor type assignments. If its priority is greater than the atom’s current priority (or the atom is untyped), update the atom’s state.
+3. **Convergence test:** after scanning all atoms, if at least one atom changed in this round, start a new round. Otherwise, iteration stops and the collected types are returned.
+4. **Safety limit:** the engine caps the number of rounds at 100. Hitting the cap indicates conflicting rules; the engine emits an `AssignmentError` describing the still-untyped atoms and the number of rounds attempted.
+
+Because the rules are pre-sorted and upgrades only occur when priorities increase, iteration always converges to a unique fixed point for a given molecule and rule set.
 
 ```mermaid
 graph TD
-    subgraph "Typing Engine Loop"
-        Start("Start Iteration Round") --> ForEachAtom{"For each atom in the graph"};
-        ForEachAtom -- "Atom `A`" --> FindRule{"Find best matching rule<br>based on current knowledge"};
-        FindRule -- "No rule matches" --> NextAtom;
-        FindRule -- "Rule `R` found" --> CheckPriority{"Is priority of `R` > <br>current priority of `A`?"};
-        CheckPriority -- "No" --> NextAtom;
-        CheckPriority -- "Yes" --> UpdateType["Update atom `A`'s type<br>Set 'changed' flag"];
-        UpdateType --> NextAtom{"Continue to next atom"};
-        NextAtom -- "Last atom processed" --> EndRound;
-    end
-
-    Start --> A_Initial["Initial State:<br>All atoms untyped"];
-    EndRound("End of Round") --> CheckChanges{"Any types changed in this round?"};
-    CheckChanges -- "Yes" --> Start;
-    CheckChanges -- "No (Fixed-Point Reached)" --> B_Final["Final State:<br>All atoms have stable types"];
+    Start["Unassigned types"] --> Round("Run round over atoms")
+    Round --> Changed{"Any priority-improving matches?"}
+    Changed -- "Yes" --> Round
+    Changed -- "No" --> Done["Stable types returned"]
 ```
 
-### 1. Priority: Resolving Rule Conflicts
+## Matching Semantics
 
-Each rule in the `.toml` file has a `priority` value. When an atom's properties match the conditions of multiple rules, the rule with the **highest priority number** always wins.
+When evaluating a rule against an atom, the engine checks conditions in this order:
 
-- **Purpose:** This mechanism ensures that specific, detailed rules override more general, generic ones.
-- **Example:** A rule for an aromatic carbon (`C_R`, priority 400) will always be chosen over a rule for a generic sp2 carbon (`C_2`, priority 200), even though an aromatic carbon is technically also sp2 hybridized.
+1. **Intrinsic properties:** element, formal charge, degree, lone pairs, hybridization, aromaticity flags, conjugation/resonance flags, ring membership, etc. All of these values come directly from `AnnotatedMolecule`.
+2. **Neighbor elements:** constructs a histogram of the atom’s neighbors and compares it to `neighbor_elements`. Counts must match exactly; missing keys default to zero.
+3. **Neighbor types:** uses the current `atom_states` table to count how many neighbors already have each requested type. If any neighbor referenced in the condition is still untyped, the rule simply fails this round and may succeed later once those neighbors acquire types.
 
-The engine begins by sorting all provided rules in descending order of priority. During matching, it simply uses the first rule it finds in this sorted list.
+Any failed check short-circuits the rest; only atoms meeting _all_ specified conditions qualify for the rule.
 
-### 2. Iteration: Propagating Context
+## Worked Example: Ethanol (`CH3-CH2-OH`)
 
-The engine runs in rounds. In each round, it attempts to assign or update the type for every atom in the molecule.
+1. **Round 1:**
+   - Carbons satisfy the `C_3` rule (`steric_number = 4`) with priority 100.
+   - The oxygen matches `O_3` (same priority), picking up `Hybridization::SP3` and `type = "O_3"`.
+   - The hydroxyl hydrogen matches `H_HB` (priority ~250) because its neighbor elements histogram includes one oxygen.
+   - Remaining hydrogens fall back to the generic `H_` rule (priority 1).
+2. **Round 2:** re-evaluating atoms discovers no higher-priority matches, so the engine exits with the types assigned in the previous round.
 
-- **Purpose:** Iteration allows type information to propagate from atom to atom. This is how the engine solves the context-dependency problem.
-- **Termination:** The engine continues to run new rounds as long as at least one atom's type was changed in the previous round. When a full round completes with zero changes, the system has reached a **fixed-point**, or a stable state. At this point, the types are considered final.
-- **Determinism:** Because types are only ever updated by higher-priority rules, this process is guaranteed to terminate and will always produce the exact same result for a given molecule and ruleset.
+## Error Paths and Diagnostics
 
-### A Walkthrough: Typing Ethanol (`CH3-CH2-OH`)
+- **Unresolved atoms:** if, after 100 rounds, one or more atoms never found a matching rule with sufficient priority, the engine returns `AssignmentError { untyped_atom_ids, rounds_completed }`. This usually indicates a missing custom rule.
+- **Precondition failures:** any error emitted by perception (invalid graph, Kekulé failure, etc.) occurs before the typing engine runs.
 
-Let's trace how the engine types the hydrogen atoms in ethanol.
+The error types bubble up through `assign_topology`/`assign_topology_with_rules`, so callers can surface precise diagnostics to users.
 
-1. **Initial State:** All atoms are untyped. The `ProcessingGraph` knows that one hydrogen (`H_o`) is bonded to an oxygen, and the others are bonded to carbons.
+## Extending the Engine
 
-2. **Round 1:**
+To introduce custom types:
 
-   - **Carbon & Oxygen Atoms:** The `C_3` (sp3 Carbon) and `O_3` (sp3 Oxygen) rules have high priority (100). They match based on `steric_number = 4` and are immediately assigned.
-   - **Hydrogen Atoms:** The engine now evaluates the hydrogens.
-     - For `H_o` (on oxygen): It matches the `H_Donor_On_Oxygen` rule (priority 250), which has a condition `{ neighbor_elements = { O = 1 } }`. It is assigned the type `H_HB`.
-     - For the other hydrogens (on carbon): They do not match any high-priority hydrogen rules. They _do_ match the `H_Standard_Default` rule (priority 1). They are assigned the type `H_`.
-   - **Result of Round 1:** All atoms have been assigned a type. Many changes occurred.
+1. Parse or build new `Rule` entries (e.g., `rules::parse_rules(include_str!("my.rules.toml"))`).
+2. Append them to a `Vec` that also contains the defaults.
+3. Pass the combined slice into `assign_topology_with_rules`.
 
-3. **Round 2:**
+Because the engine relies purely on the provided rule list, no additional hooks are required—new chemistry is just another rule.
 
-   - The engine re-evaluates every atom.
-   - It finds that for every atom, the best matching rule is the same one that was applied in Round 1. No rule with a higher priority can be found for any atom.
-   - **Result of Round 2:** Zero changes are made.
+## Key Takeaways
 
-4. **Termination:** Since Round 2 produced no changes, the engine terminates. The final, correct types (`C_3`, `O_3`, `H_HB`, `H_`) are returned.
-
-This iterative process, guided by priority, allows `dreid-typer` to robustly solve complex chemical typing problems in a predictable and deterministic way.
+- The typing engine is deterministic: same molecule + same rules = same output.
+- Priorities resolve conflicts; iteration resolves dependencies introduced by `neighbor_types`.
+- Diagnostics surface untyped atoms if the rule set is incomplete.
+- Everything runs off the immutable `AnnotatedMolecule`, keeping perception and typing cleanly separated.

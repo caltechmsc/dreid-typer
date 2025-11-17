@@ -26,13 +26,13 @@ pub struct MolecularGraph {
 }
 ```
 
-### 1.2 `ProcessingGraph`: The Internal Workspace
+### 1.2 `AnnotatedMolecule`: The Internal Workspace
 
-Once a `MolecularGraph` enters the pipeline, it is immediately converted into a `ProcessingGraph`. This is the most complex data structure in the library, serving as the central, chemically-aware workspace for the core algorithms.
+Once a `MolecularGraph` enters the pipeline, it is immediately converted into an `AnnotatedMolecule` (defined in `perception::model`). This is the most complex data structure in the library, serving as the central, chemically-aware workspace for the core algorithms.
 
 - **Purpose:** To hold a rich, comprehensive set of perceived chemical properties for every atom. It is the single source of truth for the typing and building phases.
 - **Structure:**
-  - A list of `AtomView`s, where each view contains numerous fields:
+  - A list of `AnnotatedAtom`s, where each entry contains numerous fields:
     - Intrinsic properties (`element`, `formal_charge`).
     - Topological properties (`degree`, `is_in_ring`, `smallest_ring_size`).
     - Electronic properties (`lone_pairs`, `steric_number`, `hybridization`).
@@ -40,7 +40,7 @@ Once a `MolecularGraph` enters the pipeline, it is immediately converted into a 
   - An adjacency list for efficient neighbor traversal.
 - **Design Rationale:**
   - **Centralized Knowledge:** By pre-calculating and storing all relevant properties in one place, the subsequent typing and building phases can be implemented as efficient, stateless queries against this data structure. This avoids redundant calculations.
-  - **Factual Immutability:** The `ProcessingGraph` is constructed once during the **Perception Phase** and is treated as a read-only object thereafter. This immutability guarantees that the typing engine operates on a consistent and deterministic chemical context.
+  - **Factual Immutability:** The `AnnotatedMolecule` is constructed once during the **Perception Phase** and is treated as a read-only object thereafter. This immutability guarantees that the typing engine operates on a consistent and deterministic chemical context.
 
 ### 1.3 `MolecularTopology`: The Final Output
 
@@ -65,7 +65,7 @@ graph LR
     end
 
     subgraph "Internal Processing"
-        B(<b>ProcessingGraph</b><br><i>Complex & Chemically-Aware</i>)
+        B(<b>AnnotatedMolecule</b><br><i>Complex & Chemically-Aware</i>)
     end
 
     subgraph "Engine-Ready Output"
@@ -76,10 +76,10 @@ graph LR
     B -- "<b>Phase 2 & 3: Typing & Building</b><br>Information is queried and transformed" --> C
 ```
 
-1. **Input to Workspace (`MolecularGraph` -> `ProcessingGraph`):**
-   The `perceive` function acts as the constructor for the `ProcessingGraph`. It takes the minimal `MolecularGraph` and performs all necessary chemical computations to build a fully annotated, "intelligent" graph. This is the most computationally intensive part of the process, where raw data is converted into chemical knowledge.
+1. **Input to Workspace (`MolecularGraph` -> `AnnotatedMolecule`):**
+   The `perception::perceive` function acts as the constructor for the `AnnotatedMolecule`. It takes the minimal `MolecularGraph` and performs all necessary chemical computations to build a fully annotated, "intelligent" graph. This is the most computationally intensive part of the process, where raw data is converted into chemical knowledge.
 
-2. **Workspace to Output (`ProcessingGraph` -> `MolecularTopology`):**
-   The `assign_types` and `build_topology` functions work in concert to transform the rich `ProcessingGraph` into the final, lean `MolecularTopology`. This stage is not about discovering new information, but rather about **querying** the existing knowledge and **formatting** it according to the rules of the DREIDING model. The typing engine queries atomic properties to assign types, and the builder queries connectivity to generate geometric terms.
+2. **Workspace to Output (`AnnotatedMolecule` -> `MolecularTopology`):**
+   The `typing::engine::assign_types` and `builder::build_topology` functions work in concert to transform the rich `AnnotatedMolecule` into the final, lean `MolecularTopology`. This stage is not about discovering new information, but rather about **querying** the existing knowledge and **formatting** it according to the rules of the DREIDING model. The typing engine queries atomic properties to assign types, and the builder queries connectivity to generate geometric terms.
 
 By strictly separating these data representations, `dreid-typer` achieves a clean architecture that is both robust and easy to reason about.

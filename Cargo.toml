@@ -1,6 +1,6 @@
 [package]
 name = "dreid-typer"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
     "Tony Kan <tonykan@caltech.edu>",
     "William A. Goddard III <wag@caltech.edu>",
@@ -20,8 +20,10 @@ categories = ["science", "simulation"]
 readme = "README.md"
 
 [dependencies]
+thiserror = "2.0.17"
 toml = "0.9.7"
 serde = { version = "1.0.188", features = ["derive"] }
+pauling = "0.1.0"
 
 [lib]
 name = "dreid_typer"

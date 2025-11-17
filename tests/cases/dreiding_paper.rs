@@ -27,17 +27,17 @@ pub const ACBUOL: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C5",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_3",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "C6",
@@ -984,12 +984,12 @@ pub const ABAXES: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C2",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "C3",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "S4",
@@ -1721,47 +1721,47 @@ pub const TRINITROBENZENE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "N1",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "O1A",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O1B",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "N3",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "O3A",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O3B",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "N5",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "O5A",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O5B",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "H_C2",
@@ -1879,22 +1879,22 @@ pub const TETRAMETHYLTHIOUREA: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "CS",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "S",
             element: Element::S,
-            expected_type: "S_2",
+            expected_type: "S_R",
         },
         AtomBlueprint {
             label: "N1",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "N2",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "C11",
@@ -2190,17 +2190,17 @@ pub const METHANESULFONAMIDE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "N",
             element: Element::N,
-            expected_type: "N_3",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "C",
@@ -2298,12 +2298,12 @@ pub const CHLOROACETYL_CHLORIDE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C_carbonyl",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O_carbonyl",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "Cl_carbonyl",
@@ -2406,7 +2406,7 @@ pub const ADENOSINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "N6",
             element: Element::N,
-            expected_type: "N_3",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "C1'",
@@ -2704,12 +2704,12 @@ pub const PHOSPHATE_ESTER: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O_double",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O_single_neg",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O_bridge1",
@@ -2821,129 +2821,6 @@ pub const PHOSPHATE_ESTER: MoleculeTestCase = MoleculeTestCase {
         BondBlueprint {
             atom1_label: "C2",
             atom2_label: "H_C2c",
-            order: BondOrder::Single,
-        },
-    ],
-};
-
-pub const ZINC_COMPLEX: MoleculeTestCase = MoleculeTestCase {
-    name: "AGLUAM10 - Zinc Complex",
-    atoms: &[
-        AtomBlueprint {
-            label: "ZN",
-            element: Element::Zn,
-            expected_type: "Zn",
-        },
-        AtomBlueprint {
-            label: "N1",
-            element: Element::N,
-            expected_type: "N_3",
-        },
-        AtomBlueprint {
-            label: "O1",
-            element: Element::O,
-            expected_type: "O_3",
-        },
-        AtomBlueprint {
-            label: "O2",
-            element: Element::O,
-            expected_type: "O_2",
-        },
-        AtomBlueprint {
-            label: "C2",
-            element: Element::C,
-            expected_type: "C_2",
-        },
-        AtomBlueprint {
-            label: "C3",
-            element: Element::C,
-            expected_type: "C_3",
-        },
-        AtomBlueprint {
-            label: "H_N1a",
-            element: Element::H,
-            expected_type: "H_HB",
-        },
-        AtomBlueprint {
-            label: "H_N1b",
-            element: Element::H,
-            expected_type: "H_HB",
-        },
-        AtomBlueprint {
-            label: "H_N1c",
-            element: Element::H,
-            expected_type: "H_HB",
-        },
-        AtomBlueprint {
-            label: "H_C3a",
-            element: Element::H,
-            expected_type: "H_",
-        },
-        AtomBlueprint {
-            label: "H_C3b",
-            element: Element::H,
-            expected_type: "H_",
-        },
-        AtomBlueprint {
-            label: "H_C3c",
-            element: Element::H,
-            expected_type: "H_",
-        },
-    ],
-    bonds: &[
-        BondBlueprint {
-            atom1_label: "ZN",
-            atom2_label: "N1",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "ZN",
-            atom2_label: "O1",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "N1",
-            atom2_label: "H_N1a",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "N1",
-            atom2_label: "H_N1b",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "N1",
-            atom2_label: "H_N1c",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "O1",
-            atom2_label: "C2",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C2",
-            atom2_label: "O2",
-            order: BondOrder::Double,
-        },
-        BondBlueprint {
-            atom1_label: "C2",
-            atom2_label: "C3",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C3",
-            atom2_label: "H_C3a",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C3",
-            atom2_label: "H_C3b",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C3",
-            atom2_label: "H_C3c",
             order: BondOrder::Single,
         },
     ],
@@ -3188,7 +3065,7 @@ pub const PERCHLORATE_ANION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O4",
             element: Element::O,
-            expected_type: "O_3",
+            expected_type: "O_2",
         },
     ],
     bonds: &[

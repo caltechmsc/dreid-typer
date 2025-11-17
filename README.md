@@ -1,73 +1,70 @@
 # DreidTyper
 
-**DreidTyper** is a high-performance, foundational software library for the automated assignment of DREIDING force field atom types and the perception of molecular topologies. It provides a modern, robust solution for translating simple chemical connectivity (a molecular graph) into a complete, engine-agnostic topological description essential for molecular simulations. This library is engineered from the ground up in **Rust** for exceptional performance, memory safety, and strict adherence to the principles of modular software design.
+**DreidTyper** is a Rust library that turns a minimal `MolecularGraph` (atoms + bonds) into a fully typed, DREIDING-compatible topology. The pipeline is deterministic, aggressively validated, and designed for integrators who need trustworthy chemistry without shipping their own perception code.
 
-The core mission of DreidTyper is to provide a reliable, predictable, and easy-to-integrate tool for developers and researchers building the next generation of simulation tools for general chemistry, materials science, and drug discovery.
+At a high level the library walks through:
+
+1. **Perception:** six ordered passes (rings → Kekulé expansion → electron bookkeeping → aromaticity → resonance → hybridization) that upgrade raw connectivity into a rich `AnnotatedMolecule`.
+2. **Typing:** an iterative, priority-sorted rule engine that resolves the final DREIDING atom label for every atom.
+3. **Building:** a pure graph traversal that emits canonical bonds, angles, and torsions as a `MolecularTopology`.
 
 ## Features
 
-- **DREIDING Atom Typing**: Assigns canonical DREIDING atom types from molecular connectivity.
-- **Full Topology Perception**: Identifies bonds, angles, and proper/improper dihedrals.
-- **Memory Safe & Fast**: Built in Rust for guaranteed memory safety and high performance.
-- **Rule-Based Engine**: Uses a clear TOML-based rule system for atom typing logic.
-- **Engine-Agnostic**: Produces a pure topological representation independent of any MD engine.
+- **Chemically faithful perception:** built-in algorithms cover SSSR ring search, strict Kekulé expansion, charge/lone pair templates for heteroatoms, aromaticity categorization (including anti-aromatic detection), resonance propagation, and hybridization inference.
+- **Deterministic typing engine:** TOML rules are sorted by priority and evaluated until a fixed point, making neighbor-dependent rules (e.g., `H_HB`) converge without guesswork.
+- **Engine-agnostic topology:** outputs canonicalized bonds, angles, proper and improper dihedrals ready for any simulator that consumes DREIDING-style terms.
+- **Extensible ruleset:** ship with curated defaults (`resources/default.rules.toml`) and load or merge custom rule files at runtime.
+- **Rust-first ergonomics:** zero `unsafe`, comprehensive unit/integration tests, and precise error variants for validation, perception, and typing failures.
 
 ## Getting Started
 
-To get started with DreidTyper, add it as a dependency in your `Cargo.toml`:
+Add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-dreid-typer = "0.2.0"
+dreid-typer = "0.2.1"
 ```
 
-Then, you can use it in your Rust code as follows:
+Run the full pipeline from connectivity to topology:
 
 ```rust
-use dreid_typer::{
-    assign_topology, MolecularGraph, MolecularTopology,
-    Element, BondOrder,
-};
+use dreid_typer::{assign_topology, Element, MolecularGraph, MolecularTopology, BondOrder};
 
-// 1. Define the molecule's connectivity using a `MolecularGraph`.
 let mut graph = MolecularGraph::new();
-let c1 = graph.add_atom(Element::C); // CH3
-let c2 = graph.add_atom(Element::C); // CH2
+let c1 = graph.add_atom(Element::C);
+let c2 = graph.add_atom(Element::C);
 let o = graph.add_atom(Element::O);
-let h_c1_1 = graph.add_atom(Element::H);
-let h_c1_2 = graph.add_atom(Element::H);
-let h_c1_3 = graph.add_atom(Element::H);
-let h_c2_1 = graph.add_atom(Element::H);
-let h_c2_2 = graph.add_atom(Element::H);
 let h_o = graph.add_atom(Element::H);
+let h_atoms: Vec<_> = (0..6).map(|_| graph.add_atom(Element::H)).collect();
 
 graph.add_bond(c1, c2, BondOrder::Single).unwrap();
 graph.add_bond(c2, o, BondOrder::Single).unwrap();
-graph.add_bond(c1, h_c1_1, BondOrder::Single).unwrap();
-graph.add_bond(c1, h_c1_2, BondOrder::Single).unwrap();
-graph.add_bond(c1, h_c1_3, BondOrder::Single).unwrap();
-graph.add_bond(c2, h_c2_1, BondOrder::Single).unwrap();
-graph.add_bond(c2, h_c2_2, BondOrder::Single).unwrap();
 graph.add_bond(o, h_o, BondOrder::Single).unwrap();
+for (carbon, chunk) in [c1, c2].into_iter().zip(h_atoms.chunks(3)) {
+    for &hydrogen in chunk {
+        graph.add_bond(carbon, hydrogen, BondOrder::Single).unwrap();
+    }
+}
 
-// 2. Call the main function to perceive the topology.
-let topology: MolecularTopology = assign_topology(&graph).unwrap();
+let topology: MolecularTopology = assign_topology(&graph).expect("perception + typing succeed");
 
-// 3. Inspect the results.
-assert_eq!(topology.atoms.len(), 9);
-assert_eq!(topology.bonds.len(), 8);
-assert_eq!(topology.angles.len(), 13);
-assert_eq!(topology.proper_dihedrals.len(), 12);
-
-// Check the assigned DREIDING atom types.
-assert_eq!(topology.atoms[c1].atom_type, "C_3");   // sp3 Carbon
-assert_eq!(topology.atoms[c2].atom_type, "C_3");   // sp3 Carbon
-assert_eq!(topology.atoms[o].atom_type, "O_3");    // sp3 Oxygen
-assert_eq!(topology.atoms[h_o].atom_type, "H_HB"); // Hydrogen-bonding Hydrogen
-assert_eq!(topology.atoms[h_c1_1].atom_type, "H_"); // Standard Hydrogen
+assert_eq!(topology.atoms[c1].atom_type, "C_3");
+assert_eq!(topology.atoms[c2].atom_type, "C_3");
+assert_eq!(topology.atoms[o].atom_type, "O_3");
+assert_eq!(topology.atoms[h_o].atom_type, "H_HB");
 ```
 
-> **Note**: This is a simplified example. For more complex molecules and edge cases, please refer to the [API Documentation](https://docs.rs/dreid-typer).
+Need custom chemistry? Parse a TOML file and run the same API:
+
+```rust
+use dreid_typer::{assign_topology_with_rules, rules, MolecularGraph};
+
+let mut ruleset = rules::get_default_rules().to_vec();
+let extra = std::fs::read_to_string("my_metals.rules.toml")?;
+ruleset.extend(rules::parse_rules(&extra)?);
+
+let topology = assign_topology_with_rules(&graph, &ruleset)?;
+```
 
 ## Documentation
 

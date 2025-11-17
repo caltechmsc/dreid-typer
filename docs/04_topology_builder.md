@@ -1,100 +1,75 @@
 # Phase 3: The Topology Builder
 
-The Topology Builder is the final stage of the `dreid-typer` pipeline, orchestrated by the `builder::build_topology` function. Its purpose is to translate the chemically-aware `ProcessingGraph` and the assigned atom types into a `MolecularTopology`, which is a complete, simulation-ready description of the molecule's force field terms.
+With atom types resolved, the builder translates the annotated molecule into a `MolecularTopology`. This stage is pure graph traversal — no additional chemistry is inferred — but it’s where canonical force-field terms emerge.
 
-This phase marks the transition from a **chemical representation** (what the molecule _is_) to a **physical model** (how its parts _interact_). It systematically generates all required geometric interaction terms: angles, proper dihedrals, and improper dihedrals.
+`builder::build_topology` takes two inputs:
 
-## The Generation Algorithms
+1. The immutable `AnnotatedMolecule` output of perception.
+2. The `Vec<String>` of atom types returned by the typing engine.
 
-The builder employs a set of systematic graph traversal algorithms to ensure that every valid interaction term is generated exactly once.
+It produces `MolecularTopology { atoms, bonds, angles, propers, impropers }`, all deduplicated and ready for downstream MD engines.
 
 ```mermaid
 graph TD
-    subgraph "Inputs to Builder"
-        A["<b>ProcessingGraph</b><br><i>(Connectivity & Geometry Hints)</i>"]
-        B["<b>Atom Types</b><br><i>(From Typing Engine)</i>"]
-    end
-
-    subgraph "Builder Logic (<b>builder::build_topology</b>)"
-        C{"Generate Bonds"}
-        D{"Generate Angles"}
-        E{"Generate Proper Dihedrals"}
-        F{"Generate Improper Dihedrals"}
-    end
-
-    subgraph "Output"
-        G["<b>MolecularTopology</b><br><i>(Final Interaction List)</i>"]
-    end
-
-    A -- "Source for Bonds, Angles, Dihedrals" --> C & D & E & F;
-    B -- "Adds `atom_type` to final `Atom` list" --> G;
-
-    C -- "List of `Bond`s" --> G;
-    D -- "List of `Angle`s" --> G;
-    E -- "List of `ProperDihedral`s" --> G;
-    F -- "List of `ImproperDihedral`s" --> G;
+    A(<b>AnnotatedMolecule</b>) --> B{builder::build_topology}
+    T(<b>Atom Types</b>) --> B
+    B --> C(<b>MolecularTopology</b>)
 ```
 
-### 1. Generating Bonds
+## Atom Table
 
-- **Source:** The original `MolecularGraph`.
-- **Algorithm:** This is the most straightforward step. The builder iterates through the list of `BondEdge`s from the input graph and converts them into the final `Bond` format. During this process, the atom indices within each bond are sorted to create a **canonical representation**.
+`build_atoms` walks the annotated atoms and copies their element, hybridization, and ID while splicing in the final type string (`atom_types[ann_atom.id]`). This produces the topology’s `atoms` vector.
 
-### 2. Generating Angles (`build_angles`)
+## Connectivity Terms
 
-- **Purpose:** To identify all unique triplets of bonded atoms `i-j-k`.
-- **Algorithm:** The builder iterates through every atom `j` in the molecule and considers it as a potential angle center.
+Every interaction term uses the molecule’s adjacency lists and bond table, which already reflect Kekulé-expanded bond orders.
 
-  1. For each atom `j`, it retrieves its list of bonded neighbors.
-  2. It then generates all unique combinations of two neighbors, `i` and `k`, from this list.
-  3. Each combination forms a new `Angle` `(i, j, k)`.
+### Bonds
 
-  This combinatorial approach guarantees that every possible angle is found.
+`build_bonds` maps each `BondEdge` to a `Bond`, sorting the atom indices so that `(i, j)` and `(j, i)` collapse to the same representation. The resulting set is stored in a `HashSet<Bond>` to prevent duplicates before being collected into a `Vec`.
 
-  ```
-  For each atom j:
-    neighbors = get_neighbors(j)
-    For each pair (i, k) in combinations(neighbors, 2):
-      add_angle(i, j, k)
-  ```
+### Angles (`build_angles`)
 
-### 3. Generating Proper Dihedrals (`build_proper_dihedrals`)
+For each atom `j` (the angle center), consider all unordered pairs of neighbors `(i, k)` taken from `adjacency[j]`. Each pair yields `Angle::new(i, j, k)`, which internally sorts the outer atoms to maintain canonical order. Because combinations are generated without repetition, every unique `i-j-k` angle appears exactly once.
 
-- **Purpose:** To identify all unique quartets of bonded atoms `i-j-k-l` that define a torsion angle.
-- **Algorithm:** The algorithm is centered around the central bond `j-k` of the dihedral.
+Pseudocode:
 
-  1. The builder iterates through every bond `j-k` in the molecule.
-  2. For each bond, it considers atom `j`: it iterates through all of `j`'s neighbors, excluding `k`, to find all possible atoms `i`.
-  3. Simultaneously, it considers atom `k`: it iterates through all of `k`'s neighbors, excluding `j`, to find all possible atoms `l`.
-  4. Every valid combination of `i`, `j`, `k`, and `l` forms a new `ProperDihedral` `(i, j, k, l)`.
+```text
+for center in atoms:
+    neighbors = adjacency[center]
+    for each unordered pair (i, k) in neighbors:
+        angles.insert(Angle::new(i, center, k))
+```
 
-  ```
-  For each bond (j, k):
-    For each neighbor i of j (where i != k):
-      For each neighbor l of k (where l != j):
-        add_proper_dihedral(i, j, k, l)
-  ```
+### Proper Dihedrals (`build_propers`)
 
-### 4. Generating Improper Dihedrals (`build_improper_dihedrals`)
+Proper torsions are enumerated around each bond `j-k`:
 
-- **Purpose:** To identify specific quartets of atoms that define an out-of-plane bending angle. In DREIDING, this term is primarily used to enforce planarity at `sp2`-hybridized centers.
-- **Algorithm:** Unlike other terms, improper dihedrals are not found by traversing bond paths. Instead, they are identified based on the properties of a central atom.
-  1. The builder iterates through every atom `i` in the molecule.
-  2. It checks if atom `i` meets the DREIDING criteria for an improper center:
-     - It must have exactly three bonded neighbors (`degree = 3`).
-     - Its perceived hybridization must be `SP2` or `Resonant`.
-  3. If both conditions are met, an `ImproperDihedral` is created. Atom `i` is the central atom, and its three neighbors (`j`, `k`, `l`) define the plane.
+1. Iterate over every stored bond.
+2. For each neighbor `i` of `j` (excluding `k`) and each neighbor `l` of `k` (excluding `j` and `i`), emit `ProperDihedral::new(i, j, k, l)`.
+3. The constructor compares `(i, j, k, l)` to its reverse `(l, k, j, i)` and keeps the lexicographically smaller tuple to guarantee uniqueness.
 
-### The Principle of Canonical Representation
+This approach naturally covers both directions (i.e., `i-j-k-l` and `l-k-j-i`) without generating duplicates.
 
-A critical design feature of the builder is its commitment to **canonical representation**. Before a new `Angle`, `ProperDihedral`, or `ImproperDihedral` is created, its constituent atom indices are sorted according to a deterministic rule.
+### Improper Dihedrals (`build_impropers`)
 
-- **`Angle(i, j, k)`:** The outer atoms `i` and `k` are sorted. `Angle(1, 2, 3)` becomes identical to `Angle(3, 2, 1)`.
-- **`ProperDihedral(i, j, k, l)`:** The entire tuple is compared to its reverse `(l, k, j, i)`, and the lexicographically smaller of the two is stored.
-- **`ImproperDihedral(i, j, k, l)`:** The three plane atoms are sorted, with the central atom always in the third position.
+Improper torsions enforce planarity at trigonal centers. The builder scans every atom and checks two conditions:
 
-**Design Rationale (Why this is important):**
+1. Degree equals 3.
+2. Hybridization equals `Hybridization::SP2` or `Hybridization::Resonant`.
 
-1. **Deduplication:** This allows for the efficient use of a `HashSet` during generation to automatically discard duplicate terms, ensuring the final list is unique.
-2. **Predictable Output:** It provides a stable and predictable output format. Downstream simulation engines or analysis tools do not need to perform their own normalization; they can rely on the fact that any given geometric term will always have the same representation.
-3. **Simplicity for Consumers:** It simplifies the logic for any tool that consumes this topology, as it removes ambiguity in how interactions are defined.
+If satisfied, the atom’s three neighbors form the outer atoms while the center occupies the third index of `ImproperDihedral::new(p1, p2, center, p3)`. The constructor sorts the three peripheral atoms but keeps the central atom fixed, delivering a canonical key.
+
+## Why Canonical Forms Matter
+
+- **Deduplication:** All intermediate collections are `HashSet`s, so deterministic ordering of atom IDs is required to detect duplicates.
+- **Stable output:** Simulation pipelines downstream can diff or cache topologies knowing that rerunning the builder yields identical ordering.
+- **Serialization friendliness:** Canonical tuples simplify hashing/serialization and reduce noise in reference files.
+
+## Error Handling
+
+The builder assumes its inputs are valid. By the time `build_topology` runs, perception has already verified graph connectivity, and typing has succeeded. Therefore, the functions are infallible and cannot produce errors on their own.
+
+## Summary
+
+The topology builder does not invent new chemistry; it formalizes the perceived molecule into the geometric primitives expected by DREIDING-compatible engines. Canonical ordering and set-based generation ensure reproducible, duplicate-free interaction lists every time.

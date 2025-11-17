@@ -1,36 +1,31 @@
 # Reference: The DREIDING Rule System
 
-The `dreid-typer` engine's power and flexibility stem from its rule-based design. The entire atom typing logic is defined in human-readable TOML files, allowing for easy inspection, modification, and extension without altering the core library code. This document serves as the definitive technical reference for the rule system.
+After perception, every atom in an `AnnotatedMolecule` carries rich metadata: element, degree, lone pairs, hybridization, aromaticity, resonance state, and the smallest ring it participates in. The typing engine does not hard-code chemistry; instead, it evaluates TOML rules that describe how those annotations map to DREIDING atom types. This document is the complete guide to that rule layer.
 
 ## Rule Structure
 
-All rules are defined within a TOML file as an array of tables, with each rule prefixed by `[[rule]]`. Each rule is an independent object containing four mandatory keys.
+Rules are declared as `[[rule]]` tables inside a TOML file. Each rule must provide four keys:
 
-- `name` (`string`): A unique, descriptive name for the rule (e.g., `"C_Aromatic"`). This is used for debugging and identification.
-- `priority` (`integer`): A number that determines the rule's precedence in cases of conflict. **Higher numbers correspond to higher priority** and are evaluated first.
-- `type` (`string`): The DREIDING atom type string to be assigned if all conditions are met (e.g., `"C_R"`).
-- `conditions` (`table`): A table of one or more conditions that an atom must satisfy for the rule to be considered a match.
+- `name` (`string`): descriptive identifier surfaced in diagnostics.
+- `priority` (`integer`): conflict resolver; **larger values win** if multiple rules match an atom during the same iteration.
+- `type` (`string`): the DREIDING atom type emitted when the rule fires.
+- `conditions` (`table`): property checks an atom must satisfy. All listed checks must pass.
 
-**Example of a complete rule:**
+Example:
 
 ```toml
 [[rule]]
-# A human-readable identifier for the rule.
 name = "N_Trigonal_SP2"
-
-# This rule will be chosen over any rule with a priority < 200.
 priority = 200
-
-# The atom type to be assigned on a successful match.
 type = "N_2"
-
-# A collection of properties the atom must have.
 conditions = { element = "N", steric_number = 3, is_aromatic = false }
 ```
 
+At runtime, `typing::rules::parse_rules` converts the TOML into strongly typed `Rule` structures. `typing::rules::get_default_rules` lazily parses the embedded `resources/default.rules.toml`, so applications can either use the canonical ruleset directly or append their own entries before starting the typing engine.
+
 ## Available Conditions
 
-The `conditions` table is the heart of a rule. It defines the specific chemical context that an atom must match. An atom must satisfy **all** specified conditions within a single rule for that rule to apply.
+Conditions operate on the immutable snapshot of an `AnnotatedAtom`. Because perception already computed lone pairs, hybridization, resonance, and ring membership, rules can simply read fields and avoid bespoke chemistry code. Every key is optional; omitting a key turns it into a wildcard.
 
 The following table details every valid key that can be used inside the `conditions` table.
 
@@ -45,6 +40,8 @@ The following table details every valid key that can be used inside the `conditi
 | `hybridization`               | String  | The perceived hybridization state. Valid values: `"SP"`, `"SP2"`, `"SP3"`, `"Resonant"`, `"None"`.                                                               |
 | `is_in_ring`                  | Boolean | `true` if the atom is part of any detected ring system.                                                                                                          |
 | `is_aromatic`                 | Boolean | `true` if the atom is part of a perceived aromatic system.                                                                                                       |
+| `is_anti_aromatic`            | Boolean | `true` if perception tagged the atom as belonging to an anti-aromatic ring.                                                                                      |
+| `is_resonant`                 | Boolean | `true` if resonance analysis marked the atom as delocalized (e.g., phenoxide oxygen).                                                                            |
 | `smallest_ring_size`          | Integer | The size of the smallest ring the atom belongs to (e.g., `5` for furan).                                                                                         |
 | **Neighbor-Based Properties** |         | Properties derived from the atom's immediate neighbors.                                                                                                          |
 | `neighbor_elements`           | Table   | Specifies the **exact counts** of neighboring elements. Atoms not listed are assumed to be zero.                                                                 |
@@ -67,18 +64,18 @@ conditions = { element = "C", neighbor_types = { "C_3" = 1, "H_" = 3 } }
 ### The Role of `priority` and `neighbor_types`
 
 - **Priority:** The `priority` key is the sole mechanism for resolving conflicts. When an atom matches multiple rules, the one with the highest `priority` value is definitively chosen in that iteration.
-- **Iteration Trigger:** The `neighbor_types` condition is special. Because it depends on the _final_ types of other atoms, rules containing it may not match in the first round of typing. The iterative engine will continue to run, propagating new type information, until these context-dependent rules can be satisfied and the system reaches a stable state. For a detailed explanation, see the [Typing Engine documentation](./03_typing_engine.md).
+- **Iteration trigger:** `neighbor_types` refers to already-assigned neighbor atom types. Early rounds may skip these rules while neighbors are still untyped. The engine keeps iterating, seeding newly determined types back into the graph, until every atom is stable. See [Typing Engine](./03_typing_engine.md) for the convergence strategy.
 
 ## Default Ruleset Philosophy and Key Atom Types
 
-The default ruleset (`dreiding.rules.toml`) is designed to be a faithful and robust implementation of the original DREIDING philosophy. Its structure follows a clear hierarchy:
+`resources/default.rules.toml` tracks the original DREIDING priorities while embracing the richer perception data. The layout is intentionally layered:
 
-1. **Highest Priority (500+):** Extremely specific and rare cases (e.g., bridging hydrogens).
-2. **High Priority (400s):** Strong, non-local chemical features like aromaticity that should override simpler geometric definitions.
-3. **Medium Priority (100-300):** The main workhorse rules based on geometry (steric number and hybridization) from VSEPR theory.
-4. **Low Priority (1-99):** General fallback rules for common cases like halogens and a default for standard hydrogen.
+1. **500+** – Exotic safeties and overrides (e.g., diborane bridging hydrogens).
+2. **400s** – Delocalized or aromatic atoms (`*_R`, resonance-stabilized heteroatoms) that must outrank geometry-only rules.
+3. **100–300** – VSEPR-driven workhorses keyed off steric number and hybridization.
+4. **<100** – Simple fallbacks such as halogens, alkali/alkaline-earth metals, and default hydrogens.
 
-The table below summarizes some of the most common atom types and the key conditions that define them in the default ruleset.
+Representative entries are summarized below (table retained for quick reference):
 
 | Atom Type         | DREIDING Description          | Key Rule Condition(s) in `dreiding.rules.toml`                    | Priority |
 | :---------------- | :---------------------------- | :---------------------------------------------------------------- | :------: |
@@ -95,6 +92,7 @@ The table below summarizes some of the most common atom types and the key condit
 | `O_3`             | sp³ Oxygen (Ether/Alcohol)    | `{ element = "O", steric_number = 4 }`                            |   100    |
 | `O_2`             | sp² Oxygen (Carbonyl)         | `{ element = "O", steric_number = 3 }`                            |   200    |
 | `O_R`             | Resonant Oxygen (Phenol)      | `{ element = "O", hybridization = "Resonant" }`                   |   401    |
+| `S_R`             | Resonant Sulfur (Thiophene)   | `{ element = "S", hybridization = "Resonant" }`                   |   400    |
 | `P_3`             | sp³ Phosphorus (Phosphate)    | `{ element = "P", steric_number = 4 }`                            |   100    |
 | `S_3`             | sp³ Sulfur (Thiol/Sulfide)    | `{ element = "S", hybridization = "SP3" }`                        |   100    |
 | `F_`, `Cl_`, etc. | Halogens                      | `{ element = "F" }`, etc.                                         |    50    |
@@ -102,36 +100,33 @@ The table below summarizes some of the most common atom types and the key condit
 
 ## How to Extend the Rule System
 
-The system is designed for easy extension. To add support for new elements or define custom types:
+Customizing typing means editing TOML, not Rust. Typical workflow:
 
-1. **Create a custom TOML file** (e.g., `my_copper_rules.toml`).
-2. **Define your new rules.** Ensure you choose a priority that correctly interacts with existing rules. For a new metal ion, a low priority is appropriate.
+1. **Author a TOML snippet** (e.g., `my_copper_rules.toml`).
+2. **Pick priorities carefully.** Choose values that let your rules coexist with (or outrank) the defaults.
+3. **Load rules at runtime.** Parse the TOML with `dreid_typer::rules::parse_rules` and pass the resulting slice into `assign_topology_with_rules`. (If you want to extend the canonical DREIDING file, copy `resources/default.rules.toml` into your project, edit it, and parse that content before appending your custom entries.)
 
-   ```toml
-   # my_copper_rules.toml
-   [[rule]]
-   name = "Ion_Cu_Divalent"
-   priority = 20
-   type = "Cu+2"
-   conditions = { element = "Cu", formal_charge = 2 }
-   ```
+```toml
+# my_copper_rules.toml
+[[rule]]
+name = "Ion_Cu_Divalent"
+priority = 20
+type = "Cu+2"
+conditions = { element = "Cu", formal_charge = 2 }
+```
 
-3. **Load and use the rules in your code.** You can either combine them with the default rules or use them exclusively.
+```rust
+use dreid_typer::{assign_topology_with_rules, rules, MolecularGraph, MolecularTopology, TyperError};
 
-   ```rust
-   use dreid_typer::{rules, assign_topology_with_rules, MolecularGraph};
+fn type_with_custom_rules(graph: &MolecularGraph) -> Result<MolecularTopology, TyperError> {
+   // Load the default ruleset.
+   let mut all_rules = rules::parse_rules(include_str!("dreiding.rules.toml"))?;
 
-   fn type_molecule_with_custom_rules(graph: &MolecularGraph) {
-       // Load default rules
-       let mut all_rules = rules::get_default_rules().unwrap().to_vec();
+   // Append or override entries programmatically.
+   all_rules.extend(rules::parse_rules(include_str!("my_copper_rules.toml"))?);
 
-       // Load and append custom rules
-       let custom_rules_str = include_str!("my_copper_rules.toml");
-       let custom_rules = rules::parse_rules(custom_rules_str).unwrap();
-       all_rules.extend(custom_rules);
+   assign_topology_with_rules(graph, &all_rules)
+}
+```
 
-       // Run the typer with the combined ruleset
-       let topology = assign_topology_with_rules(graph, &all_rules).unwrap();
-       // ...
-   }
-   ```
+Because the engine merely consumes structured data, you can version-control TOML files, generate them from other toolchains, or even ship different rulesets for different force fields—all without recompiling `dreid-typer`.

@@ -17,17 +17,17 @@ pub const GLYCINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -120,17 +120,17 @@ pub const ALANINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -253,17 +253,17 @@ pub const VALINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -446,17 +446,17 @@ pub const LEUCINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -669,17 +669,17 @@ pub const ISOLEUCINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -907,17 +907,17 @@ pub const PROLINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -1070,17 +1070,17 @@ pub const SERINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -1213,17 +1213,17 @@ pub const THREONINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -1386,17 +1386,17 @@ pub const CYSTEINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -1529,17 +1529,17 @@ pub const METHIONINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -1732,17 +1732,17 @@ pub const ASPARTATE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -1752,17 +1752,17 @@ pub const ASPARTATE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "CG",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "OD1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "OD2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -1885,17 +1885,17 @@ pub const ASPARAGINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -1905,17 +1905,17 @@ pub const ASPARAGINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "CG",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "OD1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "ND2",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -2058,17 +2058,17 @@ pub const GLUTAMATE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -2083,17 +2083,17 @@ pub const GLUTAMATE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "CD",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "OE1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "OE2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -2241,17 +2241,17 @@ pub const GLUTAMINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -2266,17 +2266,17 @@ pub const GLUTAMINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "CD",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "OE1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "NE2",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -2444,17 +2444,17 @@ pub const LYSINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -2697,17 +2697,17 @@ pub const ARGININE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -2727,22 +2727,22 @@ pub const ARGININE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "NE",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "CZ",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "NH1",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "NH2",
             element: Element::N,
-            expected_type: "N_2",
+            expected_type: "N_R",
         },
         AtomBlueprint {
             label: "H1",
@@ -2970,17 +2970,17 @@ pub const PHENYLALANINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -3208,17 +3208,17 @@ pub const TYROSINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -3456,17 +3456,17 @@ pub const HISTIDINE_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",
@@ -3664,17 +3664,17 @@ pub const TRYPTOPHAN_ZWITTERION: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "C",
             element: Element::C,
-            expected_type: "C_2",
+            expected_type: "C_R",
         },
         AtomBlueprint {
             label: "O1",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_2",
+            expected_type: "O_R",
         },
         AtomBlueprint {
             label: "CB",

@@ -1,197 +1,100 @@
-//! Error types for the dreid-typer library.
+//! Error types describing the failure modes of graph validation, chemical perception, and typing.
 //!
-//! This module defines all error types that can be returned by the dreid-typer
-//! library functions. These errors cover failures in rule parsing, input validation,
-//! chemical perception, and atom typing across the three-phase pipeline.
+//! These enums aggregate lower-level issues so that library consumers can bubble up a single
+//! `TyperError` while still inspecting fine-grained context when needed.
 
-use std::fmt;
+use thiserror::Error;
 
-/// The primary error type returned by dreid-typer library functions.
+/// Root error emitted by every fallible operation in the typing pipeline.
 ///
-/// This enum encompasses all possible failure modes of the library, from input
-/// validation to the core typing algorithm. It provides detailed error information
-/// to help users diagnose issues with their molecular graphs or rule configurations.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Each variant wraps a more specific error that pinpoints the subsystem that failed, allowing
+/// callers to recover or log richer diagnostics without losing ergonomic `Result` signatures.
+#[derive(Debug, Error)]
 pub enum TyperError {
-    /// An error occurred while parsing the user-provided or default rule set.
-    /// This indicates a syntax error in the TOML rule file.
-    RuleParse(String),
+    /// Input validation of the `MolecularGraph` failed before perception could start.
+    #[error("invalid input graph")]
+    InvalidInput(#[from] GraphValidationError),
 
-    /// The input `MolecularGraph` is structurally invalid or inconsistent.
-    /// This error occurs before any typing logic is applied.
-    InvalidInputGraph(GraphValidationError),
+    /// Parsing of the DREIDING typing rules TOML payload did not succeed.
+    #[error("failed to parse typing rules")]
+    RuleParse(#[from] toml::de::Error),
 
-    /// The chemical feature perception pipeline failed for a specific reason.
-    /// This indicates a logic error in our perception rules or unhandled chemical environments.
-    AnnotationFailed(AnnotationError),
+    /// A specific chemical perception stage reported a failure.
+    #[error("chemical perception failed during '{step}' step")]
+    PerceptionFailed {
+        /// Name of the perception step (e.g., "aromaticity" or "hybridization").
+        step: String,
+        /// Root perception error that triggered the failure.
+        #[source]
+        source: PerceptionError,
+    },
 
-    /// The iterative typing engine failed to assign a DREIDING type to all atoms.
-    /// This is the primary failure mode of the core algorithm, indicating that
-    /// the provided rules are insufficient or ambiguous for the given molecule.
-    AssignmentFailed(AssignmentError),
+    /// The typing engine exhausted its rounds before assigning all atom types.
+    #[error("atom typing failed")]
+    AssignmentFailed(#[from] AssignmentError),
 }
 
-/// Errors related to the structural validation of input molecular graphs.
+/// Errors that describe structural or logical issues with the input `MolecularGraph`.
 ///
-/// These errors are detected during the initial validation phase before any
-/// chemical processing begins. They indicate fundamental issues with the
-/// graph's connectivity or atom definitions.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// These failures are detected before any chemical reasoning is attempted so that malformed inputs
+/// can be rejected early with precise diagnostics.
+#[derive(Debug, Error)]
 pub enum GraphValidationError {
-    /// An atom ID was referenced (e.g., in a bond) but not defined in the atom list.
+    /// A bond references an atom identifier that is missing from the graph.
+    #[error("bond references a non-existent atom with ID {atom_id}")]
     MissingAtom {
-        /// The ID of the missing atom.
-        id: usize,
-    },
-    /// Two or more atoms were defined with the same unique ID.
-    DuplicateAtomId {
-        /// The duplicated atom ID.
-        id: usize,
-    },
-    /// An atom was defined to be bonded to itself.
-    SelfBondingAtom {
-        /// The ID of the self-bonding atom.
-        id: usize,
-    },
-}
-
-/// Error indicating failure of the atom typing engine.
-///
-/// This error occurs when the iterative rule-based typing algorithm cannot
-/// assign DREIDING types to all atoms in the molecule. This typically happens
-/// when the rule set is incomplete or when the molecule contains chemical
-/// environments not covered by the available rules.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AssignmentError {
-    /// A list of unique identifiers of all atoms that remained untyped.
-    pub untyped_atom_ids: Vec<usize>,
-    /// The total number of iterative rounds completed before the engine stalled.
-    pub rounds_completed: u32,
-}
-
-/// Errors occurring during the chemical feature perception phase.
-///
-/// These errors indicate failures in the perception pipeline that annotates
-/// the molecular graph with chemical properties like hybridization, aromaticity,
-/// and electron counts.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AnnotationError {
-    /// The hybridization inference logic could not determine a state for an atom.
-    HybridizationInference {
-        /// The ID of the atom for which hybridization could not be inferred.
+        /// Identifier of the atom that could not be found.
         atom_id: usize,
     },
-    /// A generic error message for other potential failures in the pipeline.
+
+    /// An atom record lists itself as one of its bonded neighbors.
+    #[error("atom with ID {atom_id} is bonded to itself")]
+    SelfBondingAtom {
+        /// Identifier of the atom that incorrectly lists a self-bond.
+        atom_id: usize,
+    },
+}
+
+/// Errors raised while running the staged chemical perception pipeline.
+///
+/// Each variant corresponds to a logical section of perception so that downstream callers can
+/// attribute failures to the relevant chemical heuristic.
+#[derive(Debug, Error)]
+pub enum PerceptionError {
+    /// No valid Kekulé structure satisfied the aromatic subgraph constraints.
+    #[error("failed to assign a valid Kekulé structure to the aromatic systems: {message}")]
+    KekulizationFailed {
+        /// Human-readable reason supplied by the Kekulé resolver.
+        message: String,
+    },
+
+    /// Hybridization inference could not determine an sp/sp2/sp3 class for an atom.
+    #[error(
+        "could not infer hybridization for atom ID {atom_id}: unhandled steric number or chemical environment"
+    )]
+    HybridizationInference {
+        /// Identifier of the atom whose steric number could not be mapped.
+        atom_id: usize,
+    },
+
+    /// Conjugation perception failed within the upstream `pauling` library.
+    #[error("conjugation perception failed via the 'pauling' library")]
+    PaulingError(#[from] pauling::PerceptionError),
+
+    /// Catch-all variant for perception failures that do not fit the other buckets.
+    #[error("an unexpected perception error occurred: {0}")]
     Other(String),
 }
 
-impl fmt::Display for TyperError {
-    /// Formats the error for display to users.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use dreid_typer::TyperError;
-    ///
-    /// let error = TyperError::RuleParse("invalid TOML".to_string());
-    /// assert!(format!("{}", error).contains("Rule parsing error"));
-    /// ```
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::RuleParse(msg) => write!(f, "Rule parsing error: {}", msg),
-            Self::InvalidInputGraph(err) => write!(f, "Invalid input graph: {}", err),
-            Self::AnnotationFailed(err) => write!(f, "Chemical annotation failed: {}", err),
-            Self::AssignmentFailed(err) => write!(f, "Atom typing failed: {}", err),
-        }
-    }
+/// Error reported when the typing engine stalls before all atoms receive types.
+///
+/// This typically indicates that the ruleset lacks coverage for the perceived environments or that
+/// earlier perception output was incomplete.
+#[derive(Debug, Error)]
+#[error("engine stalled after {rounds_completed} rounds with {untyped_atom_ids:?} still untyped")]
+pub struct AssignmentError {
+    /// Unique identifiers of atoms that never converged to a final type.
+    pub untyped_atom_ids: Vec<usize>,
+    /// Total number of engine rounds completed before stalling.
+    pub rounds_completed: u32,
 }
-
-impl fmt::Display for GraphValidationError {
-    /// Formats the graph validation error for display.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use dreid_typer::GraphValidationError;
-    ///
-    /// let error = GraphValidationError::MissingAtom { id: 5 };
-    /// assert!(format!("{}", error).contains("non-existent atom with ID 5"));
-    /// ```
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MissingAtom { id } => {
-                write!(f, "a bond references a non-existent atom with ID {}", id)
-            }
-            Self::DuplicateAtomId { id } => {
-                write!(f, "found duplicate definition for atom with ID {}", id)
-            }
-            Self::SelfBondingAtom { id } => write!(f, "atom with ID {} is bonded to itself", id),
-        }
-    }
-}
-
-impl fmt::Display for AssignmentError {
-    /// Formats the assignment error with details about untyped atoms.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use dreid_typer::AssignmentError;
-    ///
-    /// let error = AssignmentError {
-    ///     untyped_atom_ids: vec![1, 3],
-    ///     rounds_completed: 5,
-    /// };
-    /// let msg = format!("{}", error);
-    /// assert!(msg.contains("5 rounds"));
-    /// assert!(msg.contains("2 untyped atoms"));
-    /// ```
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "engine stalled after {} rounds with {} untyped atoms remaining. IDs: {:?}",
-            self.rounds_completed,
-            self.untyped_atom_ids.len(),
-            self.untyped_atom_ids
-        )
-    }
-}
-
-impl fmt::Display for AnnotationError {
-    /// Formats the annotation error for display.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use dreid_typer::AnnotationError;
-    ///
-    /// let error = AnnotationError::HybridizationInference { atom_id: 2 };
-    /// assert!(format!("{}", error).contains("atom with ID 2"));
-    /// ```
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::HybridizationInference { atom_id } => {
-                write!(
-                    f,
-                    "could not infer hybridization for atom with ID {}",
-                    atom_id
-                )
-            }
-            Self::Other(msg) => write!(f, "{}", msg),
-        }
-    }
-}
-
-impl std::error::Error for TyperError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::InvalidInputGraph(e) => Some(e),
-            Self::AnnotationFailed(e) => Some(e),
-            Self::AssignmentFailed(e) => Some(e),
-            _ => None,
-        }
-    }
-}
-impl std::error::Error for GraphValidationError {}
-impl std::error::Error for AssignmentError {}
-impl std::error::Error for AnnotationError {}
