@@ -134,3 +134,77 @@ impl MolecularGraph {
         Ok(id)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::error::GraphValidationError;
+    use crate::core::properties::{Element, GraphBondOrder};
+
+    fn graph_with_atoms(elements: &[Element]) -> MolecularGraph {
+        let mut graph = MolecularGraph::new();
+        for &element in elements {
+            graph.add_atom(element);
+        }
+        graph
+    }
+
+    #[test]
+    fn molecular_graph_add_atom_assigns_sequential_ids() {
+        let mut graph = MolecularGraph::new();
+
+        let carbon_id = graph.add_atom(Element::C);
+        let oxygen_id = graph.add_atom(Element::O);
+        let nitrogen_id = graph.add_atom(Element::N);
+
+        assert_eq!(carbon_id, 0);
+        assert_eq!(oxygen_id, 1);
+        assert_eq!(nitrogen_id, 2);
+        assert_eq!(graph.atoms.len(), 3);
+        assert_eq!(graph.atoms[0].element, Element::C);
+        assert_eq!(graph.atoms[1].element, Element::O);
+        assert_eq!(graph.atoms[2].element, Element::N);
+    }
+
+    #[test]
+    fn molecular_graph_add_bond_registers_edge() {
+        let mut graph = graph_with_atoms(&[Element::C, Element::O]);
+
+        let bond_id = graph
+            .add_bond(0, 1, GraphBondOrder::Double)
+            .expect("adding a valid bond should succeed");
+
+        assert_eq!(bond_id, 0);
+        assert_eq!(graph.bonds.len(), 1);
+        assert_eq!(graph.bonds[0].atom_ids, (0, 1));
+        assert_eq!(graph.bonds[0].order, GraphBondOrder::Double);
+    }
+
+    #[test]
+    fn molecular_graph_rejects_bond_with_missing_atom() {
+        let mut graph = graph_with_atoms(&[Element::C]);
+
+        let err = graph
+            .add_bond(0, 1, GraphBondOrder::Single)
+            .expect_err("bonding to a missing atom should fail");
+
+        match err {
+            GraphValidationError::MissingAtom { atom_id } => assert_eq!(atom_id, 1),
+            _ => panic!("unexpected error returned: {err:?}"),
+        }
+    }
+
+    #[test]
+    fn molecular_graph_rejects_self_bonding() {
+        let mut graph = graph_with_atoms(&[Element::C]);
+
+        let err = graph
+            .add_bond(0, 0, GraphBondOrder::Single)
+            .expect_err("self bonds should be rejected");
+
+        match err {
+            GraphValidationError::SelfBondingAtom { atom_id } => assert_eq!(atom_id, 0),
+            _ => panic!("unexpected error returned: {err:?}"),
+        }
+    }
+}
