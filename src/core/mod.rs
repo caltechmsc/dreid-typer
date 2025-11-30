@@ -9,3 +9,5 @@ pub mod error;
 pub mod graph;
 /// Elemental properties, bond orders, and hybridization enums used throughout the pipeline.
 pub mod properties;
+/// Output topology data structures representing the final typed molecules.
+pub mod topology;
