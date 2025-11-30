@@ -101,3 +101,48 @@ impl ImproperDihedral {
         Self { atom_ids }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::properties::TopologyBondOrder;
+
+    #[test]
+    fn bond_new_sorts_atom_ids() {
+        let bond = Bond::new(4, 1, TopologyBondOrder::Triple);
+        assert_eq!(bond.atom_ids, (1, 4));
+        assert_eq!(bond.order, TopologyBondOrder::Triple);
+    }
+
+    #[test]
+    fn angle_new_orders_terminal_atoms() {
+        let angle = Angle::new(7, 3, 2);
+        assert_eq!(angle.atom_ids, (2, 3, 7));
+    }
+
+    #[test]
+    fn proper_dihedral_new_canonicalizes_orientation() {
+        let forward = ProperDihedral::new(1, 2, 3, 4);
+        let reversed = ProperDihedral::new(4, 3, 2, 1);
+
+        assert_eq!(forward.atom_ids, reversed.atom_ids);
+        assert_eq!(forward.atom_ids, (1, 2, 3, 4));
+    }
+
+    #[test]
+    fn improper_dihedral_new_sorts_plane_atoms() {
+        let improper = ImproperDihedral::new(9, 1, 5, 4);
+        assert_eq!(improper.atom_ids, (1, 4, 5, 9));
+    }
+
+    #[test]
+    fn molecular_topology_default_is_empty() {
+        let topology = MolecularTopology::default();
+
+        assert!(topology.atoms.is_empty());
+        assert!(topology.bonds.is_empty());
+        assert!(topology.angles.is_empty());
+        assert!(topology.propers.is_empty());
+        assert!(topology.impropers.is_empty());
+    }
+}
