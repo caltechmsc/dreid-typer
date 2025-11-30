@@ -5,3 +5,5 @@
 
 /// Error types describing validation, perception, and typing failure modes.
 pub mod error;
+/// Elemental properties, bond orders, and hybridization enums used throughout the pipeline.
+pub mod properties;
