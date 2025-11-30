@@ -5,5 +5,7 @@
 
 /// Error types describing validation, perception, and typing failure modes.
 pub mod error;
+/// Input graph data structures for constructing molecules.
+pub mod graph;
 /// Elemental properties, bond orders, and hybridization enums used throughout the pipeline.
 pub mod properties;
