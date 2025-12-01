@@ -617,3 +617,434 @@ fn bond_order_to_valence(order: GraphBondOrder) -> u8 {
         GraphBondOrder::Aromatic => panic!("Aromatic bonds should have been kekulized by now."),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+    use crate::core::properties::Element;
+
+    fn build_molecule(
+        elements: &[Element],
+        bonds: &[(usize, usize, GraphBondOrder)],
+    ) -> AnnotatedMolecule {
+        let mut graph = MolecularGraph::new();
+        for &element in elements {
+            graph.add_atom(element);
+        }
+        for &(u, v, order) in bonds {
+            graph.add_bond(u, v, order).expect("valid bond");
+        }
+        AnnotatedMolecule::new(&graph).expect("graph construction should succeed")
+    }
+
+    fn run_perception(
+        elements: &[Element],
+        bonds: &[(usize, usize, GraphBondOrder)],
+    ) -> AnnotatedMolecule {
+        let mut molecule = build_molecule(elements, bonds);
+        perceive(&mut molecule).expect("perception should succeed");
+        molecule
+    }
+
+    fn assert_atom_state(molecule: &AnnotatedMolecule, idx: usize, charge: i8, lone_pairs: u8) {
+        let atom = &molecule.atoms[idx];
+        assert_eq!(
+            atom.formal_charge, charge,
+            "unexpected charge on atom {} ({:?})",
+            idx, atom.element
+        );
+        assert_eq!(
+            atom.lone_pairs, lone_pairs,
+            "unexpected lone pair count on atom {} ({:?})",
+            idx, atom.element
+        );
+    }
+
+    #[test]
+    fn nitrone_groups_receive_expected_charges() {
+        let elements = vec![
+            Element::C,
+            Element::N,
+            Element::O,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (3, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 1, 1, 0);
+        assert_atom_state(&molecule, 2, -1, 3);
+    }
+
+    #[test]
+    fn nitro_groups_assign_expected_formal_charges() {
+        let elements = vec![
+            Element::C,
+            Element::N,
+            Element::O,
+            Element::O,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = vec![
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (1, 0, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 1, 1, 0);
+        assert_atom_state(&molecule, 2, 0, 2);
+        assert_atom_state(&molecule, 3, -1, 3);
+    }
+
+    #[test]
+    fn sulfoxide_pattern_sets_expected_charges() {
+        let elements = vec![
+            Element::S,
+            Element::O,
+            Element::C,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (2, 4, GraphBondOrder::Single),
+            (2, 5, GraphBondOrder::Single),
+            (2, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+            (3, 9, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 0, 0, 1);
+        assert_atom_state(&molecule, 1, 0, 2);
+    }
+
+    #[test]
+    fn sulfone_pattern_assigns_double_anionic_oxygens() {
+        let elements = vec![
+            Element::S,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Double),
+            (0, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (3, 5, GraphBondOrder::Single),
+            (3, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+            (4, 8, GraphBondOrder::Single),
+            (4, 9, GraphBondOrder::Single),
+            (4, 10, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 0, 2, 0);
+        assert_atom_state(&molecule, 1, -1, 3);
+        assert_atom_state(&molecule, 2, -1, 3);
+    }
+
+    #[test]
+    fn phosphorus_oxide_assigns_positive_phosphorus() {
+        let elements = vec![Element::P, Element::O, Element::H, Element::H, Element::H];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 0, 1, 0);
+        assert_atom_state(&molecule, 1, -1, 3);
+    }
+
+    #[test]
+    fn halogen_oxyanions_force_trigonal_oxygens() {
+        let elements = vec![Element::Cl, Element::O, Element::O, Element::O, Element::O];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Double),
+            (0, 3, GraphBondOrder::Double),
+            (0, 4, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+
+        for oxygen_idx in 1..4 {
+            assert_atom_state(&molecule, oxygen_idx, 0, 2);
+        }
+        assert_atom_state(&molecule, 4, -1, 2);
+    }
+
+    #[test]
+    fn carboxylate_anion_marks_single_bonded_oxygen() {
+        let elements = vec![
+            Element::C,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (3, 4, GraphBondOrder::Single),
+            (3, 5, GraphBondOrder::Single),
+            (3, 6, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 1, 0, 2);
+        assert_atom_state(&molecule, 2, -1, 3);
+        assert_atom_state(&molecule, 0, 0, 0);
+    }
+
+    #[test]
+    fn carboxylate_pattern_skips_neutral_ester_oxygens() {
+        let elements = vec![
+            Element::C,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Single),
+            (3, 5, GraphBondOrder::Single),
+            (3, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+            (4, 8, GraphBondOrder::Single),
+            (4, 9, GraphBondOrder::Single),
+            (4, 10, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 2, 0, 2);
+    }
+
+    #[test]
+    fn ammonium_and_iminium_patterns_assign_positive_nitrogen() {
+        let ammonium = run_perception(
+            &[Element::N, Element::H, Element::H, Element::H, Element::H],
+            &[
+                (0, 1, GraphBondOrder::Single),
+                (0, 2, GraphBondOrder::Single),
+                (0, 3, GraphBondOrder::Single),
+                (0, 4, GraphBondOrder::Single),
+            ],
+        );
+        assert_atom_state(&ammonium, 0, 1, 0);
+
+        let elements = vec![
+            Element::C,
+            Element::N,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (2, 6, GraphBondOrder::Single),
+            (2, 7, GraphBondOrder::Single),
+            (2, 8, GraphBondOrder::Single),
+        ];
+        let iminium = run_perception(&elements, &bonds);
+        assert_atom_state(&iminium, 1, 1, 0);
+    }
+
+    #[test]
+    fn onium_and_phosphonium_patterns_assign_positive_charges() {
+        let oxonium = run_perception(
+            &[Element::O, Element::H, Element::H, Element::H],
+            &[
+                (0, 1, GraphBondOrder::Single),
+                (0, 2, GraphBondOrder::Single),
+                (0, 3, GraphBondOrder::Single),
+            ],
+        );
+        assert_atom_state(&oxonium, 0, 1, 1);
+
+        let phosphonium = run_perception(
+            &[Element::P, Element::H, Element::H, Element::H, Element::H],
+            &[
+                (0, 1, GraphBondOrder::Single),
+                (0, 2, GraphBondOrder::Single),
+                (0, 3, GraphBondOrder::Single),
+                (0, 4, GraphBondOrder::Single),
+            ],
+        );
+        assert_atom_state(&phosphonium, 0, 1, 0);
+    }
+
+    #[test]
+    fn enolate_detection_marks_anionic_oxygen() {
+        let elements = vec![
+            Element::O,
+            Element::C,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 5, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Single),
+            (2, 4, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 0, -1, 3);
+    }
+
+    #[test]
+    fn general_rules_handle_small_neutral_molecules() {
+        let water = run_perception(
+            &[Element::O, Element::H, Element::H],
+            &[
+                (0, 1, GraphBondOrder::Single),
+                (0, 2, GraphBondOrder::Single),
+            ],
+        );
+        assert_atom_state(&water, 0, 0, 2);
+        assert_atom_state(&water, 1, 0, 0);
+        assert_atom_state(&water, 2, 0, 0);
+
+        let methane = run_perception(
+            &[Element::C, Element::H, Element::H, Element::H, Element::H],
+            &[
+                (0, 1, GraphBondOrder::Single),
+                (0, 2, GraphBondOrder::Single),
+                (0, 3, GraphBondOrder::Single),
+                (0, 4, GraphBondOrder::Single),
+            ],
+        );
+        assert_atom_state(&methane, 0, 0, 0);
+
+        let ammonia = run_perception(
+            &[Element::N, Element::H, Element::H, Element::H],
+            &[
+                (0, 1, GraphBondOrder::Single),
+                (0, 2, GraphBondOrder::Single),
+                (0, 3, GraphBondOrder::Single),
+            ],
+        );
+        assert_atom_state(&ammonia, 0, 0, 1);
+    }
+
+    #[test]
+    fn general_rules_handle_carbonyl_and_carbon_dioxide() {
+        let formaldehyde = run_perception(
+            &[Element::C, Element::O, Element::H, Element::H],
+            &[
+                (0, 1, GraphBondOrder::Double),
+                (0, 2, GraphBondOrder::Single),
+                (0, 3, GraphBondOrder::Single),
+            ],
+        );
+        assert_atom_state(&formaldehyde, 0, 0, 0);
+        assert_atom_state(&formaldehyde, 1, 0, 2);
+
+        let carbon_dioxide = run_perception(
+            &[Element::O, Element::C, Element::O],
+            &[
+                (0, 1, GraphBondOrder::Double),
+                (1, 2, GraphBondOrder::Double),
+            ],
+        );
+        assert_atom_state(&carbon_dioxide, 1, 0, 0);
+        assert_atom_state(&carbon_dioxide, 0, 0, 2);
+        assert_atom_state(&carbon_dioxide, 2, 0, 2);
+    }
+
+    #[test]
+    fn general_rules_handle_acetamide_fragment() {
+        let elements = vec![
+            Element::C,
+            Element::O,
+            Element::C,
+            Element::N,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (2, 4, GraphBondOrder::Single),
+            (2, 5, GraphBondOrder::Single),
+            (2, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_perception(&elements, &bonds);
+        assert_atom_state(&molecule, 0, 0, 0);
+        assert_atom_state(&molecule, 1, 0, 2);
+        assert_atom_state(&molecule, 3, 0, 1);
+        assert_atom_state(&molecule, 2, 0, 0);
+    }
+}
