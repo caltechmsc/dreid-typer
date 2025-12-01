@@ -374,3 +374,121 @@ impl BitVec {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+    use crate::core::properties::{Element, GraphBondOrder};
+
+    fn chain_graph(len: usize) -> MolecularGraph {
+        let mut graph = MolecularGraph::new();
+        for _ in 0..len {
+            graph.add_atom(Element::C);
+        }
+        for i in 0..len.saturating_sub(1) {
+            graph
+                .add_bond(i, i + 1, GraphBondOrder::Single)
+                .expect("valid bond");
+        }
+        graph
+    }
+
+    fn cycle_graph(len: usize) -> MolecularGraph {
+        assert!(len >= 3, "cycles require at least three atoms");
+        let mut graph = MolecularGraph::new();
+        for _ in 0..len {
+            graph.add_atom(Element::C);
+        }
+        for i in 0..len {
+            let next = (i + 1) % len;
+            graph
+                .add_bond(i, next, GraphBondOrder::Single)
+                .expect("valid cycle bond");
+        }
+        graph
+    }
+
+    #[test]
+    fn perceive_skips_acyclic_molecules() {
+        let chain = chain_graph(4);
+        let mut molecule = AnnotatedMolecule::new(&chain).expect("graph is valid");
+
+        perceive(&mut molecule).expect("perception should succeed");
+
+        assert!(
+            molecule
+                .atoms
+                .iter()
+                .all(|atom| !atom.is_in_ring && atom.smallest_ring_size.is_none())
+        );
+    }
+
+    #[test]
+    fn perceive_marks_ring_atoms_with_smallest_ring_size() {
+        let square = cycle_graph(4);
+        let mut molecule = AnnotatedMolecule::new(&square).expect("graph is valid");
+
+        perceive(&mut molecule).expect("perception should succeed");
+
+        for atom in &molecule.atoms {
+            assert!(atom.is_in_ring, "atom {} should be in ring", atom.id);
+            assert_eq!(atom.smallest_ring_size, Some(4));
+        }
+    }
+
+    #[test]
+    fn shortest_path_bfs_finds_alternative_route_when_edge_removed() {
+        let triangle = cycle_graph(3);
+        let molecule = AnnotatedMolecule::new(&triangle).expect("graph is valid");
+
+        let removed_bond_id = molecule
+            .bonds
+            .iter()
+            .find(|bond| bond.atom_ids == (0, 1) || bond.atom_ids == (1, 0))
+            .map(|bond| bond.id)
+            .expect("triangle should contain 0-1 bond");
+
+        let path = shortest_path_bfs(&molecule, 0, 1, Some(removed_bond_id))
+            .expect("path exists through third atom");
+
+        assert_eq!(path.len, 2);
+        assert_eq!(path.atom_ids, vec![0, 2]);
+        assert_eq!(path.bond_ids.len(), 2);
+    }
+
+    #[test]
+    fn count_components_detects_disconnected_fragments() {
+        let adjacency = vec![
+            vec![(1, GraphBondOrder::Single)],
+            vec![(0, GraphBondOrder::Single)],
+            vec![(3, GraphBondOrder::Single)],
+            vec![(2, GraphBondOrder::Single)],
+        ];
+
+        assert_eq!(count_components(4, &adjacency), 2);
+    }
+
+    #[test]
+    fn bitvec_supports_xor_and_leading_one() {
+        let mut bond_map = HashMap::new();
+        bond_map.insert(10usize, 0usize);
+        bond_map.insert(20usize, 1usize);
+        bond_map.insert(30usize, 2usize);
+
+        let mut a = BitVec::from_bond_ids(&[10, 30], &bond_map);
+        let b = BitVec::from_bond_ids(&[20, 30], &bond_map);
+
+        assert!(a.test(0));
+        assert!(a.test(2));
+        assert!(b.test(1));
+        assert!(b.test(2));
+
+        a.xor(&b);
+        assert!(a.test(0));
+        assert!(a.test(1));
+        assert!(!a.test(2));
+
+        assert_eq!(a.leading_one(), Some(1));
+    }
+}
