@@ -3,3 +3,4 @@ pub mod electrons;
 pub mod kekulize;
 pub mod model;
 pub mod resonance;
+pub mod rings;
