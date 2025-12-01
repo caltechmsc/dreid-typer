@@ -502,18 +502,13 @@ pub enum TopologyBondOrder {
     Resonant = 4,
 }
 
-/// Error returned when parsing a graph bond order string that does not match the enum.
+/// Error returned when parsing a bond order string that does not match the enum.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
-#[error("invalid graph bond order: '{0}'")]
-pub struct ParseGraphBondOrderError(String);
-
-/// Error returned when parsing a topology bond order string that does not match the enum.
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
-#[error("invalid topology bond order: '{0}'")]
-pub struct ParseTopologyBondOrderError(String);
+#[error("invalid bond order: '{0}'")]
+pub struct ParseBondOrderError(String);
 
 impl FromStr for GraphBondOrder {
-    type Err = ParseGraphBondOrderError;
+    type Err = ParseBondOrderError;
 
     /// Parses a textual bond order into the [`GraphBondOrder`] enum.
     ///
@@ -521,7 +516,7 @@ impl FromStr for GraphBondOrder {
     ///
     /// # Errors
     ///
-    /// Returns [`ParseGraphBondOrderError`] if the string is not one of the supported
+    /// Returns [`ParseBondOrderError`] if the string is not one of the supported
     /// keywords.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -529,13 +524,13 @@ impl FromStr for GraphBondOrder {
             "Double" => Ok(Self::Double),
             "Triple" => Ok(Self::Triple),
             "Aromatic" => Ok(Self::Aromatic),
-            _ => Err(ParseGraphBondOrderError(s.to_string())),
+            _ => Err(ParseBondOrderError(s.to_string())),
         }
     }
 }
 
 impl FromStr for TopologyBondOrder {
-    type Err = ParseTopologyBondOrderError;
+    type Err = ParseBondOrderError;
 
     /// Parses a textual bond order into the [`TopologyBondOrder`] enum.
     ///
@@ -543,7 +538,7 @@ impl FromStr for TopologyBondOrder {
     ///
     /// # Errors
     ///
-    /// Returns [`ParseTopologyBondOrderError`] if the string is not one of the supported
+    /// Returns [`ParseBondOrderError`] if the string is not one of the supported
     /// keywords.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -551,7 +546,7 @@ impl FromStr for TopologyBondOrder {
             "Double" => Ok(Self::Double),
             "Triple" => Ok(Self::Triple),
             "Resonant" => Ok(Self::Resonant),
-            _ => Err(ParseTopologyBondOrderError(s.to_string())),
+            _ => Err(ParseBondOrderError(s.to_string())),
         }
     }
 }
