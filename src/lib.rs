@@ -1,4 +1,5 @@
 mod core;
+mod perception;
 
 pub use crate::core::error::{AssignmentError, GraphValidationError, PerceptionError, TyperError};
 pub use crate::core::graph::MolecularGraph;
