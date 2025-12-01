@@ -339,3 +339,264 @@ fn bond_order_to_valence(order: GraphBondOrder) -> u8 {
         GraphBondOrder::Aromatic => 0,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+    use crate::core::properties::Element;
+
+    const BENZENE_ELEMENTS: [Element; 6] = [Element::C; 6];
+    const BENZENE_BONDS: [(usize, usize); 6] = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)];
+    const BENZENE_RING: [usize; 6] = [0, 1, 2, 3, 4, 5];
+    const BENZENE_H_POSITIONS: [usize; 6] = [0, 1, 2, 3, 4, 5];
+
+    const CYCLOBUTADIENE_ELEMENTS: [Element; 4] = [Element::C; 4];
+    const CYCLOBUTADIENE_BONDS: [(usize, usize); 4] = [(0, 1), (1, 2), (2, 3), (3, 0)];
+    const CYCLOBUTADIENE_RING: [usize; 4] = [0, 1, 2, 3];
+    const CYCLOBUTADIENE_H_POSITIONS: [usize; 4] = [0, 1, 2, 3];
+
+    const PYRIDINE_ELEMENTS: [Element; 6] = [
+        Element::N,
+        Element::C,
+        Element::C,
+        Element::C,
+        Element::C,
+        Element::C,
+    ];
+    const PYRIDINE_BONDS: [(usize, usize); 6] = BENZENE_BONDS;
+    const PYRIDINE_RING: [usize; 6] = BENZENE_RING;
+    const PYRIDINE_H_POSITIONS: [usize; 5] = [1, 2, 3, 4, 5];
+
+    const NAPHTHALENE_ELEMENTS: [Element; 10] = [Element::C; 10];
+    const NAPHTHALENE_BONDS: [(usize, usize); 11] = [
+        (0, 1),
+        (1, 2),
+        (2, 3),
+        (3, 4),
+        (4, 5),
+        (5, 0),
+        (5, 6),
+        (6, 7),
+        (7, 8),
+        (8, 9),
+        (9, 4),
+    ];
+    const NAPHTHALENE_RING_LEFT: [usize; 6] = [0, 1, 2, 3, 4, 5];
+    const NAPHTHALENE_RING_RIGHT: [usize; 6] = [4, 5, 6, 7, 8, 9];
+    const NAPHTHALENE_H_POSITIONS: [usize; 8] = [0, 1, 2, 3, 6, 7, 8, 9];
+
+    const ANTHRACENE_ELEMENTS: [Element; 14] = [Element::C; 14];
+    const ANTHRACENE_BONDS: [(usize, usize); 16] = [
+        (0, 1),
+        (1, 2),
+        (2, 3),
+        (3, 4),
+        (4, 5),
+        (5, 0),
+        (5, 6),
+        (6, 7),
+        (7, 8),
+        (8, 9),
+        (9, 4),
+        (9, 10),
+        (10, 11),
+        (11, 12),
+        (12, 13),
+        (13, 8),
+    ];
+    const ANTHRACENE_RING_LEFT: [usize; 6] = [0, 1, 2, 3, 4, 5];
+    const ANTHRACENE_RING_MIDDLE: [usize; 6] = [4, 5, 6, 7, 8, 9];
+    const ANTHRACENE_RING_RIGHT: [usize; 6] = [8, 9, 10, 11, 12, 13];
+    const ANTHRACENE_H_POSITIONS: [usize; 10] = [0, 1, 2, 3, 6, 7, 10, 11, 12, 13];
+
+    fn aromatic_fixture(
+        heavy_elements: &[Element],
+        aromatic_bonds: &[(usize, usize)],
+        hydrogens_on: &[usize],
+        rings: &[&[usize]],
+    ) -> AnnotatedMolecule {
+        let mut graph = MolecularGraph::new();
+        for &element in heavy_elements {
+            graph.add_atom(element);
+        }
+        for &(u, v) in aromatic_bonds {
+            graph
+                .add_bond(u, v, GraphBondOrder::Aromatic)
+                .expect("valid aromatic bond");
+        }
+        for &atom_id in hydrogens_on {
+            let hydrogen_id = graph.add_atom(Element::H);
+            graph
+                .add_bond(atom_id, hydrogen_id, GraphBondOrder::Single)
+                .expect("valid X-H bond");
+        }
+
+        let mut molecule = AnnotatedMolecule::new(&graph).expect("graph should be valid");
+        annotate_ring_flags(&mut molecule, rings);
+        molecule
+    }
+
+    fn annotate_ring_flags(molecule: &mut AnnotatedMolecule, rings: &[&[usize]]) {
+        for ring in rings {
+            let ring_size = ring.len() as u8;
+            for &atom_id in *ring {
+                let props = &mut molecule.atoms[atom_id];
+                props.is_in_ring = true;
+                match props.smallest_ring_size {
+                    Some(current) if current <= ring_size => {}
+                    _ => props.smallest_ring_size = Some(ring_size),
+                }
+            }
+        }
+    }
+
+    fn assert_kekule_solution(molecule: &mut AnnotatedMolecule, rings: &[&[usize]]) {
+        perceive(molecule).expect("kekulization should succeed");
+        assert_no_aromatic_bonds(molecule);
+        for &ring in rings {
+            assert_alternating_cycle(molecule, ring);
+        }
+    }
+
+    fn assert_no_aromatic_bonds(molecule: &AnnotatedMolecule) {
+        assert!(
+            molecule
+                .bonds
+                .iter()
+                .all(|bond| bond.order == GraphBondOrder::Single
+                    || bond.order == GraphBondOrder::Double),
+            "all aromatic bonds should be resolved into concrete orders"
+        );
+    }
+
+    fn assert_alternating_cycle(molecule: &AnnotatedMolecule, ring: &[usize]) {
+        assert!(ring.len() >= 3, "rings must contain at least three atoms");
+        let first_order = bond_order_between(molecule, ring[0], ring[1]);
+        assert!(matches!(
+            first_order,
+            GraphBondOrder::Single | GraphBondOrder::Double
+        ));
+
+        let mut prev_order = first_order;
+        for i in 1..ring.len() {
+            let u = ring[i];
+            let v = ring[(i + 1) % ring.len()];
+            let order = bond_order_between(molecule, u, v);
+            assert!(matches!(
+                order,
+                GraphBondOrder::Single | GraphBondOrder::Double
+            ));
+            assert_ne!(
+                order, prev_order,
+                "bond orders should alternate around the ring"
+            );
+            prev_order = order;
+        }
+    }
+
+    fn bond_order_between(molecule: &AnnotatedMolecule, u: usize, v: usize) -> GraphBondOrder {
+        molecule
+            .bonds
+            .iter()
+            .find(|bond| {
+                (bond.atom_ids.0 == u && bond.atom_ids.1 == v)
+                    || (bond.atom_ids.0 == v && bond.atom_ids.1 == u)
+            })
+            .expect("bond should exist")
+            .order
+    }
+
+    #[test]
+    fn perceive_returns_error_when_aromatic_bond_is_not_in_ring() {
+        let rings: [&[usize]; 0] = [];
+        let mut molecule = aromatic_fixture(
+            &BENZENE_ELEMENTS,
+            &BENZENE_BONDS,
+            &BENZENE_H_POSITIONS,
+            &rings,
+        );
+
+        let err = perceive(&mut molecule).expect_err("atoms must be flagged as ring members");
+        match err {
+            PerceptionError::KekulizationFailed { message } => {
+                assert!(message.contains("not in a ring"));
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn benzene_produces_classic_alternating_pattern() {
+        let rings = [&BENZENE_RING[..]];
+        let mut molecule = aromatic_fixture(
+            &BENZENE_ELEMENTS,
+            &BENZENE_BONDS,
+            &BENZENE_H_POSITIONS,
+            &rings,
+        );
+        assert_kekule_solution(&mut molecule, &rings);
+    }
+
+    #[test]
+    fn cyclobutadiene_is_kekulized_even_though_antiaromatic() {
+        let rings = [&CYCLOBUTADIENE_RING[..]];
+        let mut molecule = aromatic_fixture(
+            &CYCLOBUTADIENE_ELEMENTS,
+            &CYCLOBUTADIENE_BONDS,
+            &CYCLOBUTADIENE_H_POSITIONS,
+            &rings,
+        );
+        assert_kekule_solution(&mut molecule, &rings);
+    }
+
+    #[test]
+    fn pyridine_handles_heteroatom_with_correct_assignment() {
+        let rings = [&PYRIDINE_RING[..]];
+        let mut molecule = aromatic_fixture(
+            &PYRIDINE_ELEMENTS,
+            &PYRIDINE_BONDS,
+            &PYRIDINE_H_POSITIONS,
+            &rings,
+        );
+        assert_kekule_solution(&mut molecule, &rings);
+
+        let double_bonds_to_n: usize = molecule
+            .bonds
+            .iter()
+            .filter(|bond| {
+                (bond.atom_ids.0 == 0 || bond.atom_ids.1 == 0)
+                    && bond.order == GraphBondOrder::Double
+            })
+            .count();
+        assert_eq!(double_bonds_to_n, 1);
+    }
+
+    #[test]
+    fn naphthalene_kekulization_handles_fused_rings() {
+        let rings = [&NAPHTHALENE_RING_LEFT[..], &NAPHTHALENE_RING_RIGHT[..]];
+        let mut molecule = aromatic_fixture(
+            &NAPHTHALENE_ELEMENTS,
+            &NAPHTHALENE_BONDS,
+            &NAPHTHALENE_H_POSITIONS,
+            &rings,
+        );
+        assert_kekule_solution(&mut molecule, &rings);
+    }
+
+    #[test]
+    fn anthracene_kekulization_covers_three_linearly_fused_rings() {
+        let rings = [
+            &ANTHRACENE_RING_LEFT[..],
+            &ANTHRACENE_RING_MIDDLE[..],
+            &ANTHRACENE_RING_RIGHT[..],
+        ];
+        let mut molecule = aromatic_fixture(
+            &ANTHRACENE_ELEMENTS,
+            &ANTHRACENE_BONDS,
+            &ANTHRACENE_H_POSITIONS,
+            &rings,
+        );
+        assert_kekule_solution(&mut molecule, &rings);
+    }
+}
