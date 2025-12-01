@@ -52,6 +52,7 @@ pub type Ring = Vec<usize>;
 #[derive(Debug, Clone)]
 pub struct ResonanceSystem {
     /// IDs of atoms participating in this resonance system.
+    #[allow(dead_code)]
     pub atom_ids: Vec<usize>,
     /// IDs of bonds (`BondEdge::id`) that are part of the delocalized system.
     pub bond_ids: Vec<usize>,
