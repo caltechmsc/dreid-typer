@@ -1,8 +1,6 @@
 mod harness;
 
 use harness::cases::amino_acids::*;
-use harness::cases::dreiding_paper::*;
-use harness::cases::nucleic_acids::*;
 use harness::run_molecule_test_case;
 
 macro_rules! generate_molecule_test {
@@ -13,3 +11,5 @@ macro_rules! generate_molecule_test {
         }
     };
 }
+
+generate_molecule_test!(glycine_zwitterion_is_typed_correctly, GLYCINE_ZWITTERION);
