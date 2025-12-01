@@ -144,3 +144,161 @@ fn is_non_hybridized_element(element: Element) -> bool {
             | Element::Hg
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+    use crate::core::properties::{Element, GraphBondOrder};
+
+    fn build_molecule(
+        elements: &[Element],
+        bonds: &[(usize, usize, GraphBondOrder)],
+        setup: impl FnOnce(&mut AnnotatedMolecule),
+    ) -> AnnotatedMolecule {
+        let mut graph = MolecularGraph::new();
+        for &element in elements {
+            graph.add_atom(element);
+        }
+        for &(u, v, order) in bonds {
+            graph.add_bond(u, v, order).unwrap();
+        }
+        let mut molecule = AnnotatedMolecule::new(&graph).unwrap();
+        setup(&mut molecule);
+        molecule
+    }
+
+    #[test]
+    fn non_hybridized_elements_remain_none() {
+        let mut molecule = build_molecule(
+            &[Element::Na, Element::C],
+            &[(0, 1, GraphBondOrder::Single)],
+            |_| {},
+        );
+        perceive(&mut molecule).unwrap();
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::None);
+    }
+
+    #[test]
+    fn pre_marked_resonant_atoms_are_honored() {
+        let mut molecule = build_molecule(&[Element::C], &[], |mol| {
+            mol.atoms[0].is_resonant = true;
+            mol.atoms[0].degree = 3;
+        });
+        perceive(&mut molecule).unwrap();
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::Resonant);
+        assert_eq!(molecule.atoms[0].steric_number, 3);
+    }
+
+    #[test]
+    fn enol_ether_oxygen_is_corrected_to_resonant() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::C, Element::O, Element::C],
+            &[
+                (0, 1, GraphBondOrder::Double),
+                (1, 2, GraphBondOrder::Single),
+                (2, 3, GraphBondOrder::Single),
+            ],
+            |mol| {
+                mol.atoms[0].degree = 3;
+                mol.atoms[1].degree = 3;
+                mol.atoms[2].degree = 2;
+                mol.atoms[3].degree = 4;
+                mol.atoms[2].lone_pairs = 2;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::SP2);
+        assert_eq!(molecule.atoms[1].hybridization, Hybridization::SP2);
+        assert_eq!(
+            molecule.atoms[2].hybridization,
+            Hybridization::Resonant,
+            "Oxygen should be promoted to Resonant"
+        );
+        assert_eq!(molecule.atoms[3].hybridization, Hybridization::SP3);
+
+        assert!(
+            molecule.atoms[2].is_resonant,
+            "is_resonant flag should be set for the oxygen"
+        );
+        assert_eq!(
+            molecule.atoms[2].steric_number, 3,
+            "Steric number of resonant oxygen should be 3"
+        );
+    }
+
+    #[test]
+    fn aniline_nitrogen_is_corrected_to_resonant() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::N],
+            &[(0, 1, GraphBondOrder::Single)],
+            |mol| {
+                mol.atoms[0].is_resonant = true;
+                mol.atoms[1].lone_pairs = 1;
+                mol.atoms[1].degree = 3;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(molecule.atoms[1].hybridization, Hybridization::Resonant);
+        assert!(molecule.atoms[1].is_resonant);
+        assert_eq!(molecule.atoms[1].steric_number, 3);
+    }
+
+    #[test]
+    fn vsepr_rules_assign_expected_hybridizations() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::C, Element::C, Element::H],
+            &[],
+            |mol| {
+                mol.atoms[0].degree = 4;
+                mol.atoms[0].lone_pairs = 0;
+                mol.atoms[1].degree = 3;
+                mol.atoms[1].lone_pairs = 0;
+                mol.atoms[2].degree = 2;
+                mol.atoms[2].lone_pairs = 0;
+                mol.atoms[3].degree = 1;
+                mol.atoms[3].lone_pairs = 0;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::SP3);
+        assert_eq!(molecule.atoms[0].steric_number, 4);
+
+        assert_eq!(molecule.atoms[1].hybridization, Hybridization::SP2);
+        assert_eq!(molecule.atoms[1].steric_number, 3);
+
+        assert_eq!(molecule.atoms[2].hybridization, Hybridization::SP);
+        assert_eq!(molecule.atoms[2].steric_number, 2);
+
+        assert_eq!(molecule.atoms[3].hybridization, Hybridization::None);
+    }
+
+    #[test]
+    fn anti_aromatic_atoms_are_not_promoted_to_resonant() {
+        let mut molecule = build_molecule(&[Element::C], &[], |mol| {
+            mol.atoms[0].is_resonant = true;
+            mol.atoms[0].is_anti_aromatic = true;
+            mol.atoms[0].degree = 3;
+        });
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::SP2);
+        assert_eq!(molecule.atoms[0].steric_number, 3);
+    }
+
+    #[test]
+    fn steric_numbers_above_four_raise_an_error() {
+        let mut molecule = build_molecule(&[Element::S], &[], |mol| {
+            mol.atoms[0].degree = 6;
+        });
+        let err = perceive(&mut molecule).expect_err("steric 6 should fail");
+
+        match err {
+            PerceptionError::HybridizationInference { atom_id } => assert_eq!(atom_id, 0),
+            other => panic!("unexpected error returned: {other:?}"),
+        }
+    }
+}
