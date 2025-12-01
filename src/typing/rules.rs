@@ -179,3 +179,133 @@ where
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Deserialize;
+    use std::ptr;
+
+    const SAMPLE_RULES: &str = r#"
+        [[rule]]
+        name = "C_sp2"
+        priority = 10
+        type = "C_R"
+        [rule.conditions]
+        element = "C"
+        degree = 3
+        hybridization = "SP2"
+        is_aromatic = true
+        neighbor_elements = { N = 1 }
+        neighbor_types = { "N_R" = 1 }
+
+        [[rule]]
+        name = "H_sp"
+        priority = 5
+        type = "H_"
+        [rule.conditions]
+        element = "H"
+    "#;
+
+    #[test]
+    fn parse_rules_parses_multiple_entries() {
+        let rules = parse_rules(SAMPLE_RULES).expect("sample TOML should parse");
+        assert_eq!(rules.len(), 2);
+
+        let first = &rules[0];
+        assert_eq!(first.name, "C_sp2");
+        assert_eq!(first.priority, 10);
+        assert_eq!(first.result_type, "C_R");
+        assert_eq!(first.conditions.element, Some(Element::C));
+        assert_eq!(first.conditions.degree, Some(3));
+        assert_eq!(first.conditions.hybridization, Some(Hybridization::SP2));
+        assert_eq!(first.conditions.is_aromatic, Some(true));
+        assert_eq!(
+            first.conditions.neighbor_elements.get(&Element::N),
+            Some(&1)
+        );
+        assert_eq!(first.conditions.neighbor_types.get("N_R"), Some(&1));
+
+        let second = &rules[1];
+        assert_eq!(second.name, "H_sp");
+        assert_eq!(second.conditions.element, Some(Element::H));
+        assert!(second.conditions.neighbor_elements.is_empty());
+    }
+
+    #[test]
+    fn parse_rules_rejects_missing_required_fields() {
+        let invalid = r#"
+            [[rule]]
+            name = "Invalid"
+            priority = 1
+            [rule.conditions]
+            element = "C"
+        "#;
+        let err = parse_rules(invalid).expect_err("rule missing 'type' must fail");
+        assert!(err.to_string().contains("missing field"));
+    }
+
+    #[test]
+    fn parse_rules_reports_invalid_neighbor_element_key() {
+        let invalid = r#"
+            [[rule]]
+            name = "InvalidElement"
+            priority = 1
+            type = "C_R"
+            [rule.conditions]
+            neighbor_elements = { Xx = 1 }
+        "#;
+        let err = parse_rules(invalid).expect_err("unknown element symbol should fail");
+        assert!(
+            err.to_string().contains("Xx"),
+            "error should mention the problematic key"
+        );
+    }
+
+    #[test]
+    fn get_default_rules_is_cached_and_non_empty() {
+        let first = get_default_rules();
+        let second = get_default_rules();
+        assert!(!first.is_empty(), "embedded rules must not be empty");
+        assert!(ptr::eq(first, second), "rules slice should be cached");
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    enum SmallEnum {
+        Foo,
+        Bar,
+    }
+
+    impl FromStr for SmallEnum {
+        type Err = &'static str;
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            match s {
+                "Foo" => Ok(SmallEnum::Foo),
+                "Bar" => Ok(SmallEnum::Bar),
+                _ => Err("unknown key"),
+            }
+        }
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct SmallMap {
+        #[serde(deserialize_with = "deserialize_str_keyed_map")]
+        map: HashMap<SmallEnum, u8>,
+    }
+
+    #[test]
+    fn deserialize_str_keyed_map_supports_custom_enums() {
+        let value: SmallMap =
+            toml::from_str("map = { Foo = 1, Bar = 2 }").expect("enum keys should deserialize");
+        assert_eq!(value.map.get(&SmallEnum::Foo), Some(&1));
+        assert_eq!(value.map.get(&SmallEnum::Bar), Some(&2));
+    }
+
+    #[test]
+    fn deserialize_str_keyed_map_reports_invalid_enum_values() {
+        let err = toml::from_str::<SmallMap>("map = { Baz = 3 }")
+            .expect_err("unknown enum key should fail");
+        assert!(err.to_string().contains("unknown key"));
+    }
+}
