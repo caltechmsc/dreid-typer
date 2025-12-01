@@ -192,11 +192,6 @@ mod tests {
             self
         }
 
-        fn aromatic(mut self) -> Self {
-            self.is_aromatic = true;
-            self
-        }
-
         fn anti_aromatic(mut self) -> Self {
             self.is_anti_aromatic = true;
             self
