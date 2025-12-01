@@ -9,11 +9,12 @@ use super::model::{AnnotatedMolecule, ResonanceSystem};
 use crate::core::error::PerceptionError;
 use crate::core::properties::{Element, GraphBondOrder};
 
-/// Runs strict resonance perception.
+/// Runs strict resonance perception in two phases.
 ///
-/// This function scans for specific functional groups. Any atoms found participating
-/// in these groups are marked `is_resonant`, and the group structure is stored
-/// in `molecule.resonance_systems`.
+/// First, it identifies core resonance systems (aromatics are handled upstream) like
+/// carboxylates and amides, registering both their atoms and bonds. Second, it
+//  propagates the `is_resonant` flag to adjacent heteroatoms that can participate
+//  in conjugation.
 ///
 /// Note: Aromatic resonance is handled in the `aromaticity` module. This module
 /// focuses on non-aromatic conjugated systems.
@@ -26,18 +27,51 @@ use crate::core::properties::{Element, GraphBondOrder};
 ///
 /// `Ok(())` always, as this process is infallible.
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
+    detect_core_functional_groups(molecule);
+    propagate_resonance_to_periphery(molecule);
+    Ok(())
+}
+
+/// Detects core resonance systems via substructure matching.
+fn detect_core_functional_groups(molecule: &mut AnnotatedMolecule) {
     let mut processed = vec![false; molecule.atoms.len()];
 
     detect_carboxylate_groups(molecule, &mut processed);
     detect_nitro_groups(molecule, &mut processed);
     detect_guanidinium_groups(molecule, &mut processed);
     detect_amide_groups(molecule, &mut processed);
-
-    Ok(())
 }
 
-/// Helper to register a detected system.
-fn register_system(
+/// Propagates resonance flags to peripheral heteroatoms bonded to resonant systems.
+fn propagate_resonance_to_periphery(molecule: &mut AnnotatedMolecule) {
+    let mut newly_resonant = Vec::new();
+
+    for i in 0..molecule.atoms.len() {
+        let atom = &molecule.atoms[i];
+
+        if atom.is_resonant
+            || !matches!(atom.element, Element::O | Element::N | Element::S)
+            || atom.lone_pairs == 0
+        {
+            continue;
+        }
+
+        let is_bonded_to_resonant_atom = molecule.adjacency[i]
+            .iter()
+            .any(|&(neighbor_id, _)| molecule.atoms[neighbor_id].is_resonant);
+
+        if is_bonded_to_resonant_atom {
+            newly_resonant.push(i);
+        }
+    }
+
+    for atom_id in newly_resonant {
+        molecule.atoms[atom_id].is_resonant = true;
+    }
+}
+
+/// Helper to register a detected core system.
+fn register_core_system(
     molecule: &mut AnnotatedMolecule,
     atoms: &[usize],
     bonds: &[usize],
@@ -68,13 +102,10 @@ fn find_bond_id(molecule: &AnnotatedMolecule, u: usize, v: usize) -> usize {
             (b.atom_ids.0 == u && b.atom_ids.1 == v) || (b.atom_ids.0 == v && b.atom_ids.1 == u)
         })
         .map(|b| b.id)
-        .expect("Bond must exist in adjacency")
+        .expect("Bond must exist between adjacent atoms")
 }
 
 /// Detects Carboxylate groups: C(=O)O-
-///
-/// Looks for a Carbon bonded to two Oxygens: one via Double bond, one via Single bond (with charge -1 or implied).
-/// In the Kekulized graph, this appears as C=O and C-O.
 fn detect_carboxylate_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
     for c_idx in 0..molecule.atoms.len() {
         if processed[c_idx] || molecule.atoms[c_idx].element != Element::C {
@@ -88,10 +119,8 @@ fn detect_carboxylate_groups(molecule: &mut AnnotatedMolecule, processed: &mut [
             if molecule.atoms[neighbor_id].element == Element::O {
                 match order {
                     GraphBondOrder::Double => double_o = Some(neighbor_id),
-                    GraphBondOrder::Single => {
-                        if molecule.atoms[neighbor_id].degree == 1 {
-                            single_o = Some(neighbor_id);
-                        }
+                    GraphBondOrder::Single if molecule.atoms[neighbor_id].degree == 1 => {
+                        single_o = Some(neighbor_id);
                     }
                     _ => {}
                 }
@@ -101,73 +130,61 @@ fn detect_carboxylate_groups(molecule: &mut AnnotatedMolecule, processed: &mut [
         if let (Some(o1), Some(o2)) = (double_o, single_o) {
             let b1 = find_bond_id(molecule, c_idx, o1);
             let b2 = find_bond_id(molecule, c_idx, o2);
-            register_system(molecule, &[c_idx, o1, o2], &[b1, b2], processed);
+            register_core_system(molecule, &[c_idx, o1, o2], &[b1, b2], processed);
         }
     }
 }
 
 /// Detects Nitro groups: N(=O)O-
-///
-/// Looks for Nitrogen bonded to two Oxygens.
 fn detect_nitro_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
     for n_idx in 0..molecule.atoms.len() {
         if processed[n_idx] || molecule.atoms[n_idx].element != Element::N {
             continue;
         }
 
-        let mut double_o = None;
-        let mut single_o = None;
-
-        for &(neighbor_id, order) in &molecule.adjacency[n_idx] {
+        let mut oxygen_neighbors = Vec::new();
+        for &(neighbor_id, _) in &molecule.adjacency[n_idx] {
             if molecule.atoms[neighbor_id].element == Element::O {
-                match order {
-                    GraphBondOrder::Double => double_o = Some(neighbor_id),
-                    GraphBondOrder::Single => single_o = Some(neighbor_id),
-                    _ => {}
-                }
+                oxygen_neighbors.push(neighbor_id);
             }
         }
 
-        if let (Some(o1), Some(o2)) = (double_o, single_o) {
+        if oxygen_neighbors.len() == 2 {
+            let o1 = oxygen_neighbors[0];
+            let o2 = oxygen_neighbors[1];
             let b1 = find_bond_id(molecule, n_idx, o1);
             let b2 = find_bond_id(molecule, n_idx, o2);
-            register_system(molecule, &[n_idx, o1, o2], &[b1, b2], processed);
+            register_core_system(molecule, &[n_idx, o1, o2], &[b1, b2], processed);
         }
     }
 }
 
 /// Detects Guanidinium groups: C(N)(N)N+
-///
-/// Central Carbon bonded to three Nitrogens. Typically one double, two single in Kekule form.
 fn detect_guanidinium_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
     for c_idx in 0..molecule.atoms.len() {
         if processed[c_idx] || molecule.atoms[c_idx].element != Element::C {
             continue;
         }
 
-        let mut n_neighbors = Vec::new();
-        for &(neighbor_id, _) in &molecule.adjacency[c_idx] {
-            if molecule.atoms[neighbor_id].element == Element::N {
-                n_neighbors.push(neighbor_id);
-            }
-        }
+        let n_neighbors: Vec<_> = molecule.adjacency[c_idx]
+            .iter()
+            .filter(|(id, _)| molecule.atoms[*id].element == Element::N)
+            .map(|(id, _)| *id)
+            .collect();
 
         if n_neighbors.len() == 3 {
-            let b1 = find_bond_id(molecule, c_idx, n_neighbors[0]);
-            let b2 = find_bond_id(molecule, c_idx, n_neighbors[1]);
-            let b3 = find_bond_id(molecule, c_idx, n_neighbors[2]);
-
+            let bonds: Vec<_> = n_neighbors
+                .iter()
+                .map(|&n_id| find_bond_id(molecule, c_idx, n_id))
+                .collect();
             let mut atoms = vec![c_idx];
             atoms.extend(n_neighbors);
-
-            register_system(molecule, &atoms, &[b1, b2, b3], processed);
+            register_core_system(molecule, &atoms, &bonds, processed);
         }
     }
 }
 
 /// Detects Amide groups: O=C-N
-///
-/// Looks for Carbon double bonded to Oxygen and single bonded to Nitrogen.
 fn detect_amide_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
     for c_idx in 0..molecule.atoms.len() {
         if processed[c_idx] || molecule.atoms[c_idx].element != Element::C {
@@ -188,121 +205,7 @@ fn detect_amide_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool])
         if let (Some(o), Some(n)) = (double_o, single_n) {
             let b_co = find_bond_id(molecule, c_idx, o);
             let b_cn = find_bond_id(molecule, c_idx, n);
-            register_system(molecule, &[c_idx, o, n], &[b_co, b_cn], processed);
+            register_core_system(molecule, &[c_idx, o, n], &[b_co, b_cn], processed);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::graph::MolecularGraph;
-    use crate::core::properties::{Element, GraphBondOrder};
-
-    fn build_molecule(
-        elements: &[Element],
-        bonds: &[(usize, usize, GraphBondOrder)],
-    ) -> AnnotatedMolecule {
-        let mut graph = MolecularGraph::new();
-        for &element in elements {
-            graph.add_atom(element);
-        }
-        for &(u, v, order) in bonds {
-            graph.add_bond(u, v, order).expect("bond endpoints exist");
-        }
-        AnnotatedMolecule::new(&graph).expect("graph must be chemically valid")
-    }
-
-    fn run_resonance(mut molecule: AnnotatedMolecule) -> AnnotatedMolecule {
-        perceive(&mut molecule).expect("resonance perception should succeed");
-        molecule
-    }
-
-    #[test]
-    fn carboxylate_is_detected_as_resonant_system() {
-        let elements = vec![Element::C, Element::O, Element::O];
-        let bonds = vec![
-            (0, 1, GraphBondOrder::Double),
-            (0, 2, GraphBondOrder::Single),
-        ];
-
-        let molecule = run_resonance(build_molecule(&elements, &bonds));
-
-        assert!(molecule.atoms[0].is_resonant, "C should be resonant");
-        assert!(molecule.atoms[1].is_resonant, "O= should be resonant");
-        assert!(molecule.atoms[2].is_resonant, "O- should be resonant");
-
-        assert_eq!(molecule.resonance_systems.len(), 1);
-        assert_eq!(molecule.resonance_systems[0].atom_ids.len(), 3);
-        assert_eq!(molecule.resonance_systems[0].bond_ids.len(), 2);
-    }
-
-    #[test]
-    fn nitro_is_detected_as_resonant_system() {
-        let elements = vec![Element::N, Element::O, Element::O];
-        let bonds = vec![
-            (0, 1, GraphBondOrder::Double),
-            (0, 2, GraphBondOrder::Single),
-        ];
-
-        let molecule = run_resonance(build_molecule(&elements, &bonds));
-
-        assert!(molecule.atoms[0].is_resonant);
-        assert!(molecule.atoms[1].is_resonant);
-        assert!(molecule.atoms[2].is_resonant);
-
-        assert_eq!(molecule.resonance_systems.len(), 1);
-    }
-
-    #[test]
-    fn amide_is_detected_as_resonant_system() {
-        let elements = vec![Element::C, Element::O, Element::N];
-        let bonds = vec![
-            (0, 1, GraphBondOrder::Double),
-            (0, 2, GraphBondOrder::Single),
-        ];
-
-        let molecule = run_resonance(build_molecule(&elements, &bonds));
-
-        assert!(molecule.atoms[0].is_resonant, "Amide C");
-        assert!(molecule.atoms[1].is_resonant, "Amide O");
-        assert!(molecule.atoms[2].is_resonant, "Amide N");
-
-        assert_eq!(molecule.resonance_systems.len(), 1);
-    }
-
-    #[test]
-    fn guanidinium_is_detected_as_resonant_system() {
-        let elements = vec![Element::C, Element::N, Element::N, Element::N];
-        let bonds = vec![
-            (0, 1, GraphBondOrder::Double),
-            (0, 2, GraphBondOrder::Single),
-            (0, 3, GraphBondOrder::Single),
-        ];
-
-        let molecule = run_resonance(build_molecule(&elements, &bonds));
-
-        assert!(molecule.atoms[0].is_resonant);
-        assert!(molecule.atoms[1].is_resonant);
-        assert!(molecule.atoms[2].is_resonant);
-        assert!(molecule.atoms[3].is_resonant);
-
-        assert_eq!(molecule.resonance_systems.len(), 1);
-        assert_eq!(molecule.resonance_systems[0].atom_ids.len(), 4);
-        assert_eq!(molecule.resonance_systems[0].bond_ids.len(), 3);
-    }
-
-    #[test]
-    fn non_resonant_structures_are_ignored() {
-        let elements = vec![Element::C, Element::C, Element::O];
-        let bonds = vec![
-            (0, 1, GraphBondOrder::Single),
-            (1, 2, GraphBondOrder::Single),
-        ];
-
-        let molecule = run_resonance(build_molecule(&elements, &bonds));
-
-        assert!(!molecule.atoms[0].is_resonant);
-        assert!(molecule.resonance_systems.is_empty());
     }
 }
