@@ -192,3 +192,117 @@ fn detect_amide_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool])
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+    use crate::core::properties::{Element, GraphBondOrder};
+
+    fn build_molecule(
+        elements: &[Element],
+        bonds: &[(usize, usize, GraphBondOrder)],
+    ) -> AnnotatedMolecule {
+        let mut graph = MolecularGraph::new();
+        for &element in elements {
+            graph.add_atom(element);
+        }
+        for &(u, v, order) in bonds {
+            graph.add_bond(u, v, order).expect("bond endpoints exist");
+        }
+        AnnotatedMolecule::new(&graph).expect("graph must be chemically valid")
+    }
+
+    fn run_resonance(mut molecule: AnnotatedMolecule) -> AnnotatedMolecule {
+        perceive(&mut molecule).expect("resonance perception should succeed");
+        molecule
+    }
+
+    #[test]
+    fn carboxylate_is_detected_as_resonant_system() {
+        let elements = vec![Element::C, Element::O, Element::O];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_resonance(build_molecule(&elements, &bonds));
+
+        assert!(molecule.atoms[0].is_resonant, "C should be resonant");
+        assert!(molecule.atoms[1].is_resonant, "O= should be resonant");
+        assert!(molecule.atoms[2].is_resonant, "O- should be resonant");
+
+        assert_eq!(molecule.resonance_systems.len(), 1);
+        assert_eq!(molecule.resonance_systems[0].atom_ids.len(), 3);
+        assert_eq!(molecule.resonance_systems[0].bond_ids.len(), 2);
+    }
+
+    #[test]
+    fn nitro_is_detected_as_resonant_system() {
+        let elements = vec![Element::N, Element::O, Element::O];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_resonance(build_molecule(&elements, &bonds));
+
+        assert!(molecule.atoms[0].is_resonant);
+        assert!(molecule.atoms[1].is_resonant);
+        assert!(molecule.atoms[2].is_resonant);
+
+        assert_eq!(molecule.resonance_systems.len(), 1);
+    }
+
+    #[test]
+    fn amide_is_detected_as_resonant_system() {
+        let elements = vec![Element::C, Element::O, Element::N];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_resonance(build_molecule(&elements, &bonds));
+
+        assert!(molecule.atoms[0].is_resonant, "Amide C");
+        assert!(molecule.atoms[1].is_resonant, "Amide O");
+        assert!(molecule.atoms[2].is_resonant, "Amide N");
+
+        assert_eq!(molecule.resonance_systems.len(), 1);
+    }
+
+    #[test]
+    fn guanidinium_is_detected_as_resonant_system() {
+        let elements = vec![Element::C, Element::N, Element::N, Element::N];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_resonance(build_molecule(&elements, &bonds));
+
+        assert!(molecule.atoms[0].is_resonant);
+        assert!(molecule.atoms[1].is_resonant);
+        assert!(molecule.atoms[2].is_resonant);
+        assert!(molecule.atoms[3].is_resonant);
+
+        assert_eq!(molecule.resonance_systems.len(), 1);
+        assert_eq!(molecule.resonance_systems[0].atom_ids.len(), 4);
+        assert_eq!(molecule.resonance_systems[0].bond_ids.len(), 3);
+    }
+
+    #[test]
+    fn non_resonant_structures_are_ignored() {
+        let elements = vec![Element::C, Element::C, Element::O];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Single),
+        ];
+
+        let molecule = run_resonance(build_molecule(&elements, &bonds));
+
+        assert!(!molecule.atoms[0].is_resonant);
+        assert!(molecule.resonance_systems.is_empty());
+    }
+}
