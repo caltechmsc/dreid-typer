@@ -154,3 +154,129 @@ fn build_impropers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ImproperDi
     }
     impropers
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::graph::MolecularGraph;
+    use crate::core::properties::{Element, GraphBondOrder, TopologyBondOrder};
+    use crate::perception::ResonanceSystem;
+    use std::collections::HashSet;
+
+    fn planar_fragment() -> (AnnotatedMolecule, Vec<String>) {
+        let mut graph = MolecularGraph::new();
+        let c_left = graph.add_atom(Element::C);
+        let c_center = graph.add_atom(Element::C);
+        let c_right = graph.add_atom(Element::C);
+        let n_cap = graph.add_atom(Element::N);
+        let c_tail = graph.add_atom(Element::C);
+        let h_tail = graph.add_atom(Element::H);
+
+        graph
+            .add_bond(c_left, c_center, GraphBondOrder::Single)
+            .expect("valid bond");
+        graph
+            .add_bond(c_center, c_right, GraphBondOrder::Double)
+            .expect("valid bond");
+        graph
+            .add_bond(c_center, n_cap, GraphBondOrder::Single)
+            .expect("valid bond");
+        graph
+            .add_bond(c_right, c_tail, GraphBondOrder::Single)
+            .expect("valid bond");
+        graph
+            .add_bond(c_tail, h_tail, GraphBondOrder::Single)
+            .expect("valid bond");
+
+        let mut molecule = AnnotatedMolecule::new(&graph).expect("graph should be valid");
+        molecule.atoms[c_center].hybridization = Hybridization::SP2;
+
+        molecule.resonance_systems.push(ResonanceSystem {
+            atom_ids: vec![c_center, c_right, n_cap],
+            bond_ids: vec![1, 2],
+        });
+
+        let atom_types = vec![
+            "C_SP2_EDGE".to_string(),
+            "C_R".to_string(),
+            "C_SP3".to_string(),
+            "N_R".to_string(),
+            "C_ALK".to_string(),
+            "H_".to_string(),
+        ];
+
+        (molecule, atom_types)
+    }
+
+    #[test]
+    fn build_atoms_uses_atom_ids_to_assign_types() {
+        let (molecule, atom_types) = planar_fragment();
+
+        let atoms = build_atoms(&molecule, &atom_types);
+
+        assert_eq!(atoms.len(), molecule.atoms.len());
+        assert_eq!(atoms[1].atom_type, "C_R");
+        assert_eq!(atoms[5].atom_type, "H_");
+        assert_eq!(atoms[1].hybridization, Hybridization::SP2);
+    }
+
+    #[test]
+    fn build_bonds_assigns_resonant_order_to_system_bonds() {
+        let (molecule, _) = planar_fragment();
+
+        let bonds = build_bonds(&molecule);
+
+        assert_eq!(bonds.len(), molecule.bonds.len());
+
+        assert!(bonds.contains(&Bond::new(0, 1, TopologyBondOrder::Single)));
+        assert!(bonds.contains(&Bond::new(1, 2, TopologyBondOrder::Resonant)));
+        assert!(bonds.contains(&Bond::new(1, 3, TopologyBondOrder::Resonant)));
+        assert!(bonds.contains(&Bond::new(2, 4, TopologyBondOrder::Single)));
+    }
+
+    #[test]
+    fn build_angles_generates_all_neighbor_pairs() {
+        let (molecule, _) = planar_fragment();
+
+        let angles = build_angles(&molecule);
+        let expected: HashSet<_> = vec![
+            Angle::new(0, 1, 2),
+            Angle::new(0, 1, 3),
+            Angle::new(2, 1, 3),
+            Angle::new(1, 2, 4),
+            Angle::new(2, 4, 5),
+        ]
+        .into_iter()
+        .collect();
+
+        assert_eq!(angles, expected);
+    }
+
+    #[test]
+    fn build_propers_emits_all_valid_dihedrals() {
+        let (molecule, _) = planar_fragment();
+
+        let propers = build_propers(&molecule);
+        let expected: HashSet<_> = vec![
+            ProperDihedral::new(0, 1, 2, 4),
+            ProperDihedral::new(3, 1, 2, 4),
+            ProperDihedral::new(1, 2, 4, 5),
+        ]
+        .into_iter()
+        .collect();
+
+        assert_eq!(propers, expected);
+    }
+
+    #[test]
+    fn build_impropers_targets_planar_degree_three_centers() {
+        let (molecule, _) = planar_fragment();
+
+        let impropers = build_impropers(&molecule);
+        let expected: HashSet<_> = vec![ImproperDihedral::new(0, 2, 1, 3)]
+            .into_iter()
+            .collect();
+
+        assert_eq!(impropers, expected);
+    }
+}
