@@ -7,7 +7,7 @@ use crate::core::properties::{GraphBondOrder, Hybridization, TopologyBondOrder};
 use crate::core::topology::{
     Angle, Atom, Bond, ImproperDihedral, MolecularTopology, ProperDihedral,
 };
-use crate::perception::AnnotatedMolecule;
+use crate::perception::{AnnotatedMolecule, ResonanceSystem};
 use std::collections::HashSet;
 
 /// Builds the `MolecularTopology` aggregate from perception results and atom-type labels.
@@ -71,7 +71,7 @@ fn build_bonds(annotated_molecule: &AnnotatedMolecule) -> HashSet<Bond> {
     let resonant_bond_ids: HashSet<usize> = annotated_molecule
         .resonance_systems
         .iter()
-        .flat_map(|sys| sys.bond_ids.iter())
+        .flat_map(|sys: &ResonanceSystem| sys.bond_ids.iter())
         .copied()
         .collect();
 
