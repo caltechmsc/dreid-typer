@@ -1,6 +1,7 @@
 mod harness;
 
 use harness::cases::amino_acids::*;
+use harness::cases::nucleic_acids::*;
 use harness::run_molecule_test_case;
 
 macro_rules! generate_molecule_test {
@@ -61,4 +62,15 @@ generate_molecule_test!(
 generate_molecule_test!(
     tryptophan_zwitterion_is_typed_correctly,
     TRYPTOPHAN_ZWITTERION
+);
+
+generate_molecule_test!(uracil_is_typed_correctly, URACIL);
+generate_molecule_test!(thymine_is_typed_correctly, THYMINE);
+generate_molecule_test!(cytosine_is_typed_correctly, CYTOSINE);
+generate_molecule_test!(adenine_is_typed_correctly, ADENINE);
+generate_molecule_test!(guanine_is_typed_correctly, GUANINE);
+generate_molecule_test!(deoxyadenosine_is_typed_correctly, DEOXYADENOSINE);
+generate_molecule_test!(
+    dinucleotide_backbone_fragment_is_typed_correctly,
+    DINUCLEOTIDE_BACKBONE
 );
