@@ -1,6 +1,7 @@
 mod harness;
 
 use harness::cases::amino_acids::*;
+use harness::cases::dreiding_paper::*;
 use harness::cases::nucleic_acids::*;
 use harness::run_molecule_test_case;
 
@@ -74,3 +75,24 @@ generate_molecule_test!(
     dinucleotide_backbone_fragment_is_typed_correctly,
     DINUCLEOTIDE_BACKBONE
 );
+
+generate_molecule_test!(cyclobutane_lactone_is_typed_correctly, ACBUOL);
+generate_molecule_test!(cage_ether_is_typed_correctly, AFURPO10);
+generate_molecule_test!(adamantane_is_typed_correctly, ADAMANTANE);
+generate_molecule_test!(decalin_is_typed_correctly, DECALIN);
+generate_molecule_test!(dithiacyclohexene_is_typed_correctly, ABAXES);
+generate_molecule_test!(methyl_pyridine_is_typed_correctly, METHYL_PYRIDINE);
+generate_molecule_test!(acridine_is_typed_correctly, ACRIDINE);
+generate_molecule_test!(phosphinane_is_typed_correctly, PHOSPHINANE);
+generate_molecule_test!(trinitrobenzene_is_typed_correctly, TRINITROBENZENE);
+generate_molecule_test!(tetramethylthiourea_is_typed_correctly, TETRAMETHYLTHIOUREA);
+generate_molecule_test!(dimethyl_sulfoxide_is_typed_correctly, DIMETHYL_SULFOXIDE);
+generate_molecule_test!(methanesulfonamide_is_typed_correctly, METHANESULFONAMIDE);
+generate_molecule_test!(
+    chloroacetyl_chloride_is_typed_correctly,
+    CHLOROACETYL_CHLORIDE
+);
+generate_molecule_test!(adenosine_is_typed_correctly, ADENOSINE);
+generate_molecule_test!(phosphate_ester_is_typed_correctly, PHOSPHATE_ESTER);
+generate_molecule_test!(choline_cation_is_typed_correctly, CHOLINE_CATION);
+generate_molecule_test!(perchlorate_anion_is_typed_correctly, PERCHLORATE_ANION);
