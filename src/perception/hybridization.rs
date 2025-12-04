@@ -327,4 +327,252 @@ mod tests {
             other => panic!("unexpected error returned: {other:?}"),
         }
     }
+
+    #[test]
+    fn carbonyl_carbon_does_not_propagate_resonance_to_adjacent_oxygen() {
+        let mut molecule = build_molecule(
+            &[Element::O, Element::C, Element::O],
+            &[
+                (0, 1, GraphBondOrder::Single),
+                (1, 2, GraphBondOrder::Double),
+            ],
+            |mol| {
+                mol.atoms[0].degree = 2;
+                mol.atoms[0].lone_pairs = 2;
+                mol.atoms[1].degree = 3;
+                mol.atoms[1].lone_pairs = 0;
+                mol.atoms[2].degree = 1;
+                mol.atoms[2].lone_pairs = 2;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(
+            molecule.atoms[1].hybridization,
+            Hybridization::SP2,
+            "Carbonyl carbon should be SP2"
+        );
+        assert_eq!(
+            molecule.atoms[0].hybridization,
+            Hybridization::SP3,
+            "Ether oxygen adjacent to C=O should NOT be promoted to Resonant"
+        );
+        assert!(
+            !molecule.atoms[0].is_resonant,
+            "Ether oxygen should not be flagged as resonant"
+        );
+    }
+
+    #[test]
+    fn thioester_carbon_does_not_propagate_resonance() {
+        let mut molecule = build_molecule(
+            &[Element::S, Element::C, Element::S],
+            &[
+                (0, 1, GraphBondOrder::Single),
+                (1, 2, GraphBondOrder::Double),
+            ],
+            |mol| {
+                mol.atoms[0].degree = 2;
+                mol.atoms[0].lone_pairs = 2;
+                mol.atoms[1].degree = 3;
+                mol.atoms[1].lone_pairs = 0;
+                mol.atoms[2].degree = 1;
+                mol.atoms[2].lone_pairs = 2;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(
+            molecule.atoms[1].hybridization,
+            Hybridization::SP2,
+            "Thiocarbonyl carbon should be SP2"
+        );
+        assert_eq!(
+            molecule.atoms[0].hybridization,
+            Hybridization::SP3,
+            "Sulfur adjacent to C=S should NOT be promoted to Resonant"
+        );
+    }
+
+    #[test]
+    fn sp3_neighbor_does_not_propagate_resonance() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::O],
+            &[(0, 1, GraphBondOrder::Single)],
+            |mol| {
+                mol.atoms[0].degree = 4;
+                mol.atoms[0].lone_pairs = 0;
+                mol.atoms[1].degree = 2;
+                mol.atoms[1].lone_pairs = 2;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::SP3);
+        assert_eq!(
+            molecule.atoms[1].hybridization,
+            Hybridization::SP3,
+            "Oxygen attached to SP3 carbon should remain SP3"
+        );
+        assert!(!molecule.atoms[1].is_resonant);
+    }
+
+    #[test]
+    fn nitrogen_with_lone_pair_adjacent_to_sp2_carbon_becomes_resonant() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::C, Element::N],
+            &[
+                (0, 1, GraphBondOrder::Double),
+                (1, 2, GraphBondOrder::Single),
+            ],
+            |mol| {
+                mol.atoms[0].degree = 3;
+                mol.atoms[0].lone_pairs = 0;
+                mol.atoms[1].degree = 3;
+                mol.atoms[1].lone_pairs = 0;
+                mol.atoms[2].degree = 3;
+                mol.atoms[2].lone_pairs = 1;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::SP2);
+        assert_eq!(molecule.atoms[1].hybridization, Hybridization::SP2);
+        assert_eq!(
+            molecule.atoms[2].hybridization,
+            Hybridization::Resonant,
+            "Enamine nitrogen should be promoted to Resonant"
+        );
+        assert!(molecule.atoms[2].is_resonant);
+    }
+
+    #[test]
+    fn resonance_propagates_through_chain() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::C, Element::O, Element::C],
+            &[
+                (0, 1, GraphBondOrder::Double),
+                (1, 2, GraphBondOrder::Single),
+                (2, 3, GraphBondOrder::Single),
+            ],
+            |mol| {
+                mol.atoms[0].degree = 3;
+                mol.atoms[1].degree = 3;
+                mol.atoms[2].degree = 2;
+                mol.atoms[2].lone_pairs = 2;
+                mol.atoms[3].degree = 4;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::SP2);
+        assert_eq!(molecule.atoms[1].hybridization, Hybridization::SP2);
+        assert_eq!(
+            molecule.atoms[2].hybridization,
+            Hybridization::Resonant,
+            "Oxygen adjacent to SP2 carbon should become Resonant"
+        );
+        assert_eq!(molecule.atoms[3].hybridization, Hybridization::SP3);
+    }
+
+    #[test]
+    fn only_oxygen_and_nitrogen_are_promoted_to_resonant() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::C],
+            &[(0, 1, GraphBondOrder::Single)],
+            |mol| {
+                mol.atoms[0].degree = 3;
+                mol.atoms[0].lone_pairs = 0;
+                mol.atoms[0].is_resonant = true;
+                mol.atoms[1].degree = 3;
+                mol.atoms[1].lone_pairs = 1;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::Resonant);
+        assert_eq!(
+            molecule.atoms[1].hybridization,
+            Hybridization::SP3,
+            "Carbon with lone pair should NOT be promoted to Resonant"
+        );
+        assert!(
+            !molecule.atoms[1].is_resonant,
+            "Carbanion carbon should not gain is_resonant flag"
+        );
+    }
+
+    #[test]
+    fn heteroatom_without_lone_pairs_is_not_promoted() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::N],
+            &[(0, 1, GraphBondOrder::Single)],
+            |mol| {
+                mol.atoms[0].degree = 3;
+                mol.atoms[0].is_resonant = true;
+                mol.atoms[1].degree = 4;
+                mol.atoms[1].lone_pairs = 0;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(
+            molecule.atoms[1].hybridization,
+            Hybridization::SP3,
+            "Quaternary nitrogen should remain SP3"
+        );
+        assert!(!molecule.atoms[1].is_resonant);
+    }
+
+    #[test]
+    fn adjacent_to_resonant_atom_promotes_heteroatom() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::O],
+            &[(0, 1, GraphBondOrder::Single)],
+            |mol| {
+                mol.atoms[0].degree = 3;
+                mol.atoms[0].is_resonant = true;
+                mol.atoms[0].hybridization = Hybridization::Resonant;
+                mol.atoms[1].degree = 2;
+                mol.atoms[1].lone_pairs = 2;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(
+            molecule.atoms[1].hybridization,
+            Hybridization::Resonant,
+            "Phenol oxygen should be promoted to Resonant"
+        );
+        assert!(molecule.atoms[1].is_resonant);
+        assert_eq!(molecule.atoms[1].steric_number, 3);
+    }
+
+    #[test]
+    fn adjacent_to_sp_carbon_promotes_heteroatom() {
+        let mut molecule = build_molecule(
+            &[Element::C, Element::C, Element::O],
+            &[
+                (0, 1, GraphBondOrder::Triple),
+                (1, 2, GraphBondOrder::Single),
+            ],
+            |mol| {
+                mol.atoms[0].degree = 2;
+                mol.atoms[0].lone_pairs = 0;
+                mol.atoms[1].degree = 2;
+                mol.atoms[1].lone_pairs = 0;
+                mol.atoms[2].degree = 2;
+                mol.atoms[2].lone_pairs = 2;
+            },
+        );
+        perceive(&mut molecule).unwrap();
+
+        assert_eq!(molecule.atoms[0].hybridization, Hybridization::SP);
+        assert_eq!(molecule.atoms[1].hybridization, Hybridization::SP);
+        assert_eq!(
+            molecule.atoms[2].hybridization,
+            Hybridization::Resonant,
+            "Oxygen adjacent to SP carbon should be promoted"
+        );
+    }
 }
