@@ -45,6 +45,7 @@ pub struct Bond {
 }
 
 impl Bond {
+    /// Creates a new bond with atom IDs sorted to a canonical order.
     pub fn new(id1: usize, id2: usize, order: TopologyBondOrder) -> Self {
         let atom_ids = if id1 < id2 { (id1, id2) } else { (id2, id1) };
         Self { atom_ids, order }
@@ -59,6 +60,7 @@ pub struct Angle {
 }
 
 impl Angle {
+    /// Creates a new angle with end atoms sorted to a canonical order.
     pub fn new(id1: usize, center_id: usize, id2: usize) -> Self {
         let atom_ids = if id1 < id2 {
             (id1, center_id, id2)
@@ -77,6 +79,7 @@ pub struct ProperDihedral {
 }
 
 impl ProperDihedral {
+    /// Creates a new proper dihedral with atom IDs sorted lexicographically.
     pub fn new(a: usize, b: usize, c: usize, d: usize) -> Self {
         let fwd = (a, b, c, d);
         let rev = (d, c, b, a);
@@ -94,6 +97,7 @@ pub struct ImproperDihedral {
 }
 
 impl ImproperDihedral {
+    /// Creates a new improper dihedral with plane atoms sorted.
     pub fn new(p1: usize, p2: usize, center: usize, p3: usize) -> Self {
         let mut plane_ids = [p1, p2, p3];
         plane_ids.sort_unstable();
