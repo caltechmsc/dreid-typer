@@ -298,198 +298,549 @@ mod tests {
     use super::*;
     use crate::core::graph::MolecularGraph;
     use crate::core::properties::Element;
+    use std::collections::HashSet;
 
     fn build_molecule(
         elements: &[Element],
         bonds: &[(usize, usize, GraphBondOrder)],
+        lone_pairs: &[(usize, u8)],
     ) -> AnnotatedMolecule {
         let mut graph = MolecularGraph::new();
-        for &element in elements {
-            graph.add_atom(element);
+        for &elem in elements {
+            graph.add_atom(elem);
         }
-        for &(u, v, order) in bonds {
-            graph.add_bond(u, v, order).expect("bond endpoints exist");
+        for &(a, b, order) in bonds {
+            graph.add_bond(a, b, order).expect("valid bond");
         }
-        AnnotatedMolecule::new(&graph).expect("graph must be chemically valid")
-    }
-
-    #[test]
-    fn carboxylate_is_detected_as_core_system() {
-        let mut molecule = build_molecule(
-            &[Element::C, Element::O, Element::O],
-            &[
-                (0, 1, GraphBondOrder::Double),
-                (0, 2, GraphBondOrder::Single),
-            ],
-        );
-        molecule.atoms[0].degree = 2;
-        molecule.atoms[1].degree = 1;
-        molecule.atoms[2].degree = 1;
-
-        perceive(&mut molecule).unwrap();
-
-        assert!(
-            molecule.atoms[0].is_resonant,
-            "Carboxylate C should be resonant"
-        );
-        assert!(
-            molecule.atoms[1].is_resonant,
-            "Carboxylate O= should be resonant"
-        );
-        assert!(
-            molecule.atoms[2].is_resonant,
-            "Carboxylate O- should be resonant"
-        );
-
-        assert_eq!(molecule.resonance_systems.len(), 1);
-        let system = &molecule.resonance_systems[0];
-        assert_eq!(system.atom_ids, vec![0, 1, 2]);
-        assert_eq!(system.bond_ids, vec![0, 1]);
-    }
-
-    #[test]
-    fn nitro_is_detected_regardless_of_kekule_form() {
-        let molecule1 = {
-            let mut mol = build_molecule(
-                &[Element::N, Element::O, Element::O],
-                &[
-                    (0, 1, GraphBondOrder::Double),
-                    (0, 2, GraphBondOrder::Single),
-                ],
-            );
-            perceive(&mut mol).unwrap();
-            mol
-        };
-
-        let molecule2 = {
-            let mut mol = build_molecule(
-                &[Element::N, Element::O, Element::O],
-                &[
-                    (0, 1, GraphBondOrder::Single),
-                    (0, 2, GraphBondOrder::Double),
-                ],
-            );
-            perceive(&mut mol).unwrap();
-            mol
-        };
-
-        for (i, molecule) in [molecule1, molecule2].iter().enumerate() {
-            assert!(
-                molecule.atoms[0].is_resonant,
-                "Nitro N should be resonant (form {})",
-                i + 1
-            );
-            assert!(
-                molecule.atoms[1].is_resonant,
-                "Nitro O should be resonant (form {})",
-                i + 1
-            );
-            assert!(
-                molecule.atoms[2].is_resonant,
-                "Nitro O should be resonant (form {})",
-                i + 1
-            );
-
-            assert_eq!(
-                molecule.resonance_systems.len(),
-                1,
-                "Should detect 1 nitro system (form {})",
-                i + 1
-            );
-            let system = &molecule.resonance_systems[0];
-            assert_eq!(system.atom_ids, vec![0, 1, 2]);
-            assert_eq!(system.bond_ids, vec![0, 1]);
+        let mut molecule = AnnotatedMolecule::new(&graph).expect("valid graph");
+        for &(atom_id, lp) in lone_pairs {
+            molecule.atoms[atom_id].lone_pairs = lp;
         }
+        molecule
     }
 
-    #[test]
-    fn amide_is_detected_as_core_system() {
-        let molecule = {
-            let mut mol = build_molecule(
-                &[Element::C, Element::O, Element::N],
-                &[
-                    (0, 1, GraphBondOrder::Double),
-                    (0, 2, GraphBondOrder::Single),
-                ],
-            );
-            perceive(&mut mol).unwrap();
-            mol
-        };
-
-        assert!(molecule.atoms[0].is_resonant, "Amide C should be resonant");
-        assert!(molecule.atoms[1].is_resonant, "Amide O should be resonant");
-        assert!(molecule.atoms[2].is_resonant, "Amide N should be resonant");
-
-        assert_eq!(molecule.resonance_systems.len(), 1);
-        let system = &molecule.resonance_systems[0];
-        assert_eq!(system.atom_ids, vec![0, 1, 2]);
-        assert_eq!(system.bond_ids, vec![0, 1]);
+    fn run_resonance_perception(mut molecule: AnnotatedMolecule) -> AnnotatedMolecule {
+        perceive(&mut molecule).expect("resonance perception should succeed");
+        molecule
     }
 
-    #[test]
-    fn guanidinium_is_detected_as_core_system() {
-        let molecule = {
-            let mut mol = build_molecule(
-                &[Element::C, Element::N, Element::N, Element::N],
-                &[
-                    (0, 1, GraphBondOrder::Double),
-                    (0, 2, GraphBondOrder::Single),
-                    (0, 3, GraphBondOrder::Single),
-                ],
-            );
-            perceive(&mut mol).unwrap();
-            mol
-        };
-
-        assert!((0..=3).all(|i| molecule.atoms[i].is_resonant));
-        assert_eq!(molecule.resonance_systems.len(), 1);
-        let system = &molecule.resonance_systems[0];
-        assert_eq!(system.atom_ids, vec![0, 1, 2, 3]);
-        assert_eq!(system.bond_ids, vec![0, 1, 2]);
+    fn resonant_atom_ids(molecule: &AnnotatedMolecule) -> HashSet<usize> {
+        molecule
+            .atoms
+            .iter()
+            .enumerate()
+            .filter_map(|(i, a)| a.is_resonant.then_some(i))
+            .collect()
     }
 
-    #[test]
-    fn phenol_oxygen_is_marked_resonant_via_propagation() {
-        let mut molecule = build_molecule(
-            &[Element::C, Element::C, Element::O, Element::H],
-            &[
-                (0, 1, GraphBondOrder::Single),
-                (1, 2, GraphBondOrder::Single),
-                (2, 3, GraphBondOrder::Single),
-            ],
+    fn assert_resonant_atoms(molecule: &AnnotatedMolecule, expected: &[usize]) {
+        let actual = resonant_atom_ids(molecule);
+        let expected_set: HashSet<_> = expected.iter().copied().collect();
+        assert_eq!(
+            actual, expected_set,
+            "resonant atoms mismatch: got {:?}, expected {:?}",
+            actual, expected_set
         );
-        molecule.atoms[1].is_resonant = true;
-        molecule.atoms[2].lone_pairs = 2;
+    }
 
-        perceive(&mut molecule).unwrap();
+    fn assert_resonance_system_count(molecule: &AnnotatedMolecule, expected: usize) {
+        assert_eq!(
+            molecule.resonance_systems.len(),
+            expected,
+            "expected {} resonance system(s), got {}",
+            expected,
+            molecule.resonance_systems.len()
+        );
+    }
+
+    fn assert_system_contains_atoms(
+        molecule: &AnnotatedMolecule,
+        system_idx: usize,
+        atoms: &[usize],
+    ) {
+        let sys = &molecule.resonance_systems[system_idx];
+        let expected: HashSet<_> = atoms.iter().copied().collect();
+        let actual: HashSet<_> = sys.atom_ids.iter().copied().collect();
+        assert_eq!(
+            actual, expected,
+            "system {} atoms mismatch: got {:?}, expected {:?}",
+            system_idx, actual, expected
+        );
+    }
+
+    #[test]
+    fn carboxylate_group_is_detected() {
+        let elements = [
+            Element::C,
+            Element::C,
+            Element::O,
+            Element::O,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn ester_is_not_detected_as_carboxylate() {
+        let elements = [Element::C, Element::C, Element::O, Element::O, Element::C];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (3, 4, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        let resonant = resonant_atom_ids(&molecule);
+        assert!(
+            !resonant.contains(&3),
+            "ester oxygen (degree 2) should not be in resonance system"
+        );
+    }
+
+    #[test]
+    fn nitro_group_is_detected() {
+        let elements = [
+            Element::C,
+            Element::N,
+            Element::O,
+            Element::O,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn nitro_detection_is_kekule_invariant() {
+        let elements = [Element::C, Element::N, Element::O, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn guanidinium_group_is_detected() {
+        let elements = [
+            Element::C,
+            Element::N,
+            Element::N,
+            Element::N,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (1, 4, GraphBondOrder::Single),
+            (1, 5, GraphBondOrder::Single),
+            (2, 6, GraphBondOrder::Single),
+            (2, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+            (3, 9, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[0, 1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn ring_guanidine_is_not_detected() {
+        let elements = [
+            Element::C,
+            Element::N,
+            Element::N,
+            Element::N,
+            Element::C,
+            Element::C,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (2, 4, GraphBondOrder::Single),
+            (3, 5, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[0].is_in_ring = true;
+        let molecule = run_resonance_perception(molecule);
+
+        let resonant = resonant_atom_ids(&molecule);
+        assert!(
+            !resonant.contains(&0),
+            "ring guanidine central carbon should not be detected"
+        );
+    }
+
+    #[test]
+    fn thiourea_group_is_detected() {
+        let elements = [
+            Element::S,
+            Element::C,
+            Element::N,
+            Element::N,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Single),
+            (2, 4, GraphBondOrder::Single),
+            (2, 5, GraphBondOrder::Single),
+            (3, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn thioamide_with_one_nitrogen_is_not_thiourea() {
+        let elements = [Element::S, Element::C, Element::N, Element::C];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 0);
+    }
+
+    #[test]
+    fn amide_group_is_detected() {
+        let elements = [
+            Element::C,
+            Element::C,
+            Element::O,
+            Element::N,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn carboxylate_takes_priority_over_amide() {
+        let elements = [Element::C, Element::O, Element::O, Element::N];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[0, 1, 2]);
+        assert_resonance_system_count(&molecule, 1);
+    }
+
+    #[test]
+    fn phosphate_group_is_detected() {
+        let elements = [
+            Element::P,
+            Element::O,
+            Element::O,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::C,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (3, 5, GraphBondOrder::Single),
+            (4, 6, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
 
         assert!(
-            molecule.atoms[2].is_resonant,
-            "Phenol oxygen should be marked resonant"
+            resonant_atom_ids(&molecule).contains(&1),
+            "terminal oxygen O1 should be resonant"
         );
         assert!(
-            molecule.resonance_systems.is_empty(),
-            "Peripheral resonance should not create a new core system"
+            resonant_atom_ids(&molecule).contains(&2),
+            "terminal oxygen O2 should be resonant"
+        );
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[0, 1, 2]);
+    }
+
+    #[test]
+    fn phosphate_requires_two_terminal_oxygens() {
+        let elements = [
+            Element::P,
+            Element::O,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::C,
+            Element::C,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (2, 4, GraphBondOrder::Single),
+            (3, 5, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 0);
+    }
+
+    #[test]
+    fn peripheral_oxygen_with_lone_pairs_is_promoted() {
+        let elements = [Element::C, Element::O, Element::O, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[3].lone_pairs = 2;
+        let molecule = run_resonance_perception(molecule);
+
+        assert!(
+            resonant_atom_ids(&molecule).contains(&3),
+            "peripheral oxygen with lone pairs should be promoted"
         );
     }
 
     #[test]
-    fn non_resonant_structures_are_ignored() {
-        let molecule = {
-            let mut mol = build_molecule(
-                &[Element::C, Element::C, Element::O],
-                &[
-                    (0, 1, GraphBondOrder::Single),
-                    (1, 2, GraphBondOrder::Single),
-                ],
-            );
-            perceive(&mut mol).unwrap();
-            mol
-        };
+    fn peripheral_atom_without_lone_pairs_is_not_promoted() {
+        let elements = [Element::C, Element::O, Element::O, Element::N];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[3].lone_pairs = 0;
+        let molecule = run_resonance_perception(molecule);
 
-        assert!(!molecule.atoms[0].is_resonant);
-        assert!(!molecule.atoms[1].is_resonant);
-        assert!(!molecule.atoms[2].is_resonant);
-        assert!(molecule.resonance_systems.is_empty());
+        assert!(
+            !resonant_atom_ids(&molecule).contains(&3),
+            "nitrogen without lone pairs should not be promoted"
+        );
+    }
+
+    #[test]
+    fn carbon_is_not_promoted_to_resonant() {
+        let elements = [Element::C, Element::O, Element::O, Element::C];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert!(
+            !resonant_atom_ids(&molecule).contains(&3),
+            "carbon should never be promoted via peripheral propagation"
+        );
+    }
+
+    #[test]
+    fn peripheral_sulfur_with_lone_pairs_is_promoted() {
+        let elements = [Element::C, Element::O, Element::O, Element::S];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[3].lone_pairs = 2;
+        let molecule = run_resonance_perception(molecule);
+
+        assert!(
+            resonant_atom_ids(&molecule).contains(&3),
+            "sulfur with lone pairs should be promoted"
+        );
+    }
+
+    #[test]
+    fn alkane_has_no_resonance_systems() {
+        let elements = [
+            Element::C,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (1, 5, GraphBondOrder::Single),
+            (1, 6, GraphBondOrder::Single),
+            (1, 7, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 0);
+        assert!(resonant_atom_ids(&molecule).is_empty());
+    }
+
+    #[test]
+    fn ketone_is_not_a_resonance_system() {
+        let elements = [Element::C, Element::C, Element::C, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Double),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 0);
+    }
+
+    #[test]
+    fn multiple_functional_groups_create_separate_systems() {
+        let elements = [
+            Element::C,
+            Element::C,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::O,
+            Element::O,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Double),
+            (4, 6, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 2);
+        assert_resonant_atoms(&molecule, &[1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn amide_skips_already_resonant_atoms() {
+        let elements = [Element::C, Element::O, Element::N];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[0].is_resonant = true;
+        let molecule = run_resonance_perception(molecule);
+
+        assert_resonance_system_count(&molecule, 0);
+    }
+
+    #[test]
+    fn resonance_system_ids_are_sorted() {
+        let elements = [Element::C, Element::O, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 1);
+        let sys = &molecule.resonance_systems[0];
+
+        let mut sorted_atoms = sys.atom_ids.clone();
+        sorted_atoms.sort_unstable();
+        assert_eq!(sys.atom_ids, sorted_atoms, "atom_ids should be sorted");
+
+        let mut sorted_bonds = sys.bond_ids.clone();
+        sorted_bonds.sort_unstable();
+        assert_eq!(sys.bond_ids, sorted_bonds, "bond_ids should be sorted");
+    }
+
+    #[test]
+    fn resonance_system_bond_ids_are_valid() {
+        let elements = [Element::N, Element::O, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        for sys in &molecule.resonance_systems {
+            for &bond_id in &sys.bond_ids {
+                assert!(
+                    bond_id < molecule.bonds.len(),
+                    "bond_id {} exceeds bond count {}",
+                    bond_id,
+                    molecule.bonds.len()
+                );
+            }
+        }
     }
 }
