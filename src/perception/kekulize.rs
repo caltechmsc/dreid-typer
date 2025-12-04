@@ -28,9 +28,22 @@ use std::collections::{HashMap, VecDeque, hash_map::Entry};
 /// valid alternating assignment exists for a system.
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     let mut aromatic_bonds = Vec::new();
+    let mut aromatic_atom_flags = vec![false; molecule.atoms.len()];
     for bond in &molecule.bonds {
         if bond.order == GraphBondOrder::Aromatic {
+            aromatic_atom_flags[bond.atom_ids.0] = true;
+            aromatic_atom_flags[bond.atom_ids.1] = true;
             aromatic_bonds.push(bond.id);
+        }
+    }
+
+    for (atom, flag) in molecule
+        .atoms
+        .iter_mut()
+        .zip(aromatic_atom_flags.into_iter())
+    {
+        if flag {
+            atom.has_aromatic_edge = true;
         }
     }
 
