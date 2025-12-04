@@ -206,12 +206,12 @@ fn assign_sulfur_oxides(
             let o1_idx = double_bonded_oxygens[0];
             let o2_idx = double_bonded_oxygens[1];
             if !processed[o1_idx] && !processed[o2_idx] {
-                molecule.atoms[s_idx].formal_charge = 2;
+                molecule.atoms[s_idx].formal_charge = 0;
                 molecule.atoms[s_idx].lone_pairs = 0;
-                molecule.atoms[o1_idx].formal_charge = -1;
-                molecule.atoms[o1_idx].lone_pairs = 3;
-                molecule.atoms[o2_idx].formal_charge = -1;
-                molecule.atoms[o2_idx].lone_pairs = 3;
+                molecule.atoms[o1_idx].formal_charge = 0;
+                molecule.atoms[o1_idx].lone_pairs = 2;
+                molecule.atoms[o2_idx].formal_charge = 0;
+                molecule.atoms[o2_idx].lone_pairs = 2;
                 processed[s_idx] = true;
                 processed[o1_idx] = true;
                 processed[o2_idx] = true;
