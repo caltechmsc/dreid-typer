@@ -138,6 +138,15 @@ impl<'a> AromaticityModel<'a> {
         if !self.is_potentially_planar {
             return false;
         }
+
+        let all_from_aromatic_input = self
+            .atoms
+            .iter()
+            .all(|&id| self.molecule.atoms[id].has_aromatic_edge);
+        if all_from_aromatic_input {
+            return true;
+        }
+
         matches!(self.pi_electrons, Some(pi) if pi > 0 && (pi - 2) % 4 == 0)
     }
 
@@ -221,6 +230,10 @@ impl<'a> AromaticityModel<'a> {
         }
 
         if atom.is_resonant && atom.is_in_ring {
+            return Some(1);
+        }
+
+        if atom.has_aromatic_edge && atom.is_in_ring {
             return Some(1);
         }
 
