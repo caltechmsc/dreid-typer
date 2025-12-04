@@ -575,6 +575,11 @@ fn assign_general(
             .map(|&(_, order)| bond_order_to_valence(order))
             .sum();
 
+        let double_bond_count = molecule.adjacency[i]
+            .iter()
+            .filter(|&&(_, order)| order == GraphBondOrder::Double)
+            .count();
+
         let mut lone_pairs = 0;
 
         let is_second_period = matches!(
@@ -601,7 +606,28 @@ fn assign_general(
         let atom_mut = &mut molecule.atoms[i];
         atom_mut.lone_pairs = lone_pairs;
         atom_mut.formal_charge = formal_charge;
+
+        if element == Element::N
+            && atom_mut.is_in_ring
+            && atom_mut.degree == 3
+            && bonding_electrons == 4
+            && double_bond_count == 1
+        {
+            atom_mut.lone_pairs = 1;
+            atom_mut.formal_charge = 0;
+        }
+
+        if element == Element::C
+            && atom_mut.has_aromatic_edge
+            && atom_mut.is_in_ring
+            && atom_mut.degree == 3
+            && double_bond_count == 0
+        {
+            atom_mut.lone_pairs = 0;
+            atom_mut.formal_charge = 0;
+        }
     }
+
     Ok(())
 }
 
