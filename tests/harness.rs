@@ -1,8 +1,10 @@
 #[path = "cases/mod.rs"]
 pub mod cases;
 
-use dreid_typer::{BondOrder, Element, MolecularGraph, MolecularTopology, assign_topology};
-use std::collections::HashMap;
+use dreid_typer::{
+    Element, GraphBondOrder, MolecularGraph, MolecularTopology, TopologyBondOrder, assign_topology,
+};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
 pub struct AtomBlueprint {
@@ -12,17 +14,25 @@ pub struct AtomBlueprint {
 }
 
 #[derive(Debug)]
-pub struct BondBlueprint {
+pub struct InputBondBlueprint {
     pub atom1_label: &'static str,
     pub atom2_label: &'static str,
-    pub order: BondOrder,
+    pub order: GraphBondOrder,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct OutputBondBlueprint {
+    pub atom1_label: &'static str,
+    pub atom2_label: &'static str,
+    pub order: TopologyBondOrder,
 }
 
 #[derive(Debug)]
 pub struct MoleculeTestCase {
     pub name: &'static str,
     pub atoms: &'static [AtomBlueprint],
-    pub bonds: &'static [BondBlueprint],
+    pub bonds: &'static [InputBondBlueprint],
+    pub expected_bonds: &'static [OutputBondBlueprint],
 }
 
 pub struct LabeledMolecule {
@@ -50,6 +60,7 @@ pub fn run_molecule_test_case(case: &MoleculeTestCase) {
         .unwrap_or_else(|err| panic!("Topology assignment failed for '{}': {:?}", case.name, err));
 
     verify_atom_types(&topology, &molecule, case);
+    verify_bond_orders(&topology, &molecule, case);
 }
 
 fn build_from_blueprint(case: &MoleculeTestCase) -> LabeledMolecule {
@@ -104,19 +115,47 @@ fn verify_atom_types(
     }
 
     for atom in &topology.atoms {
-        if atom.element != Element::H {
-            if !case.atoms.iter().any(|ab| molecule.id(ab.label) == atom.id) {
-                all_heavy_atoms_tested = false;
-                eprintln!(
-                    "Warning: Heavy atom with ID {} was not checked in test case '{}'",
-                    atom.id, case.name
-                );
-            }
+        if atom.element != Element::H
+            && !case.atoms.iter().any(|ab| molecule.id(ab.label) == atom.id)
+        {
+            all_heavy_atoms_tested = false;
+            eprintln!(
+                "Warning: Heavy atom with ID {} was not checked in test case '{}'",
+                atom.id, case.name
+            );
         }
     }
     assert!(
         all_heavy_atoms_tested,
         "One or more heavy atoms were not defined in the test case blueprint for '{}'",
         case.name
+    );
+}
+
+fn verify_bond_orders(
+    topology: &MolecularTopology,
+    molecule: &LabeledMolecule,
+    case: &MoleculeTestCase,
+) {
+    let expected_bonds: HashSet<_> = case
+        .expected_bonds
+        .iter()
+        .map(|bp| {
+            let mut ids = [molecule.id(bp.atom1_label), molecule.id(bp.atom2_label)];
+            ids.sort_unstable();
+            ((ids[0], ids[1]), bp.order)
+        })
+        .collect();
+
+    let actual_bonds: HashSet<_> = topology
+        .bonds
+        .iter()
+        .map(|bond| (bond.atom_ids, bond.order))
+        .collect();
+
+    assert_eq!(
+        actual_bonds, expected_bonds,
+        "\n --- Test Failure ---\nMolecule: '{}'\nBond order mismatch.\n  Expected: {:?}\n  Actual:   {:?}\n -------------------- \n",
+        case.name, expected_bonds, actual_bonds
     );
 }

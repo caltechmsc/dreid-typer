@@ -466,13 +466,14 @@ impl<'de> Deserialize<'de> for Element {
     }
 }
 
-/// Describes the discrete bond multiplicities supported throughout the typer.
+/// Describes the discrete bond multiplicities supported in input graphs.
 ///
 /// The values intentionally match their valence contribution so that helpers like
-/// electron counting can treat `Single` as 1, `Double` as 2, etc.
+/// electron counting can treat `Single` as 1, `Double` as 2, etc. This enum
+/// includes aromatic bonds for input parsing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
-pub enum BondOrder {
+pub enum GraphBondOrder {
     /// A single bond contributing one unit of valence.
     Single = 1,
     /// A double bond contributing two units of valence.
@@ -483,15 +484,33 @@ pub enum BondOrder {
     Aromatic = 4,
 }
 
+/// Describes the discrete bond multiplicities used in output topologies.
+///
+/// The values intentionally match their valence contribution so that helpers like
+/// electron counting can treat `Single` as 1, `Double` as 2, etc. This enum
+/// uses resonant bonds instead of aromatic for physical determination.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum TopologyBondOrder {
+    /// A single bond contributing one unit of valence.
+    Single = 1,
+    /// A double bond contributing two units of valence.
+    Double = 2,
+    /// A triple bond contributing three units of valence.
+    Triple = 3,
+    /// A resonant bond indicating participation in a delocalized π-system.
+    Resonant = 4,
+}
+
 /// Error returned when parsing a bond order string that does not match the enum.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[error("invalid bond order: '{0}'")]
 pub struct ParseBondOrderError(String);
 
-impl FromStr for BondOrder {
+impl FromStr for GraphBondOrder {
     type Err = ParseBondOrderError;
 
-    /// Parses a textual bond order into the [`BondOrder`] enum.
+    /// Parses a textual bond order into the [`GraphBondOrder`] enum.
     ///
     /// Accepts the canonical variant names (`"Single"`, `"Double"`, etc.).
     ///
@@ -510,7 +529,35 @@ impl FromStr for BondOrder {
     }
 }
 
-impl fmt::Display for BondOrder {
+impl FromStr for TopologyBondOrder {
+    type Err = ParseBondOrderError;
+
+    /// Parses a textual bond order into the [`TopologyBondOrder`] enum.
+    ///
+    /// Accepts the canonical variant names (`"Single"`, `"Double"`, etc.).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseBondOrderError`] if the string is not one of the supported
+    /// keywords.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Single" => Ok(Self::Single),
+            "Double" => Ok(Self::Double),
+            "Triple" => Ok(Self::Triple),
+            "Resonant" => Ok(Self::Resonant),
+            _ => Err(ParseBondOrderError(s.to_string())),
+        }
+    }
+}
+
+impl fmt::Display for GraphBondOrder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl fmt::Display for TopologyBondOrder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
     }

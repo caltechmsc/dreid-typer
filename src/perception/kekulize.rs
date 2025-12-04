@@ -6,14 +6,13 @@
 
 use super::model::AnnotatedMolecule;
 use crate::core::error::PerceptionError;
-use crate::core::properties::{BondOrder, Element};
+use crate::core::properties::{Element, GraphBondOrder};
 use std::collections::{HashMap, VecDeque, hash_map::Entry};
 
 /// Converts aromatic bonds inside the molecule to alternating single/double assignments.
 ///
-/// The pass first marks atoms attached to aromatic bonds as resonant, validates that each aromatic
-/// bond belongs to a ring, partitions the bonds into connected systems, and then runs a Kekulé
-/// solver per system.
+/// The pass validates that every aromatic bond belongs to a ring, partitions the bonds into
+/// connected systems, and then runs a Kekulé solver per system.
 ///
 /// # Arguments
 ///
@@ -29,25 +28,27 @@ use std::collections::{HashMap, VecDeque, hash_map::Entry};
 /// valid alternating assignment exists for a system.
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
     let mut aromatic_bonds = Vec::new();
-    let mut aromatic_pairs = Vec::new();
+    let mut aromatic_atom_flags = vec![false; molecule.atoms.len()];
     for bond in &molecule.bonds {
-        if bond.order == BondOrder::Aromatic {
+        if bond.order == GraphBondOrder::Aromatic {
+            aromatic_atom_flags[bond.atom_ids.0] = true;
+            aromatic_atom_flags[bond.atom_ids.1] = true;
             aromatic_bonds.push(bond.id);
-            aromatic_pairs.push(bond.atom_ids);
+        }
+    }
+
+    for (atom, flag) in molecule
+        .atoms
+        .iter_mut()
+        .zip(aromatic_atom_flags.into_iter())
+    {
+        if flag {
+            atom.has_aromatic_edge = true;
         }
     }
 
     if aromatic_bonds.is_empty() {
         return Ok(());
-    }
-
-    for (u, v) in aromatic_pairs {
-        if let Some(atom) = molecule.atoms.get_mut(u) {
-            atom.is_resonant = true;
-        }
-        if let Some(atom) = molecule.atoms.get_mut(v) {
-            atom.is_resonant = true;
-        }
     }
 
     validate_aromatic_bonds_in_rings(molecule, &aromatic_bonds)?;
@@ -97,7 +98,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
 struct KekuleSolver<'a> {
     molecule: &'a AnnotatedMolecule,
     bond_indices: Vec<usize>,
-    assignments: Vec<Option<BondOrder>>,
+    assignments: Vec<Option<GraphBondOrder>>,
 }
 
 impl<'a> KekuleSolver<'a> {
@@ -125,7 +126,7 @@ impl<'a> KekuleSolver<'a> {
     /// # Returns
     ///
     /// Map of bond IDs to resolved orders, or `None` if no assignment satisfies the constraints.
-    fn solve(&mut self) -> Option<HashMap<usize, BondOrder>> {
+    fn solve(&mut self) -> Option<HashMap<usize, GraphBondOrder>> {
         if self.backtrack(0) {
             let solution = self
                 .bond_indices
@@ -157,7 +158,7 @@ impl<'a> KekuleSolver<'a> {
             return true;
         }
 
-        for &order_choice in &[BondOrder::Double, BondOrder::Single] {
+        for &order_choice in &[GraphBondOrder::Double, GraphBondOrder::Single] {
             self.assignments[k] = Some(order_choice);
 
             if self.is_consistent(k) && self.backtrack(k + 1) {
@@ -198,7 +199,7 @@ impl<'a> KekuleSolver<'a> {
                 })
                 .unwrap();
 
-            if *initial_order == BondOrder::Aromatic {
+            if *initial_order == GraphBondOrder::Aromatic {
                 if let Some(assigned_order) = self
                     .bond_indices
                     .iter()
@@ -206,7 +207,7 @@ impl<'a> KekuleSolver<'a> {
                     .and_then(|pos| self.assignments[pos])
                 {
                     let contribution = if matches!(element, Element::N | Element::P)
-                        && assigned_order == BondOrder::Double
+                        && assigned_order == GraphBondOrder::Double
                     {
                         if aromatic_double_allowance >= 1 {
                             return false;
@@ -262,7 +263,7 @@ fn find_aromatic_systems(
 
             for atom_id in [u, v] {
                 for (neighbor_id, order) in &molecule.adjacency[atom_id] {
-                    if *order == BondOrder::Aromatic {
+                    if *order == GraphBondOrder::Aromatic {
                         let neighbor_bond = molecule
                             .bonds
                             .iter()
@@ -343,12 +344,12 @@ fn get_max_valence(element: Element) -> u8 {
 /// # Returns
 ///
 /// Integer contribution consistent with typical valence bookkeeping.
-fn bond_order_to_valence(order: BondOrder) -> u8 {
+fn bond_order_to_valence(order: GraphBondOrder) -> u8 {
     match order {
-        BondOrder::Single => 1,
-        BondOrder::Double => 2,
-        BondOrder::Triple => 3,
-        BondOrder::Aromatic => 0,
+        GraphBondOrder::Single => 1,
+        GraphBondOrder::Double => 2,
+        GraphBondOrder::Triple => 3,
+        GraphBondOrder::Aromatic => 0,
     }
 }
 
@@ -434,13 +435,13 @@ mod tests {
         }
         for &(u, v) in aromatic_bonds {
             graph
-                .add_bond(u, v, BondOrder::Aromatic)
+                .add_bond(u, v, GraphBondOrder::Aromatic)
                 .expect("valid aromatic bond");
         }
         for &atom_id in hydrogens_on {
             let hydrogen_id = graph.add_atom(Element::H);
             graph
-                .add_bond(atom_id, hydrogen_id, BondOrder::Single)
+                .add_bond(atom_id, hydrogen_id, GraphBondOrder::Single)
                 .expect("valid X-H bond");
         }
 
@@ -476,7 +477,8 @@ mod tests {
             molecule
                 .bonds
                 .iter()
-                .all(|bond| bond.order == BondOrder::Single || bond.order == BondOrder::Double),
+                .all(|bond| bond.order == GraphBondOrder::Single
+                    || bond.order == GraphBondOrder::Double),
             "all aromatic bonds should be resolved into concrete orders"
         );
     }
@@ -484,14 +486,20 @@ mod tests {
     fn assert_alternating_cycle(molecule: &AnnotatedMolecule, ring: &[usize]) {
         assert!(ring.len() >= 3, "rings must contain at least three atoms");
         let first_order = bond_order_between(molecule, ring[0], ring[1]);
-        assert!(matches!(first_order, BondOrder::Single | BondOrder::Double));
+        assert!(matches!(
+            first_order,
+            GraphBondOrder::Single | GraphBondOrder::Double
+        ));
 
         let mut prev_order = first_order;
         for i in 1..ring.len() {
             let u = ring[i];
             let v = ring[(i + 1) % ring.len()];
             let order = bond_order_between(molecule, u, v);
-            assert!(matches!(order, BondOrder::Single | BondOrder::Double));
+            assert!(matches!(
+                order,
+                GraphBondOrder::Single | GraphBondOrder::Double
+            ));
             assert_ne!(
                 order, prev_order,
                 "bond orders should alternate around the ring"
@@ -500,7 +508,7 @@ mod tests {
         }
     }
 
-    fn bond_order_between(molecule: &AnnotatedMolecule, u: usize, v: usize) -> BondOrder {
+    fn bond_order_between(molecule: &AnnotatedMolecule, u: usize, v: usize) -> GraphBondOrder {
         molecule
             .bonds
             .iter()
@@ -570,7 +578,8 @@ mod tests {
             .bonds
             .iter()
             .filter(|bond| {
-                (bond.atom_ids.0 == 0 || bond.atom_ids.1 == 0) && bond.order == BondOrder::Double
+                (bond.atom_ids.0 == 0 || bond.atom_ids.1 == 0)
+                    && bond.order == GraphBondOrder::Double
             })
             .count();
         assert_eq!(double_bonds_to_n, 1);

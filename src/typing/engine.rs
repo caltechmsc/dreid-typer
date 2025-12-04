@@ -271,7 +271,7 @@ impl<'a> TyperEngine<'a> {
 mod tests {
     use super::*;
     use crate::core::graph::MolecularGraph;
-    use crate::core::properties::{BondOrder, Element, Hybridization};
+    use crate::core::properties::{Element, GraphBondOrder, Hybridization};
     use crate::perception::AnnotatedMolecule;
 
     fn linear_ethene_like() -> AnnotatedMolecule {
@@ -282,13 +282,13 @@ mod tests {
         let h2 = graph.add_atom(Element::H);
 
         graph
-            .add_bond(c1, c2, BondOrder::Double)
+            .add_bond(c1, c2, GraphBondOrder::Double)
             .expect("valid C=C bond");
         graph
-            .add_bond(c1, h1, BondOrder::Single)
+            .add_bond(c1, h1, GraphBondOrder::Single)
             .expect("valid C-H bond");
         graph
-            .add_bond(c2, h2, BondOrder::Single)
+            .add_bond(c2, h2, GraphBondOrder::Single)
             .expect("valid C-H bond");
 
         AnnotatedMolecule::new(&graph).expect("graph should be valid")

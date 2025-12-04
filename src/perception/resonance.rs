@@ -1,219 +1,294 @@
-//! Identifies conjugated systems via Pauling perception and additional local heuristics.
+//! Detects specific, strong resonance systems via strict substructure matching.
 //!
-//! After the `pauling` library finds resonance systems, this module reinforces or suppresses
-//! conjugation flags for specific motifs such as amides, sulfonamides, halogen oxyanions, and
-//! sigma-bound sulfurs.
+//! Unlike generalized conjugation detection, this module uses an allowlist of
+//! chemically significant motifs (Carboxylate, Nitro, Guanidinium, Amide).
+//! When a motif is found, its atoms are marked `is_resonant`, and the system
+//! (atoms + bonds) is recorded to ensure the correct bond order in the topology.
 
-use super::model::AnnotatedMolecule;
+use super::model::{AnnotatedMolecule, ResonanceSystem};
 use crate::core::error::PerceptionError;
-use crate::core::properties::{BondOrder, Element};
+use crate::core::properties::{Element, GraphBondOrder};
 
-/// Runs resonance perception and applies local adjustments for tricky motifs.
+/// Runs strict resonance perception in two phases.
+///
+/// First, it identifies core resonance systems (aromatics are handled upstream) like
+/// carboxylates and amides, registering both their atoms and bonds. Second, it
+//  propagates the `is_resonant` flag to adjacent heteroatoms that can participate
+//  in conjugation.
+///
+/// Note: Aromatic resonance is handled in the `aromaticity` module. This module
+/// focuses on non-aromatic conjugated systems.
 ///
 /// # Arguments
 ///
-/// * `molecule` - Annotated molecule whose atoms will be tagged as conjugated or not.
+/// * `molecule` - Annotated molecule whose atoms will be tagged and systems recorded.
 ///
 /// # Returns
 ///
-/// `Ok(())` when all systems are processed.
-///
-/// # Errors
-///
-/// Propagates [`PerceptionError::PaulingError`] when the external library fails or
-/// [`PerceptionError::Other`] if it returns invalid atom identifiers.
+/// `Ok(())` always, as this process is infallible.
 pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError> {
-    let conjugated_systems =
-        pauling::find_resonance_systems(molecule).map_err(PerceptionError::PaulingError)?;
-
-    for system in conjugated_systems {
-        for atom_id in system.atoms {
-            if let Some(atom) = molecule.atoms.get_mut(atom_id) {
-                atom.is_in_conjugated_system = true;
-            } else {
-                return Err(PerceptionError::Other(format!(
-                    "pauling library returned an invalid atom ID ({}) that is out of bounds",
-                    atom_id
-                )));
-            }
-        }
-    }
-
-    apply_local_resonance_patterns(molecule);
-
+    detect_core_functional_groups(molecule);
+    propagate_resonance_to_periphery(molecule);
     Ok(())
 }
 
-/// Applies supplemental resonance heuristics after `pauling` completes.
-fn apply_local_resonance_patterns(molecule: &mut AnnotatedMolecule) {
-    mark_aromatic_atoms_conjugated(molecule);
-    mark_amide_and_thioamide_systems(molecule);
-    mark_sulfonamide_systems(molecule);
-    suppress_halogen_oxyanion_conjugation(molecule);
-    demote_sigma_bound_sulfurs(molecule);
+/// Detects core resonance systems via substructure matching.
+fn detect_core_functional_groups(molecule: &mut AnnotatedMolecule) {
+    let mut processed = vec![false; molecule.atoms.len()];
+
+    detect_carboxylate_groups(molecule, &mut processed);
+    detect_nitro_groups(molecule, &mut processed);
+    detect_guanidinium_groups(molecule, &mut processed);
+    detect_thiourea_groups(molecule, &mut processed);
+    detect_amide_groups(molecule, &mut processed);
+    detect_phosphate_groups(molecule, &mut processed);
 }
 
-/// Ensures aromatic atoms are always marked as conjugated.
-fn mark_aromatic_atoms_conjugated(molecule: &mut AnnotatedMolecule) {
-    for atom in &mut molecule.atoms {
-        if atom.is_aromatic {
-            atom.is_in_conjugated_system = true;
+/// Propagates resonance flags to peripheral heteroatoms bonded to resonant systems.
+fn propagate_resonance_to_periphery(molecule: &mut AnnotatedMolecule) {
+    let mut newly_resonant = Vec::new();
+
+    for i in 0..molecule.atoms.len() {
+        let atom = &molecule.atoms[i];
+
+        if atom.is_resonant
+            || !matches!(atom.element, Element::O | Element::N | Element::S)
+            || atom.lone_pairs == 0
+        {
+            continue;
         }
+
+        let is_bonded_to_resonant_atom = molecule.adjacency[i]
+            .iter()
+            .any(|&(neighbor_id, _)| molecule.atoms[neighbor_id].is_resonant);
+
+        if is_bonded_to_resonant_atom {
+            newly_resonant.push(i);
+        }
+    }
+
+    for atom_id in newly_resonant {
+        molecule.atoms[atom_id].is_resonant = true;
     }
 }
 
-/// Adds amide/thioamide fragments to conjugated systems when lone-pair donors are present.
-///
-/// # Arguments
-///
-/// * `molecule` - Annotated molecule to inspect.
-fn mark_amide_and_thioamide_systems(molecule: &mut AnnotatedMolecule) {
-    for pivot_idx in 0..molecule.atoms.len() {
-        if molecule.atoms[pivot_idx].element != Element::C {
-            continue;
-        }
+/// Helper to record a detected resonance system for later topology emission.
+fn push_resonance_system(molecule: &mut AnnotatedMolecule, atoms: &[usize], bonds: &[usize]) {
+    let mut sys_atoms = atoms.to_vec();
+    let mut sys_bonds = bonds.to_vec();
+    sys_atoms.sort_unstable();
+    sys_bonds.sort_unstable();
 
-        let pi_partners: Vec<_> = molecule.adjacency[pivot_idx]
-            .iter()
-            .filter(|&&(_, order)| order == BondOrder::Double)
-            .filter_map(|&(neighbor_id, _)| {
-                let neighbor = &molecule.atoms[neighbor_id];
-                matches!(neighbor.element, Element::O | Element::S).then_some(neighbor_id)
-            })
-            .collect();
-
-        if pi_partners.is_empty() {
-            continue;
-        }
-
-        let hetero_donors: Vec<_> = molecule.adjacency[pivot_idx]
-            .iter()
-            .filter(|&&(_, order)| order == BondOrder::Single)
-            .filter_map(|&(neighbor_id, _)| {
-                let neighbor = &molecule.atoms[neighbor_id];
-                if neighbor_id != pivot_idx
-                    && matches!(neighbor.element, Element::N | Element::O | Element::S)
-                    && neighbor.lone_pairs > 0
-                {
-                    Some(neighbor_id)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        if hetero_donors.is_empty() {
-            continue;
-        }
-
-        mark_atoms_conjugated(molecule, [pivot_idx]);
-
-        for pi_partner in pi_partners {
-            mark_atoms_conjugated(molecule, [pi_partner]);
-            for &donor in &hetero_donors {
-                mark_atoms_conjugated(molecule, [donor]);
-            }
-        }
-    }
+    molecule.resonance_systems.push(ResonanceSystem {
+        atom_ids: sys_atoms,
+        bond_ids: sys_bonds,
+    });
 }
 
-/// Marks sulfonamide sulfurs and nitrogens as conjugated when two S=O bonds exist.
-fn mark_sulfonamide_systems(molecule: &mut AnnotatedMolecule) {
-    for s_idx in 0..molecule.atoms.len() {
-        if molecule.atoms[s_idx].element != Element::S {
-            continue;
-        }
-
-        let double_bonded_oxygens: Vec<_> = molecule.adjacency[s_idx]
-            .iter()
-            .filter(|&&(_, order)| order == BondOrder::Double)
-            .filter_map(|&(neighbor_id, _)| {
-                (molecule.atoms[neighbor_id].element == Element::O).then_some(neighbor_id)
-            })
-            .collect();
-
-        if double_bonded_oxygens.len() < 2 {
-            continue;
-        }
-
-        let sulfonamide_neighbors: Vec<_> = molecule.adjacency[s_idx]
-            .iter()
-            .filter(|&&(_, order)| order == BondOrder::Single)
-            .filter_map(|&(neighbor_id, _)| {
-                let neighbor = &molecule.atoms[neighbor_id];
-                (neighbor.element == Element::N && neighbor.lone_pairs > 0).then_some(neighbor_id)
-            })
-            .collect();
-
-        for neighbor_id in sulfonamide_neighbors {
-            mark_atoms_conjugated(molecule, [s_idx, neighbor_id]);
-        }
-    }
+/// Finds the bond ID connecting two atoms. Panics if not found (internal consistency check).
+fn find_bond_id(molecule: &AnnotatedMolecule, u: usize, v: usize) -> usize {
+    molecule
+        .bonds
+        .iter()
+        .find(|b| {
+            (b.atom_ids.0 == u && b.atom_ids.1 == v) || (b.atom_ids.0 == v && b.atom_ids.1 == u)
+        })
+        .map(|b| b.id)
+        .expect("Bond must exist between adjacent atoms")
 }
 
-/// Clears conjugation on oxygens bonded to hypervalent halogens.
-fn suppress_halogen_oxyanion_conjugation(molecule: &mut AnnotatedMolecule) {
-    for center_idx in 0..molecule.atoms.len() {
-        if !matches!(
-            molecule.atoms[center_idx].element,
-            Element::Cl | Element::Br | Element::I
-        ) {
+/// Detects Carboxylate groups: C(=O)O-
+fn detect_carboxylate_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
+    for c_idx in 0..molecule.atoms.len() {
+        if processed[c_idx] || molecule.atoms[c_idx].element != Element::C {
             continue;
         }
 
-        let oxygen_neighbors: Vec<_> = molecule.adjacency[center_idx]
-            .iter()
-            .filter_map(|&(neighbor_id, _)| {
-                (molecule.atoms[neighbor_id].element == Element::O).then_some(neighbor_id)
-            })
-            .collect();
+        let mut double_o = None;
+        let mut single_o = None;
 
-        if oxygen_neighbors.len() >= 3 {
-            for oxygen_idx in oxygen_neighbors {
-                if let Some(atom) = molecule.atoms.get_mut(oxygen_idx) {
-                    atom.is_in_conjugated_system = false;
+        for &(neighbor_id, order) in &molecule.adjacency[c_idx] {
+            if molecule.atoms[neighbor_id].element == Element::O {
+                match order {
+                    GraphBondOrder::Double => double_o = Some(neighbor_id),
+                    GraphBondOrder::Single if molecule.atoms[neighbor_id].degree == 1 => {
+                        single_o = Some(neighbor_id);
+                    }
+                    _ => {}
                 }
             }
         }
+
+        if let (Some(o1), Some(o2)) = (double_o, single_o) {
+            let b1 = find_bond_id(molecule, c_idx, o1);
+            let b2 = find_bond_id(molecule, c_idx, o2);
+            for &atom_id in &[c_idx, o1, o2] {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+            push_resonance_system(molecule, &[c_idx, o1, o2], &[b1, b2]);
+        }
     }
 }
 
-/// Removes conjugation flags from sulfurs that only participate in σ bonds.
-fn demote_sigma_bound_sulfurs(molecule: &mut AnnotatedMolecule) {
-    for s_idx in 0..molecule.atoms.len() {
-        let (element, is_conjugated) = {
-            let atom = &molecule.atoms[s_idx];
-            (atom.element, atom.is_in_conjugated_system)
-        };
-
-        if element != Element::S || !is_conjugated {
+/// Detects Nitro groups: N(=O)O-
+fn detect_nitro_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
+    for n_idx in 0..molecule.atoms.len() {
+        if processed[n_idx] || molecule.atoms[n_idx].element != Element::N {
             continue;
         }
 
-        let has_pi_bond = molecule.adjacency[s_idx]
+        let mut oxygen_neighbors = Vec::new();
+        for &(neighbor_id, _) in &molecule.adjacency[n_idx] {
+            if molecule.atoms[neighbor_id].element == Element::O {
+                oxygen_neighbors.push(neighbor_id);
+            }
+        }
+
+        if oxygen_neighbors.len() == 2 {
+            let o1 = oxygen_neighbors[0];
+            let o2 = oxygen_neighbors[1];
+            let b1 = find_bond_id(molecule, n_idx, o1);
+            let b2 = find_bond_id(molecule, n_idx, o2);
+            for &atom_id in &[n_idx, o1, o2] {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+            push_resonance_system(molecule, &[n_idx, o1, o2], &[b1, b2]);
+        }
+    }
+}
+
+/// Detects Guanidinium groups: C(N)(N)N+
+fn detect_guanidinium_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
+    for c_idx in 0..molecule.atoms.len() {
+        if processed[c_idx]
+            || molecule.atoms[c_idx].element != Element::C
+            || molecule.atoms[c_idx].is_in_ring
+        {
+            continue;
+        }
+
+        let n_neighbors: Vec<_> = molecule.adjacency[c_idx]
             .iter()
-            .any(|&(_, order)| order != BondOrder::Single);
+            .filter(|(id, _)| molecule.atoms[*id].element == Element::N)
+            .map(|(id, _)| *id)
+            .collect();
 
-        if has_pi_bond {
-            continue;
-        }
-
-        if let Some(atom_mut) = molecule.atoms.get_mut(s_idx) {
-            atom_mut.is_in_conjugated_system = false;
+        if n_neighbors.len() == 3 {
+            let bonds: Vec<_> = n_neighbors
+                .iter()
+                .map(|&n_id| find_bond_id(molecule, c_idx, n_id))
+                .collect();
+            let mut atoms = vec![c_idx];
+            atoms.extend(n_neighbors);
+            for &atom_id in &atoms {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+            push_resonance_system(molecule, &atoms, &bonds);
         }
     }
 }
 
-/// Helper that sets `is_in_conjugated_system` for each supplied atom.
-///
-/// # Arguments
-///
-/// * `molecule` - Annotated molecule to modify.
-/// * `atom_ids` - Atom indices that should be marked as conjugated.
-fn mark_atoms_conjugated<const N: usize>(molecule: &mut AnnotatedMolecule, atom_ids: [usize; N]) {
-    for atom_id in atom_ids {
-        if let Some(atom) = molecule.atoms.get_mut(atom_id) {
-            atom.is_in_conjugated_system = true;
+/// Detects Thiourea cores: C(=S)(N)(N)
+fn detect_thiourea_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
+    for c_idx in 0..molecule.atoms.len() {
+        if processed[c_idx] || molecule.atoms[c_idx].element != Element::C {
+            continue;
+        }
+
+        let mut sulfur_neighbor = None;
+        let mut nitrogen_neighbors = Vec::new();
+
+        for &(neighbor_id, order) in &molecule.adjacency[c_idx] {
+            match (molecule.atoms[neighbor_id].element, order) {
+                (Element::S, GraphBondOrder::Double) => sulfur_neighbor = Some(neighbor_id),
+                (Element::N, GraphBondOrder::Single) => nitrogen_neighbors.push(neighbor_id),
+                _ => {}
+            }
+        }
+
+        if sulfur_neighbor.is_some() && nitrogen_neighbors.len() == 2 {
+            let n1 = nitrogen_neighbors[0];
+            let n2 = nitrogen_neighbors[1];
+            let b1 = find_bond_id(molecule, c_idx, n1);
+            let b2 = find_bond_id(molecule, c_idx, n2);
+
+            for &atom_id in &[c_idx, n1, n2] {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+
+            push_resonance_system(molecule, &[c_idx, n1, n2], &[b1, b2]);
+        }
+    }
+}
+
+/// Detects Amide groups: O=C-N
+fn detect_amide_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
+    for c_idx in 0..molecule.atoms.len() {
+        if processed[c_idx] || molecule.atoms[c_idx].element != Element::C {
+            continue;
+        }
+
+        let mut double_o = None;
+        let mut single_n = None;
+
+        for &(neighbor_id, order) in &molecule.adjacency[c_idx] {
+            match (molecule.atoms[neighbor_id].element, order) {
+                (Element::O, GraphBondOrder::Double) => double_o = Some(neighbor_id),
+                (Element::N, GraphBondOrder::Single) => single_n = Some(neighbor_id),
+                _ => {}
+            }
+        }
+
+        if let (Some(o), Some(n)) = (double_o, single_n) {
+            if molecule.atoms[c_idx].is_resonant || molecule.atoms[n].is_resonant {
+                continue;
+            }
+            let b_co = find_bond_id(molecule, c_idx, o);
+            let b_cn = find_bond_id(molecule, c_idx, n);
+            for &atom_id in &[c_idx, o, n] {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+            push_resonance_system(molecule, &[c_idx, o, n], &[b_co, b_cn]);
+        }
+    }
+}
+
+/// Detects Phosphate groups: P(=O)(O-)
+fn detect_phosphate_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
+    for p_idx in 0..molecule.atoms.len() {
+        if molecule.atoms[p_idx].element != Element::P {
+            continue;
+        }
+
+        let mut terminal_oxygens = Vec::new();
+
+        for &(neighbor_id, _) in &molecule.adjacency[p_idx] {
+            if molecule.atoms[neighbor_id].element == Element::O
+                && molecule.atoms[neighbor_id].degree == 1
+            {
+                terminal_oxygens.push(neighbor_id);
+            }
+        }
+
+        if terminal_oxygens.len() >= 2 {
+            let o1 = terminal_oxygens[0];
+            let o2 = terminal_oxygens[1];
+
+            let b1 = find_bond_id(molecule, p_idx, o1);
+            let b2 = find_bond_id(molecule, p_idx, o2);
+
+            molecule.atoms[o1].is_resonant = true;
+            molecule.atoms[o2].is_resonant = true;
+            processed[o1] = true;
+            processed[o2] = true;
+            processed[p_idx] = true;
+
+            push_resonance_system(molecule, &[p_idx, o1, o2], &[b1, b2]);
         }
     }
 }
@@ -222,296 +297,550 @@ fn mark_atoms_conjugated<const N: usize>(molecule: &mut AnnotatedMolecule, atom_
 mod tests {
     use super::*;
     use crate::core::graph::MolecularGraph;
-    use crate::core::properties::{BondOrder, Element};
-    use std::collections::BTreeSet;
+    use crate::core::properties::Element;
+    use std::collections::HashSet;
 
     fn build_molecule(
         elements: &[Element],
-        bonds: &[(usize, usize, BondOrder)],
+        bonds: &[(usize, usize, GraphBondOrder)],
+        lone_pairs: &[(usize, u8)],
     ) -> AnnotatedMolecule {
         let mut graph = MolecularGraph::new();
-        for &element in elements {
-            graph.add_atom(element);
+        for &elem in elements {
+            graph.add_atom(elem);
         }
-        for &(u, v, order) in bonds {
-            graph.add_bond(u, v, order).expect("bond endpoints exist");
+        for &(a, b, order) in bonds {
+            graph.add_bond(a, b, order).expect("valid bond");
         }
-        AnnotatedMolecule::new(&graph).expect("graph must be chemically valid")
+        let mut molecule = AnnotatedMolecule::new(&graph).expect("valid graph");
+        for &(atom_id, lp) in lone_pairs {
+            molecule.atoms[atom_id].lone_pairs = lp;
+        }
+        molecule
     }
 
-    fn hydrocarbon(
-        backbone_bonds: &[(usize, usize, BondOrder)],
-        hydrogen_counts: &[u8],
-    ) -> AnnotatedMolecule {
-        let heavy_atoms = hydrogen_counts.len();
-        let mut elements = vec![Element::C; heavy_atoms];
-        let mut bonds = backbone_bonds.to_vec();
-        let mut next_index = heavy_atoms;
-        for (atom_idx, &hydrogens) in hydrogen_counts.iter().enumerate() {
-            for _ in 0..hydrogens {
-                elements.push(Element::H);
-                bonds.push((atom_idx, next_index, BondOrder::Single));
-                next_index += 1;
-            }
-        }
-        build_molecule(&elements, &bonds)
-    }
-
-    fn run_resonance(mut molecule: AnnotatedMolecule) -> AnnotatedMolecule {
+    fn run_resonance_perception(mut molecule: AnnotatedMolecule) -> AnnotatedMolecule {
         perceive(&mut molecule).expect("resonance perception should succeed");
         molecule
     }
 
-    fn assert_conjugated_atoms(molecule: &AnnotatedMolecule, expected: &[usize]) {
-        let observed: BTreeSet<_> = molecule
+    fn resonant_atom_ids(molecule: &AnnotatedMolecule) -> HashSet<usize> {
+        molecule
             .atoms
             .iter()
             .enumerate()
-            .filter_map(|(idx, atom)| atom.is_in_conjugated_system.then_some(idx))
-            .collect();
-        let anticipated: BTreeSet<_> = expected.iter().copied().collect();
+            .filter_map(|(i, a)| a.is_resonant.then_some(i))
+            .collect()
+    }
+
+    fn assert_resonant_atoms(molecule: &AnnotatedMolecule, expected: &[usize]) {
+        let actual = resonant_atom_ids(molecule);
+        let expected_set: HashSet<_> = expected.iter().copied().collect();
         assert_eq!(
-            observed, anticipated,
-            "unexpected conjugated atom assignment"
+            actual, expected_set,
+            "resonant atoms mismatch: got {:?}, expected {:?}",
+            actual, expected_set
         );
     }
 
-    fn butadiene() -> AnnotatedMolecule {
-        hydrocarbon(
-            &[
-                (0, 1, BondOrder::Double),
-                (1, 2, BondOrder::Single),
-                (2, 3, BondOrder::Double),
-            ],
-            &[2, 1, 1, 2],
-        )
-    }
-
-    fn benzene_ring() -> AnnotatedMolecule {
-        hydrocarbon(
-            &[
-                (0, 1, BondOrder::Double),
-                (1, 2, BondOrder::Single),
-                (2, 3, BondOrder::Double),
-                (3, 4, BondOrder::Single),
-                (4, 5, BondOrder::Double),
-                (5, 0, BondOrder::Single),
-            ],
-            &[1, 1, 1, 1, 1, 1],
-        )
-    }
-
-    fn allyl_anion() -> AnnotatedMolecule {
-        let mut molecule = hydrocarbon(
-            &[(0, 1, BondOrder::Double), (1, 2, BondOrder::Single)],
-            &[2, 1, 2],
+    fn assert_resonance_system_count(molecule: &AnnotatedMolecule, expected: usize) {
+        assert_eq!(
+            molecule.resonance_systems.len(),
+            expected,
+            "expected {} resonance system(s), got {}",
+            expected,
+            molecule.resonance_systems.len()
         );
-        molecule.atoms[2].formal_charge = -1;
-        molecule
     }
 
-    fn dual_diene_with_sp3_break() -> AnnotatedMolecule {
-        hydrocarbon(
-            &[
-                (0, 1, BondOrder::Double),
-                (1, 2, BondOrder::Single),
-                (2, 3, BondOrder::Double),
-                (3, 4, BondOrder::Single),
-                (4, 5, BondOrder::Single),
-                (5, 6, BondOrder::Double),
-                (6, 7, BondOrder::Single),
-                (7, 8, BondOrder::Double),
-            ],
-            &[2, 1, 1, 2, 2, 1, 1, 2, 2],
-        )
-    }
-
-    fn hexane() -> AnnotatedMolecule {
-        hydrocarbon(
-            &[
-                (0, 1, BondOrder::Single),
-                (1, 2, BondOrder::Single),
-                (2, 3, BondOrder::Single),
-                (3, 4, BondOrder::Single),
-                (4, 5, BondOrder::Single),
-            ],
-            &[3, 2, 2, 2, 2, 3],
-        )
-    }
-
-    fn thioamide_fragment() -> AnnotatedMolecule {
-        build_molecule(
-            &[Element::N, Element::C, Element::S, Element::N],
-            &[
-                (0, 1, BondOrder::Single),
-                (1, 2, BondOrder::Double),
-                (1, 3, BondOrder::Single),
-            ],
-        )
-    }
-
-    fn sulfonamide_fragment() -> AnnotatedMolecule {
-        build_molecule(
-            &[Element::S, Element::O, Element::O, Element::N, Element::C],
-            &[
-                (0, 1, BondOrder::Double),
-                (0, 2, BondOrder::Double),
-                (0, 3, BondOrder::Single),
-                (0, 4, BondOrder::Single),
-            ],
-        )
-    }
-
-    fn perchlorate_fragment() -> AnnotatedMolecule {
-        build_molecule(
-            &[Element::Cl, Element::O, Element::O, Element::O, Element::O],
-            &[
-                (0, 1, BondOrder::Double),
-                (0, 2, BondOrder::Double),
-                (0, 3, BondOrder::Double),
-                (0, 4, BondOrder::Single),
-            ],
-        )
+    fn assert_system_contains_atoms(
+        molecule: &AnnotatedMolecule,
+        system_idx: usize,
+        atoms: &[usize],
+    ) {
+        let sys = &molecule.resonance_systems[system_idx];
+        let expected: HashSet<_> = atoms.iter().copied().collect();
+        let actual: HashSet<_> = sys.atom_ids.iter().copied().collect();
+        assert_eq!(
+            actual, expected,
+            "system {} atoms mismatch: got {:?}, expected {:?}",
+            system_idx, actual, expected
+        );
     }
 
     #[test]
-    fn linear_diene_marks_expected_chain_atoms() {
-        let molecule = run_resonance(butadiene());
-        assert_conjugated_atoms(&molecule, &[0, 1, 2, 3]);
+    fn carboxylate_group_is_detected() {
+        let elements = [
+            Element::C,
+            Element::C,
+            Element::O,
+            Element::O,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[1, 2, 3]);
     }
 
     #[test]
-    fn benzene_ring_forms_single_resonance_system() {
-        let molecule = run_resonance(benzene_ring());
-        assert_conjugated_atoms(&molecule, &[0, 1, 2, 3, 4, 5]);
+    fn ester_is_not_detected_as_carboxylate() {
+        let elements = [Element::C, Element::C, Element::O, Element::O, Element::C];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (3, 4, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        let resonant = resonant_atom_ids(&molecule);
+        assert!(
+            !resonant.contains(&3),
+            "ester oxygen (degree 2) should not be in resonance system"
+        );
     }
 
     #[test]
-    fn allyl_anion_includes_anionic_carbon_in_conjugation() {
-        let molecule = run_resonance(allyl_anion());
-        assert_conjugated_atoms(&molecule, &[0, 1, 2]);
+    fn nitro_group_is_detected() {
+        let elements = [
+            Element::C,
+            Element::N,
+            Element::O,
+            Element::O,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[1, 2, 3]);
     }
 
     #[test]
-    fn saturated_breaks_split_disconnected_conjugated_systems() {
-        let molecule = run_resonance(dual_diene_with_sp3_break());
-        assert_conjugated_atoms(&molecule, &[0, 1, 2, 3, 5, 6, 7, 8]);
+    fn nitro_detection_is_kekule_invariant() {
+        let elements = [Element::C, Element::N, Element::O, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
     }
 
     #[test]
-    fn saturated_hexane_has_no_conjugation() {
-        let molecule = run_resonance(hexane());
-        assert_conjugated_atoms(&molecule, &[]);
+    fn guanidinium_group_is_detected() {
+        let elements = [
+            Element::C,
+            Element::N,
+            Element::N,
+            Element::N,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (1, 4, GraphBondOrder::Single),
+            (1, 5, GraphBondOrder::Single),
+            (2, 6, GraphBondOrder::Single),
+            (2, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+            (3, 9, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[0, 1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[0, 1, 2, 3]);
     }
 
     #[test]
-    fn thioamide_like_system_marks_expected_atoms() {
-        let mut molecule = thioamide_fragment();
-        super::super::electrons::perceive(&mut molecule)
-            .expect("electron perception should succeed for thioamide fragment");
-        let molecule = run_resonance(molecule);
+    fn ring_guanidine_is_not_detected() {
+        let elements = [
+            Element::C,
+            Element::N,
+            Element::N,
+            Element::N,
+            Element::C,
+            Element::C,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (2, 4, GraphBondOrder::Single),
+            (3, 5, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[0].is_in_ring = true;
+        let molecule = run_resonance_perception(molecule);
+
+        let resonant = resonant_atom_ids(&molecule);
+        assert!(
+            !resonant.contains(&0),
+            "ring guanidine central carbon should not be detected"
+        );
+    }
+
+    #[test]
+    fn thiourea_group_is_detected() {
+        let elements = [
+            Element::S,
+            Element::C,
+            Element::N,
+            Element::N,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Single),
+            (2, 4, GraphBondOrder::Single),
+            (2, 5, GraphBondOrder::Single),
+            (3, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn thioamide_with_one_nitrogen_is_not_thiourea() {
+        let elements = [Element::S, Element::C, Element::N, Element::C];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 0);
+    }
+
+    #[test]
+    fn amide_group_is_detected() {
+        let elements = [
+            Element::C,
+            Element::C,
+            Element::O,
+            Element::N,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[1, 2, 3]);
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn carboxylate_takes_priority_over_amide() {
+        let elements = [Element::C, Element::O, Element::O, Element::N];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonant_atoms(&molecule, &[0, 1, 2]);
+        assert_resonance_system_count(&molecule, 1);
+    }
+
+    #[test]
+    fn phosphate_group_is_detected() {
+        let elements = [
+            Element::P,
+            Element::O,
+            Element::O,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::C,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (3, 5, GraphBondOrder::Single),
+            (4, 6, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
 
         assert!(
-            molecule.atoms[0].is_in_conjugated_system,
-            "first nitrogen should be conjugated"
+            resonant_atom_ids(&molecule).contains(&1),
+            "terminal oxygen O1 should be resonant"
         );
         assert!(
-            molecule.atoms[1].is_in_conjugated_system,
-            "carbon should be conjugated"
+            resonant_atom_ids(&molecule).contains(&2),
+            "terminal oxygen O2 should be resonant"
         );
+        assert_resonance_system_count(&molecule, 1);
+        assert_system_contains_atoms(&molecule, 0, &[0, 1, 2]);
+    }
+
+    #[test]
+    fn phosphate_requires_two_terminal_oxygens() {
+        let elements = [
+            Element::P,
+            Element::O,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::C,
+            Element::C,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (2, 4, GraphBondOrder::Single),
+            (3, 5, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 0);
+    }
+
+    #[test]
+    fn peripheral_oxygen_with_lone_pairs_is_promoted() {
+        let elements = [Element::C, Element::O, Element::O, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[3].lone_pairs = 2;
+        let molecule = run_resonance_perception(molecule);
+
         assert!(
-            molecule.atoms[2].is_in_conjugated_system,
-            "sulfur should be conjugated"
-        );
-        assert!(
-            molecule.atoms[3].is_in_conjugated_system,
-            "second nitrogen should be conjugated"
+            resonant_atom_ids(&molecule).contains(&3),
+            "peripheral oxygen with lone pairs should be promoted"
         );
     }
 
     #[test]
-    fn sulfonamide_nitrogen_becomes_conjugated() {
-        let mut molecule = sulfonamide_fragment();
-        super::super::electrons::perceive(&mut molecule)
-            .expect("electron perception should succeed for sulfonamide fragment");
-        let molecule = run_resonance(molecule);
+    fn peripheral_atom_without_lone_pairs_is_not_promoted() {
+        let elements = [Element::C, Element::O, Element::O, Element::N];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[3].lone_pairs = 0;
+        let molecule = run_resonance_perception(molecule);
 
         assert!(
-            molecule.atoms[0].is_in_conjugated_system,
-            "sulfur should be conjugated"
-        );
-        assert!(
-            molecule.atoms[3].is_in_conjugated_system,
-            "nitrogen should be conjugated"
+            !resonant_atom_ids(&molecule).contains(&3),
+            "nitrogen without lone pairs should not be promoted"
         );
     }
 
     #[test]
-    fn halogen_oxyanions_demote_terminal_oxygens() {
-        let mut molecule = perchlorate_fragment();
-        for oxygen_idx in 1..4 {
-            molecule.atoms[oxygen_idx].is_in_conjugated_system = true;
+    fn carbon_is_not_promoted_to_resonant() {
+        let elements = [Element::C, Element::O, Element::O, Element::C];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert!(
+            !resonant_atom_ids(&molecule).contains(&3),
+            "carbon should never be promoted via peripheral propagation"
+        );
+    }
+
+    #[test]
+    fn peripheral_sulfur_with_lone_pairs_is_promoted() {
+        let elements = [Element::C, Element::O, Element::O, Element::S];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[3].lone_pairs = 2;
+        let molecule = run_resonance_perception(molecule);
+
+        assert!(
+            resonant_atom_ids(&molecule).contains(&3),
+            "sulfur with lone pairs should be promoted"
+        );
+    }
+
+    #[test]
+    fn alkane_has_no_resonance_systems() {
+        let elements = [
+            Element::C,
+            Element::C,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+            Element::H,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (0, 2, GraphBondOrder::Single),
+            (0, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (1, 5, GraphBondOrder::Single),
+            (1, 6, GraphBondOrder::Single),
+            (1, 7, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 0);
+        assert!(resonant_atom_ids(&molecule).is_empty());
+    }
+
+    #[test]
+    fn ketone_is_not_a_resonance_system() {
+        let elements = [Element::C, Element::C, Element::C, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Single),
+            (1, 3, GraphBondOrder::Double),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 0);
+    }
+
+    #[test]
+    fn multiple_functional_groups_create_separate_systems() {
+        let elements = [
+            Element::C,
+            Element::C,
+            Element::O,
+            Element::O,
+            Element::C,
+            Element::O,
+            Element::O,
+        ];
+        let bonds = [
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (1, 3, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Double),
+            (4, 6, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 2);
+        assert_resonant_atoms(&molecule, &[1, 2, 3, 4, 5, 6]);
+    }
+
+    #[test]
+    fn amide_skips_already_resonant_atoms() {
+        let elements = [Element::C, Element::O, Element::N];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+        ];
+        let mut molecule = build_molecule(&elements, &bonds, &[]);
+        molecule.atoms[0].is_resonant = true;
+        let molecule = run_resonance_perception(molecule);
+
+        assert_resonance_system_count(&molecule, 0);
+    }
+
+    #[test]
+    fn resonance_system_ids_are_sorted() {
+        let elements = [Element::C, Element::O, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        assert_resonance_system_count(&molecule, 1);
+        let sys = &molecule.resonance_systems[0];
+
+        let mut sorted_atoms = sys.atom_ids.clone();
+        sorted_atoms.sort_unstable();
+        assert_eq!(sys.atom_ids, sorted_atoms, "atom_ids should be sorted");
+
+        let mut sorted_bonds = sys.bond_ids.clone();
+        sorted_bonds.sort_unstable();
+        assert_eq!(sys.bond_ids, sorted_bonds, "bond_ids should be sorted");
+    }
+
+    #[test]
+    fn resonance_system_bond_ids_are_valid() {
+        let elements = [Element::N, Element::O, Element::O];
+        let bonds = [
+            (0, 1, GraphBondOrder::Double),
+            (0, 2, GraphBondOrder::Single),
+        ];
+        let molecule = run_resonance_perception(build_molecule(&elements, &bonds, &[]));
+
+        for sys in &molecule.resonance_systems {
+            for &bond_id in &sys.bond_ids {
+                assert!(
+                    bond_id < molecule.bonds.len(),
+                    "bond_id {} exceeds bond count {}",
+                    bond_id,
+                    molecule.bonds.len()
+                );
+            }
         }
-        apply_local_resonance_patterns(&mut molecule);
-
-        for oxygen_idx in 1..4 {
-            assert!(
-                !molecule.atoms[oxygen_idx].is_in_conjugated_system,
-                "oxygen {oxygen_idx} should not remain conjugated"
-            );
-        }
-    }
-
-    #[test]
-    fn aromatic_atoms_are_forced_into_conjugation() {
-        let mut molecule = benzene_ring();
-        for idx in 0..6 {
-            molecule.atoms[idx].is_aromatic = true;
-            molecule.atoms[idx].is_in_conjugated_system = false;
-        }
-
-        apply_local_resonance_patterns(&mut molecule);
-
-        assert_conjugated_atoms(&molecule, &[0, 1, 2, 3, 4, 5]);
-    }
-
-    #[test]
-    fn sigma_bound_sulfurs_remain_non_conjugated() {
-        let mut molecule = build_molecule(
-            &[Element::S, Element::C, Element::C, Element::S, Element::C],
-            &[
-                (0, 1, BondOrder::Single),
-                (1, 2, BondOrder::Double),
-                (2, 3, BondOrder::Single),
-                (3, 4, BondOrder::Single),
-            ],
-        );
-
-        for atom in &mut molecule.atoms {
-            atom.is_in_conjugated_system = true;
-        }
-
-        apply_local_resonance_patterns(&mut molecule);
-
-        assert!(
-            !molecule.atoms[0].is_in_conjugated_system,
-            "terminal thioether sulfur should be demoted"
-        );
-        assert!(
-            !molecule.atoms[3].is_in_conjugated_system,
-            "second thioether sulfur should be demoted"
-        );
-        assert!(
-            molecule.atoms[1].is_in_conjugated_system,
-            "sp2 carbon should remain conjugated"
-        );
-        assert!(
-            molecule.atoms[2].is_in_conjugated_system,
-            "allylic carbon should remain conjugated"
-        );
-        assert!(
-            molecule.atoms[4].is_in_conjugated_system,
-            "downstream carbon should remain untouched"
-        );
     }
 }

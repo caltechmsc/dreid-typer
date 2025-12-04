@@ -1,18 +1,20 @@
 //! Evaluates fused ring systems to determine whether the atoms are aromatic, anti-aromatic, or neither.
 //!
 //! The module groups rings, builds localized models that count π-electrons under planarity
-//! assumptions, and sets per-atom flags that later perception stages consume.
+//! assumptions, and sets per-atom flags. Importantly, it also registers aromatic rings
+//! as `ResonanceSystem`s so that their bonds are treated as resonant in the final topology.
 
-use super::model::{AnnotatedAtom, AnnotatedMolecule, Ring};
+use super::model::{AnnotatedAtom, AnnotatedMolecule, ResonanceSystem, Ring};
 use crate::core::error::PerceptionError;
-use crate::core::properties::BondOrder;
+use crate::core::properties::GraphBondOrder;
 use std::collections::{HashMap, HashSet};
 
 /// Runs aromaticity perception over all ring systems present in the molecule.
 ///
 /// The procedure clusters rings that share atoms, evaluates each cluster as a whole, falls back to
 /// ring-by-ring evaluation when mixed behavior occurs, and annotates atoms as aromatic or
-/// anti-aromatic accordingly.
+/// anti-aromatic accordingly. Confirmed aromatic systems are added to the molecule's
+/// resonance systems list.
 ///
 /// # Arguments
 ///
@@ -38,9 +40,7 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
         let model = AromaticityModel::new(molecule, &system_atoms);
 
         if model.is_aromatic() {
-            for &atom_id in &system_atoms {
-                molecule.atoms[atom_id].is_aromatic = true;
-            }
+            apply_aromaticity(molecule, &system_atoms);
         } else if model.is_anti_aromatic() {
             for &atom_id in &system_atoms {
                 molecule.atoms[atom_id].is_anti_aromatic = true;
@@ -51,6 +51,35 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     }
 
     Ok(())
+}
+
+/// Marks all atoms and bonds in the system as aromatic and resonant.
+///
+/// # Arguments
+///
+/// * `molecule` - Annotated molecule to mutate.
+/// * `system_atoms` - Atom IDs representing the aromatic system.
+fn apply_aromaticity(molecule: &mut AnnotatedMolecule, system_atoms: &HashSet<usize>) {
+    for &atom_id in system_atoms {
+        let atom = &mut molecule.atoms[atom_id];
+        atom.is_aromatic = true;
+        atom.is_resonant = true;
+    }
+
+    let mut bond_ids = Vec::new();
+    for bond in &molecule.bonds {
+        if system_atoms.contains(&bond.atom_ids.0) && system_atoms.contains(&bond.atom_ids.1) {
+            bond_ids.push(bond.id);
+        }
+    }
+
+    let mut atom_ids: Vec<usize> = system_atoms.iter().copied().collect();
+    atom_ids.sort_unstable();
+    bond_ids.sort_unstable();
+
+    molecule
+        .resonance_systems
+        .push(ResonanceSystem { atom_ids, bond_ids });
 }
 
 /// Evaluates each ring independently when a fused system lacks uniform behavior.
@@ -65,9 +94,7 @@ fn evaluate_rings_individually(molecule: &mut AnnotatedMolecule, system_indices:
         let ring_model = AromaticityModel::new(molecule, &ring_atoms);
 
         if ring_model.is_aromatic() {
-            for &atom_id in &ring_atoms {
-                molecule.atoms[atom_id].is_aromatic = true;
-            }
+            apply_aromaticity(molecule, &ring_atoms);
         } else if ring_model.is_anti_aromatic() {
             for &atom_id in &ring_atoms {
                 molecule.atoms[atom_id].is_anti_aromatic = true;
@@ -111,6 +138,15 @@ impl<'a> AromaticityModel<'a> {
         if !self.is_potentially_planar {
             return false;
         }
+
+        let all_from_aromatic_input = self
+            .atoms
+            .iter()
+            .all(|&id| self.molecule.atoms[id].has_aromatic_edge);
+        if all_from_aromatic_input {
+            return true;
+        }
+
         matches!(self.pi_electrons, Some(pi) if pi > 0 && (pi - 2) % 4 == 0)
     }
 
@@ -151,14 +187,14 @@ impl<'a> AromaticityModel<'a> {
     fn atom_has_endocyclic_double(&self, atom_id: usize) -> bool {
         self.molecule.adjacency[atom_id]
             .iter()
-            .any(|&(n_id, order)| order == BondOrder::Double && self.atoms.contains(&n_id))
+            .any(|&(n_id, order)| order == GraphBondOrder::Double && self.atoms.contains(&n_id))
     }
 
     /// Checks if an atom carries a double bond outside the ring system.
     fn atom_has_exocyclic_double(&self, atom_id: usize) -> bool {
         self.molecule.adjacency[atom_id]
             .iter()
-            .any(|&(n_id, order)| order == BondOrder::Double && !self.atoms.contains(&n_id))
+            .any(|&(n_id, order)| order == GraphBondOrder::Double && !self.atoms.contains(&n_id))
     }
 
     /// Detects cross-conjugation, which prevents anti-aromatic classification.
@@ -194,6 +230,10 @@ impl<'a> AromaticityModel<'a> {
         }
 
         if atom.is_resonant && atom.is_in_ring {
+            return Some(1);
+        }
+
+        if atom.has_aromatic_edge && atom.is_in_ring {
             return Some(1);
         }
 
@@ -315,7 +355,7 @@ mod tests {
 
     fn build_test_molecule(
         atom_specs: &[AtomSpec],
-        bonds: &[(usize, usize, BondOrder)],
+        bonds: &[(usize, usize, GraphBondOrder)],
         rings: &[&[usize]],
     ) -> AnnotatedMolecule {
         let mut graph = MolecularGraph::new();
@@ -422,18 +462,18 @@ mod tests {
     fn benzene() -> AnnotatedMolecule {
         let atoms = vec![c(), c(), c(), c(), c(), c(), h(), h(), h(), h(), h(), h()];
         let bonds = vec![
-            (0, 1, BondOrder::Double),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Double),
-            (3, 4, BondOrder::Single),
-            (4, 5, BondOrder::Double),
-            (5, 0, BondOrder::Single),
-            (0, 6, BondOrder::Single),
-            (1, 7, BondOrder::Single),
-            (2, 8, BondOrder::Single),
-            (3, 9, BondOrder::Single),
-            (4, 10, BondOrder::Single),
-            (5, 11, BondOrder::Single),
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 4, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Double),
+            (5, 0, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Single),
+            (1, 7, GraphBondOrder::Single),
+            (2, 8, GraphBondOrder::Single),
+            (3, 9, GraphBondOrder::Single),
+            (4, 10, GraphBondOrder::Single),
+            (5, 11, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3, 4, 5]])
     }
@@ -441,16 +481,16 @@ mod tests {
     fn pyrrole() -> AnnotatedMolecule {
         let atoms = vec![n_pyrrole(), c(), c(), c(), c(), h(), h(), h(), h(), h()];
         let bonds = vec![
-            (0, 1, BondOrder::Single),
-            (1, 2, BondOrder::Double),
-            (2, 3, BondOrder::Single),
-            (3, 4, BondOrder::Double),
-            (4, 0, BondOrder::Single),
-            (0, 5, BondOrder::Single),
-            (1, 6, BondOrder::Single),
-            (2, 7, BondOrder::Single),
-            (3, 8, BondOrder::Single),
-            (4, 9, BondOrder::Single),
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Double),
+            (2, 3, GraphBondOrder::Single),
+            (3, 4, GraphBondOrder::Double),
+            (4, 0, GraphBondOrder::Single),
+            (0, 5, GraphBondOrder::Single),
+            (1, 6, GraphBondOrder::Single),
+            (2, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+            (4, 9, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3, 4]])
     }
@@ -458,17 +498,17 @@ mod tests {
     fn borabenzene_anion() -> AnnotatedMolecule {
         let atoms = vec![b_anion(), c(), c(), c(), c(), c(), h(), h(), h(), h(), h()];
         let bonds = vec![
-            (0, 1, BondOrder::Double),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Double),
-            (3, 4, BondOrder::Single),
-            (4, 5, BondOrder::Double),
-            (5, 0, BondOrder::Single),
-            (1, 6, BondOrder::Single),
-            (2, 7, BondOrder::Single),
-            (3, 8, BondOrder::Single),
-            (4, 9, BondOrder::Single),
-            (5, 10, BondOrder::Single),
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 4, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Double),
+            (5, 0, GraphBondOrder::Single),
+            (1, 6, GraphBondOrder::Single),
+            (2, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+            (4, 9, GraphBondOrder::Single),
+            (5, 10, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3, 4, 5]])
     }
@@ -476,14 +516,14 @@ mod tests {
     fn cyclobutadiene() -> AnnotatedMolecule {
         let atoms = vec![c(), c(), c(), c(), h(), h(), h(), h()];
         let bonds = vec![
-            (0, 1, BondOrder::Double),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Double),
-            (3, 0, BondOrder::Single),
-            (0, 4, BondOrder::Single),
-            (1, 5, BondOrder::Single),
-            (2, 6, BondOrder::Single),
-            (3, 7, BondOrder::Single),
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 0, GraphBondOrder::Single),
+            (0, 4, GraphBondOrder::Single),
+            (1, 5, GraphBondOrder::Single),
+            (2, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3]])
     }
@@ -500,22 +540,22 @@ mod tests {
             .chain((8..16).map(|_| h()))
             .collect();
         let bonds = vec![
-            (0, 1, BondOrder::Double),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Double),
-            (3, 4, BondOrder::Single),
-            (4, 5, BondOrder::Double),
-            (5, 6, BondOrder::Single),
-            (6, 7, BondOrder::Double),
-            (7, 0, BondOrder::Single),
-            (0, 8, BondOrder::Single),
-            (1, 9, BondOrder::Single),
-            (2, 10, BondOrder::Single),
-            (3, 11, BondOrder::Single),
-            (4, 12, BondOrder::Single),
-            (5, 13, BondOrder::Single),
-            (6, 14, BondOrder::Single),
-            (7, 15, BondOrder::Single),
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 4, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Double),
+            (5, 6, GraphBondOrder::Single),
+            (6, 7, GraphBondOrder::Double),
+            (7, 0, GraphBondOrder::Single),
+            (0, 8, GraphBondOrder::Single),
+            (1, 9, GraphBondOrder::Single),
+            (2, 10, GraphBondOrder::Single),
+            (3, 11, GraphBondOrder::Single),
+            (4, 12, GraphBondOrder::Single),
+            (5, 13, GraphBondOrder::Single),
+            (6, 14, GraphBondOrder::Single),
+            (7, 15, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3, 4, 5, 6, 7]])
     }
@@ -525,24 +565,24 @@ mod tests {
             .map(|i| if i < 6 { c() } else { h() })
             .collect::<Vec<_>>();
         let bonds = vec![
-            (0, 1, BondOrder::Single),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Single),
-            (3, 4, BondOrder::Single),
-            (4, 5, BondOrder::Single),
-            (5, 0, BondOrder::Single),
-            (0, 6, BondOrder::Single),
-            (0, 7, BondOrder::Single),
-            (1, 8, BondOrder::Single),
-            (1, 9, BondOrder::Single),
-            (2, 10, BondOrder::Single),
-            (2, 11, BondOrder::Single),
-            (3, 12, BondOrder::Single),
-            (3, 13, BondOrder::Single),
-            (4, 14, BondOrder::Single),
-            (4, 15, BondOrder::Single),
-            (5, 16, BondOrder::Single),
-            (5, 17, BondOrder::Single),
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Single),
+            (3, 4, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Single),
+            (5, 0, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Single),
+            (0, 7, GraphBondOrder::Single),
+            (1, 8, GraphBondOrder::Single),
+            (1, 9, GraphBondOrder::Single),
+            (2, 10, GraphBondOrder::Single),
+            (2, 11, GraphBondOrder::Single),
+            (3, 12, GraphBondOrder::Single),
+            (3, 13, GraphBondOrder::Single),
+            (4, 14, GraphBondOrder::Single),
+            (4, 15, GraphBondOrder::Single),
+            (5, 16, GraphBondOrder::Single),
+            (5, 17, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3, 4, 5]])
     }
@@ -552,25 +592,25 @@ mod tests {
             .map(|i| if i < 10 { c() } else { h() })
             .collect::<Vec<_>>();
         let bonds = vec![
-            (0, 1, BondOrder::Double),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Double),
-            (3, 4, BondOrder::Single),
-            (4, 9, BondOrder::Single),
-            (9, 8, BondOrder::Double),
-            (8, 7, BondOrder::Single),
-            (7, 6, BondOrder::Double),
-            (6, 5, BondOrder::Single),
-            (5, 0, BondOrder::Single),
-            (4, 5, BondOrder::Double),
-            (0, 10, BondOrder::Single),
-            (1, 11, BondOrder::Single),
-            (2, 12, BondOrder::Single),
-            (3, 13, BondOrder::Single),
-            (6, 14, BondOrder::Single),
-            (7, 15, BondOrder::Single),
-            (8, 16, BondOrder::Single),
-            (9, 17, BondOrder::Single),
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 4, GraphBondOrder::Single),
+            (4, 9, GraphBondOrder::Single),
+            (9, 8, GraphBondOrder::Double),
+            (8, 7, GraphBondOrder::Single),
+            (7, 6, GraphBondOrder::Double),
+            (6, 5, GraphBondOrder::Single),
+            (5, 0, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Double),
+            (0, 10, GraphBondOrder::Single),
+            (1, 11, GraphBondOrder::Single),
+            (2, 12, GraphBondOrder::Single),
+            (3, 13, GraphBondOrder::Single),
+            (6, 14, GraphBondOrder::Single),
+            (7, 15, GraphBondOrder::Single),
+            (8, 16, GraphBondOrder::Single),
+            (9, 17, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3, 4, 5], &[4, 5, 6, 7, 8, 9]])
     }
@@ -580,32 +620,32 @@ mod tests {
             .map(|i| if i < 14 { c() } else { h() })
             .collect::<Vec<_>>();
         let bonds = vec![
-            (0, 1, BondOrder::Double),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Double),
-            (3, 4, BondOrder::Single),
-            (4, 13, BondOrder::Single),
-            (13, 12, BondOrder::Double),
-            (12, 11, BondOrder::Single),
-            (11, 10, BondOrder::Double),
-            (10, 5, BondOrder::Single),
-            (5, 0, BondOrder::Single),
-            (4, 5, BondOrder::Double),
-            (10, 9, BondOrder::Single),
-            (9, 8, BondOrder::Double),
-            (8, 7, BondOrder::Single),
-            (7, 6, BondOrder::Double),
-            (6, 11, BondOrder::Single),
-            (0, 14, BondOrder::Single),
-            (1, 15, BondOrder::Single),
-            (2, 16, BondOrder::Single),
-            (3, 17, BondOrder::Single),
-            (6, 18, BondOrder::Single),
-            (7, 19, BondOrder::Single),
-            (8, 20, BondOrder::Single),
-            (9, 21, BondOrder::Single),
-            (12, 22, BondOrder::Single),
-            (13, 23, BondOrder::Single),
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 4, GraphBondOrder::Single),
+            (4, 13, GraphBondOrder::Single),
+            (13, 12, GraphBondOrder::Double),
+            (12, 11, GraphBondOrder::Single),
+            (11, 10, GraphBondOrder::Double),
+            (10, 5, GraphBondOrder::Single),
+            (5, 0, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Double),
+            (10, 9, GraphBondOrder::Single),
+            (9, 8, GraphBondOrder::Double),
+            (8, 7, GraphBondOrder::Single),
+            (7, 6, GraphBondOrder::Double),
+            (6, 11, GraphBondOrder::Single),
+            (0, 14, GraphBondOrder::Single),
+            (1, 15, GraphBondOrder::Single),
+            (2, 16, GraphBondOrder::Single),
+            (3, 17, GraphBondOrder::Single),
+            (6, 18, GraphBondOrder::Single),
+            (7, 19, GraphBondOrder::Single),
+            (8, 20, GraphBondOrder::Single),
+            (9, 21, GraphBondOrder::Single),
+            (12, 22, GraphBondOrder::Single),
+            (13, 23, GraphBondOrder::Single),
         ];
         build_test_molecule(
             &atoms,
@@ -635,20 +675,20 @@ mod tests {
             h(),
         ];
         let bonds = vec![
-            (0, 1, BondOrder::Double),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Double),
-            (3, 4, BondOrder::Single),
-            (4, 5, BondOrder::Single),
-            (5, 0, BondOrder::Single),
-            (3, 8, BondOrder::Single),
-            (8, 7, BondOrder::Double),
-            (7, 6, BondOrder::Single),
-            (6, 4, BondOrder::Double),
-            (1, 9, BondOrder::Single),
-            (5, 10, BondOrder::Single),
-            (6, 11, BondOrder::Single),
-            (8, 12, BondOrder::Single),
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 4, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Single),
+            (5, 0, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+            (8, 7, GraphBondOrder::Double),
+            (7, 6, GraphBondOrder::Single),
+            (6, 4, GraphBondOrder::Double),
+            (1, 9, GraphBondOrder::Single),
+            (5, 10, GraphBondOrder::Single),
+            (6, 11, GraphBondOrder::Single),
+            (8, 12, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3, 4, 5], &[3, 4, 6, 7, 8]])
     }
@@ -668,17 +708,17 @@ mod tests {
             h(),
         ];
         let bonds = vec![
-            (0, 1, BondOrder::Single),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Double),
-            (3, 4, BondOrder::Single),
-            (4, 5, BondOrder::Double),
-            (5, 0, BondOrder::Single),
-            (0, 6, BondOrder::Double),
-            (2, 7, BondOrder::Single),
-            (3, 8, BondOrder::Single),
-            (4, 9, BondOrder::Single),
-            (5, 10, BondOrder::Single),
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 4, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Double),
+            (5, 0, GraphBondOrder::Single),
+            (0, 6, GraphBondOrder::Double),
+            (2, 7, GraphBondOrder::Single),
+            (3, 8, GraphBondOrder::Single),
+            (4, 9, GraphBondOrder::Single),
+            (5, 10, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3, 4, 5]])
     }
@@ -686,15 +726,15 @@ mod tests {
     fn pyrazole() -> AnnotatedMolecule {
         let atoms = vec![c(), n_pyrrole(), n_pyridine(), c(), c(), h(), h(), h(), h()];
         let bonds = vec![
-            (0, 1, BondOrder::Single),
-            (1, 2, BondOrder::Single),
-            (2, 3, BondOrder::Double),
-            (3, 4, BondOrder::Single),
-            (4, 0, BondOrder::Double),
-            (0, 5, BondOrder::Single),
-            (1, 6, BondOrder::Single),
-            (3, 7, BondOrder::Single),
-            (4, 8, BondOrder::Single),
+            (0, 1, GraphBondOrder::Single),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 4, GraphBondOrder::Single),
+            (4, 0, GraphBondOrder::Double),
+            (0, 5, GraphBondOrder::Single),
+            (1, 6, GraphBondOrder::Single),
+            (3, 7, GraphBondOrder::Single),
+            (4, 8, GraphBondOrder::Single),
         ];
         build_test_molecule(&atoms, &bonds, &[&[0, 1, 2, 3, 4]])
     }
@@ -703,6 +743,14 @@ mod tests {
     fn benzene_ring_is_aromatic() {
         let molecule = perceive_aromaticity(benzene());
         assert_flag_sets(&molecule, &[0, 1, 2, 3, 4, 5], &[]);
+
+        assert_eq!(
+            molecule.resonance_systems.len(),
+            1,
+            "Benzene should form 1 resonance system"
+        );
+        assert_eq!(molecule.resonance_systems[0].atom_ids.len(), 6);
+        assert_eq!(molecule.resonance_systems[0].bond_ids.len(), 6);
     }
 
     #[test]
@@ -739,6 +787,11 @@ mod tests {
     fn naphthalene_fused_rings_are_aromatic() {
         let molecule = perceive_aromaticity(naphthalene());
         assert_flag_sets(&molecule, &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], &[]);
+
+        assert!(!molecule.resonance_systems.is_empty());
+        let sys = &molecule.resonance_systems[0];
+        assert_eq!(sys.atom_ids.len(), 10);
+        assert_eq!(sys.bond_ids.len(), 11);
     }
 
     #[test]
@@ -763,5 +816,81 @@ mod tests {
     fn pyrazole_is_aromatic() {
         let molecule = perceive_aromaticity(pyrazole());
         assert_flag_sets(&molecule, &[0, 1, 2, 3, 4], &[]);
+    }
+
+    #[test]
+    fn biphenyl_registers_two_separate_resonance_systems() {
+        let atoms = vec![
+            c(),
+            c(),
+            c(),
+            c(),
+            c(),
+            c(),
+            c(),
+            c(),
+            c(),
+            c(),
+            c(),
+            c(),
+            h(),
+            h(),
+            h(),
+            h(),
+            h(),
+            h(),
+            h(),
+            h(),
+            h(),
+            h(),
+        ];
+        let bonds = vec![
+            (0, 1, GraphBondOrder::Double),
+            (1, 2, GraphBondOrder::Single),
+            (2, 3, GraphBondOrder::Double),
+            (3, 4, GraphBondOrder::Single),
+            (4, 5, GraphBondOrder::Double),
+            (5, 0, GraphBondOrder::Single),
+            (5, 6, GraphBondOrder::Single),
+            (6, 7, GraphBondOrder::Double),
+            (7, 8, GraphBondOrder::Single),
+            (8, 9, GraphBondOrder::Double),
+            (9, 10, GraphBondOrder::Single),
+            (10, 11, GraphBondOrder::Double),
+            (11, 6, GraphBondOrder::Single),
+        ];
+
+        let r1 = vec![0, 1, 2, 3, 4, 5];
+        let r2 = vec![6, 7, 8, 9, 10, 11];
+
+        let molecule = build_test_molecule(&atoms, &bonds, &[&r1, &r2]);
+        let molecule = perceive_aromaticity(molecule);
+
+        assert_eq!(
+            molecule.resonance_systems.len(),
+            2,
+            "Should have 2 independent resonance systems"
+        );
+
+        let mut resonant_bond_ids = HashSet::new();
+        for sys in &molecule.resonance_systems {
+            for &bid in &sys.bond_ids {
+                resonant_bond_ids.insert(bid);
+            }
+        }
+
+        let connecting_bond_id = molecule
+            .bonds
+            .iter()
+            .find(|b| {
+                (b.atom_ids.0 == 5 && b.atom_ids.1 == 6) || (b.atom_ids.0 == 6 && b.atom_ids.1 == 5)
+            })
+            .map(|b| b.id)
+            .expect("Connecting bond must exist");
+
+        assert!(
+            !resonant_bond_ids.contains(&connecting_bond_id),
+            "Connecting bond should NOT be resonant"
+        );
     }
 }

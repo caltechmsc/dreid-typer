@@ -12,7 +12,7 @@ mod model;
 mod resonance;
 mod rings;
 
-pub use model::{AnnotatedAtom, AnnotatedMolecule};
+pub use model::{AnnotatedAtom, AnnotatedMolecule, ResonanceSystem};
 
 use crate::core::error::{PerceptionError, TyperError};
 use crate::core::graph::MolecularGraph;
@@ -64,7 +64,7 @@ pub fn perceive(graph: &MolecularGraph) -> Result<AnnotatedMolecule, TyperError>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::properties::{BondOrder, Element, Hybridization};
+    use crate::core::properties::{Element, GraphBondOrder, Hybridization};
 
     fn benzene_graph() -> MolecularGraph {
         let mut graph = MolecularGraph::new();
@@ -74,12 +74,12 @@ mod tests {
         let ring_edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 0)];
         for &(u, v) in &ring_edges {
             graph
-                .add_bond(carbons[u], carbons[v], BondOrder::Aromatic)
+                .add_bond(carbons[u], carbons[v], GraphBondOrder::Aromatic)
                 .expect("valid aromatic bond in benzene ring");
         }
         for i in 0..6 {
             graph
-                .add_bond(carbons[i], hydrogens[i], BondOrder::Single)
+                .add_bond(carbons[i], hydrogens[i], GraphBondOrder::Single)
                 .expect("valid C-H bond");
         }
 
@@ -134,7 +134,7 @@ mod tests {
         ];
         for &(u, v) in &aromatic_edges {
             graph
-                .add_bond(u, v, BondOrder::Aromatic)
+                .add_bond(u, v, GraphBondOrder::Aromatic)
                 .expect("valid aromatic bond in acridine core");
         }
 
@@ -152,7 +152,7 @@ mod tests {
         ];
         for &(u, v) in &single_edges {
             graph
-                .add_bond(u, v, BondOrder::Single)
+                .add_bond(u, v, GraphBondOrder::Single)
                 .expect("valid sigma bond in acridine");
         }
 
@@ -167,14 +167,51 @@ mod tests {
         let h2 = graph.add_atom(Element::H);
 
         graph
-            .add_bond(c1, c2, BondOrder::Aromatic)
+            .add_bond(c1, c2, GraphBondOrder::Aromatic)
             .expect("valid aromatic bond");
         graph
-            .add_bond(c1, h1, BondOrder::Single)
+            .add_bond(c1, h1, GraphBondOrder::Single)
             .expect("valid C-H bond");
         graph
-            .add_bond(c2, h2, BondOrder::Single)
+            .add_bond(c2, h2, GraphBondOrder::Single)
             .expect("valid C-H bond");
+
+        graph
+    }
+
+    fn pyrimidine_aromatic_graph() -> MolecularGraph {
+        let mut graph = MolecularGraph::new();
+
+        let n1 = graph.add_atom(Element::N);
+        let c2 = graph.add_atom(Element::C);
+        let n3 = graph.add_atom(Element::N);
+        let c4 = graph.add_atom(Element::C);
+        let c5 = graph.add_atom(Element::C);
+        let c6 = graph.add_atom(Element::C);
+        let h2 = graph.add_atom(Element::H);
+        let h4 = graph.add_atom(Element::H);
+        let h5 = graph.add_atom(Element::H);
+        let h6 = graph.add_atom(Element::H);
+
+        let aromatic_edges = [(n1, c2), (c2, n3), (n3, c4), (c4, c5), (c5, c6), (c6, n1)];
+        for &(u, v) in &aromatic_edges {
+            graph
+                .add_bond(u, v, GraphBondOrder::Aromatic)
+                .expect("valid aromatic bond in pyrimidine ring");
+        }
+
+        graph
+            .add_bond(c2, h2, GraphBondOrder::Single)
+            .expect("C2-H bond");
+        graph
+            .add_bond(c4, h4, GraphBondOrder::Single)
+            .expect("C4-H bond");
+        graph
+            .add_bond(c5, h5, GraphBondOrder::Single)
+            .expect("C5-H bond");
+        graph
+            .add_bond(c6, h6, GraphBondOrder::Single)
+            .expect("C6-H bond");
 
         graph
     }
@@ -190,10 +227,7 @@ mod tests {
                 Element::C => {
                     assert!(atom.is_in_ring, "carbon {idx} must be in the ring");
                     assert!(atom.is_aromatic, "carbon {idx} must be aromatic");
-                    assert!(
-                        atom.is_in_conjugated_system,
-                        "carbon {idx} must be in conjugated system"
-                    );
+                    assert!(atom.is_resonant, "carbon {idx} must be resonant");
                     assert_eq!(
                         atom.hybridization,
                         Hybridization::Resonant,
@@ -213,8 +247,13 @@ mod tests {
             molecule
                 .bonds
                 .iter()
-                .all(|bond| bond.order != BondOrder::Aromatic),
+                .all(|bond| bond.order != GraphBondOrder::Aromatic),
             "all aromatic bonds should be Kekulé-expanded"
+        );
+
+        assert!(
+            !molecule.resonance_systems.is_empty(),
+            "Benzene should have a resonance system"
         );
     }
 
@@ -238,7 +277,7 @@ mod tests {
                 !molecule.adjacency[idx]
                     .iter()
                     .filter(|&&(neighbor_id, _)| molecule.atoms[neighbor_id].is_in_ring)
-                    .any(|&(_, order)| order == BondOrder::Double)
+                    .any(|&(_, order)| order == GraphBondOrder::Double)
             })
             .map(|(idx, _)| idx)
             .collect();
@@ -297,8 +336,8 @@ mod tests {
 
         for idx in aromatic_heavy {
             assert!(
-                molecule.atoms[idx].is_in_conjugated_system,
-                "aromatic atom {idx} should be marked conjugated"
+                molecule.atoms[idx].is_resonant,
+                "aromatic atom {idx} should be marked resonant"
             );
         }
     }
@@ -322,6 +361,30 @@ mod tests {
                 }
             }
             other => panic!("expected PerceptionFailed error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn pyrimidine_aromatic_input_is_detected() {
+        let graph = pyrimidine_aromatic_graph();
+        let molecule = perceive(&graph).expect("perception pipeline should succeed");
+
+        let ring_atoms = [0usize, 1, 2, 3, 4, 5];
+
+        for &atom_id in &ring_atoms {
+            assert!(
+                molecule.atoms[atom_id].is_resonant,
+                "Ring atom {atom_id} should be resonant"
+            );
+            assert!(
+                molecule.atoms[atom_id].is_aromatic,
+                "Ring atom {atom_id} should be aromatic"
+            );
+            assert_eq!(
+                molecule.atoms[atom_id].hybridization,
+                Hybridization::Resonant,
+                "Ring atom {atom_id} should be classified as resonant"
+            );
         }
     }
 }

@@ -3,9 +3,11 @@
 //! The builder stage takes the perception output and typing assignments, emitting atoms, bonds,
 //! angles, proper dihedrals, and improper dihedrals expected by downstream force-field tooling.
 
-use crate::core::graph::{Angle, Atom, Bond, ImproperDihedral, MolecularTopology, ProperDihedral};
-use crate::core::properties::Hybridization;
-use crate::perception::AnnotatedMolecule;
+use crate::core::properties::{GraphBondOrder, Hybridization, TopologyBondOrder};
+use crate::core::topology::{
+    Angle, Atom, Bond, ImproperDihedral, MolecularTopology, ProperDihedral,
+};
+use crate::perception::{AnnotatedMolecule, ResonanceSystem};
 use std::collections::HashSet;
 
 /// Builds the `MolecularTopology` aggregate from perception results and atom-type labels.
@@ -61,11 +63,35 @@ fn build_atoms(annotated_molecule: &AnnotatedMolecule, atom_types: &[String]) ->
 }
 
 /// Extracts unique bonds from the annotated molecule.
+///
+/// This function determines the final `TopologyBondOrder` by checking if a bond belongs to
+/// any detected `ResonanceSystem`. If so, it is promoted to `Resonant`. Otherwise, the
+/// Kekulized order (`Single`, `Double`, `Triple`) is used.
 fn build_bonds(annotated_molecule: &AnnotatedMolecule) -> HashSet<Bond> {
+    let resonant_bond_ids: HashSet<usize> = annotated_molecule
+        .resonance_systems
+        .iter()
+        .flat_map(|sys: &ResonanceSystem| sys.bond_ids.iter())
+        .copied()
+        .collect();
+
     annotated_molecule
         .bonds
         .iter()
-        .map(|edge| Bond::new(edge.atom_ids.0, edge.atom_ids.1, edge.order))
+        .map(|edge| {
+            let topology_order = if resonant_bond_ids.contains(&edge.id) {
+                TopologyBondOrder::Resonant
+            } else {
+                match edge.order {
+                    GraphBondOrder::Single => TopologyBondOrder::Single,
+                    GraphBondOrder::Double => TopologyBondOrder::Double,
+                    GraphBondOrder::Triple => TopologyBondOrder::Triple,
+                    GraphBondOrder::Aromatic => TopologyBondOrder::Single, // Fallback; should not occur here
+                }
+            };
+
+            Bond::new(edge.atom_ids.0, edge.atom_ids.1, topology_order)
+        })
         .collect()
 }
 
@@ -133,7 +159,8 @@ fn build_impropers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ImproperDi
 mod tests {
     use super::*;
     use crate::core::graph::MolecularGraph;
-    use crate::core::properties::{BondOrder, Element};
+    use crate::core::properties::{Element, GraphBondOrder, TopologyBondOrder};
+    use crate::perception::ResonanceSystem;
     use std::collections::HashSet;
 
     fn planar_fragment() -> (AnnotatedMolecule, Vec<String>) {
@@ -146,23 +173,28 @@ mod tests {
         let h_tail = graph.add_atom(Element::H);
 
         graph
-            .add_bond(c_left, c_center, BondOrder::Single)
+            .add_bond(c_left, c_center, GraphBondOrder::Single)
             .expect("valid bond");
         graph
-            .add_bond(c_center, c_right, BondOrder::Double)
+            .add_bond(c_center, c_right, GraphBondOrder::Double)
             .expect("valid bond");
         graph
-            .add_bond(c_center, n_cap, BondOrder::Single)
+            .add_bond(c_center, n_cap, GraphBondOrder::Single)
             .expect("valid bond");
         graph
-            .add_bond(c_right, c_tail, BondOrder::Single)
+            .add_bond(c_right, c_tail, GraphBondOrder::Single)
             .expect("valid bond");
         graph
-            .add_bond(c_tail, h_tail, BondOrder::Single)
+            .add_bond(c_tail, h_tail, GraphBondOrder::Single)
             .expect("valid bond");
 
         let mut molecule = AnnotatedMolecule::new(&graph).expect("graph should be valid");
         molecule.atoms[c_center].hybridization = Hybridization::SP2;
+
+        molecule.resonance_systems.push(ResonanceSystem {
+            atom_ids: vec![c_center, c_right, n_cap],
+            bond_ids: vec![1, 2],
+        });
 
         let atom_types = vec![
             "C_SP2_EDGE".to_string(),
@@ -189,15 +221,17 @@ mod tests {
     }
 
     #[test]
-    fn build_bonds_collects_unique_edges() {
+    fn build_bonds_assigns_resonant_order_to_system_bonds() {
         let (molecule, _) = planar_fragment();
 
         let bonds = build_bonds(&molecule);
 
         assert_eq!(bonds.len(), molecule.bonds.len());
-        assert!(bonds.contains(&Bond::new(0, 1, BondOrder::Single)));
-        assert!(bonds.contains(&Bond::new(1, 2, BondOrder::Double)));
-        assert!(bonds.contains(&Bond::new(2, 4, BondOrder::Single)));
+
+        assert!(bonds.contains(&Bond::new(0, 1, TopologyBondOrder::Single)));
+        assert!(bonds.contains(&Bond::new(1, 2, TopologyBondOrder::Resonant)));
+        assert!(bonds.contains(&Bond::new(1, 3, TopologyBondOrder::Resonant)));
+        assert!(bonds.contains(&Bond::new(2, 4, TopologyBondOrder::Single)));
     }
 
     #[test]

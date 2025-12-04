@@ -16,12 +16,12 @@ Every rule declares:
 
 ```toml
 [[rule]]
-name = "N_aromatic"
+name = "N_Resonant"
 priority = 400
 type = "N_R"
 [rule.conditions]
 element = "N"
-is_aromatic = true
+hybridization = "Resonant"
 ```
 
 Key aspects used by the engine:
@@ -65,9 +65,9 @@ Any failed check short-circuits the rest; only atoms meeting _all_ specified con
 ## Worked Example: Ethanol (`CH3-CH2-OH`)
 
 1. **Round 1:**
-   - Carbons satisfy the `C_3` rule (`steric_number = 4`) with priority 100.
-   - The oxygen matches `O_3` (same priority), picking up `Hybridization::SP3` and `type = "O_3"`.
-   - The hydroxyl hydrogen matches `H_HB` (priority ~250) because its neighbor elements histogram includes one oxygen.
+   - Carbons satisfy the `C_3` rule (`hybridization = "SP3"`) with priority 100.
+   - The oxygen matches `O_3` (same priority) with `hybridization = "SP3"`.
+   - The hydroxyl hydrogen matches `H_HB` (priority 80) because its neighbor elements histogram includes one oxygen.
    - Remaining hydrogens fall back to the generic `H_` rule (priority 1).
 2. **Round 2:** re-evaluating atoms discovers no higher-priority matches, so the engine exits with the types assigned in the previous round.
 

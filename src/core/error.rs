@@ -77,10 +77,6 @@ pub enum PerceptionError {
         atom_id: usize,
     },
 
-    /// Conjugation perception failed within the upstream `pauling` library.
-    #[error("conjugation perception failed via the 'pauling' library")]
-    PaulingError(#[from] pauling::PerceptionError),
-
     /// Catch-all variant for perception failures that do not fit the other buckets.
     #[error("an unexpected perception error occurred: {0}")]
     Other(String),

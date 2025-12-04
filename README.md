@@ -22,27 +22,27 @@ Add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-dreid-typer = "0.2.1"
+dreid-typer = "0.3.0"
 ```
 
 Run the full pipeline from connectivity to topology:
 
 ```rust
-use dreid_typer::{assign_topology, Element, MolecularGraph, MolecularTopology, BondOrder};
+use dreid_typer::{assign_topology, Element, GraphBondOrder, MolecularGraph, MolecularTopology};
 
 let mut graph = MolecularGraph::new();
 let c1 = graph.add_atom(Element::C);
 let c2 = graph.add_atom(Element::C);
 let o = graph.add_atom(Element::O);
 let h_o = graph.add_atom(Element::H);
-let h_atoms: Vec<_> = (0..6).map(|_| graph.add_atom(Element::H)).collect();
+let h_atoms: Vec<_> = (0..5).map(|_| graph.add_atom(Element::H)).collect();
 
-graph.add_bond(c1, c2, BondOrder::Single).unwrap();
-graph.add_bond(c2, o, BondOrder::Single).unwrap();
-graph.add_bond(o, h_o, BondOrder::Single).unwrap();
-for (carbon, chunk) in [c1, c2].into_iter().zip(h_atoms.chunks(3)) {
+graph.add_bond(c1, c2, GraphBondOrder::Single).unwrap();
+graph.add_bond(c2, o, GraphBondOrder::Single).unwrap();
+graph.add_bond(o, h_o, GraphBondOrder::Single).unwrap();
+for (carbon, chunk) in [(c1, &h_atoms[0..3]), (c2, &h_atoms[3..5])].into_iter() {
     for &hydrogen in chunk {
-        graph.add_bond(carbon, hydrogen, BondOrder::Single).unwrap();
+        graph.add_bond(carbon, hydrogen, GraphBondOrder::Single).unwrap();
     }
 }
 
@@ -54,16 +54,20 @@ assert_eq!(topology.atoms[o].atom_type, "O_3");
 assert_eq!(topology.atoms[h_o].atom_type, "H_HB");
 ```
 
-Need custom chemistry? Parse a TOML file and run the same API:
+Need custom chemistry? Parse a TOML file and extend the default rules:
 
 ```rust
-use dreid_typer::{assign_topology_with_rules, rules, MolecularGraph};
+use dreid_typer::{assign_topology_with_rules, rules::{get_default_rules, parse_rules}, MolecularGraph};
 
-let mut ruleset = rules::get_default_rules().to_vec();
-let extra = std::fs::read_to_string("my_metals.rules.toml")?;
-ruleset.extend(rules::parse_rules(&extra)?);
+// Start with the default DREIDING rules
+let mut all_rules = get_default_rules().to_vec();
 
-let topology = assign_topology_with_rules(&graph, &ruleset)?;
+// Parse and append custom rules from a TOML file
+let extra_toml = std::fs::read_to_string("my_metals.rules.toml")?;
+all_rules.extend(parse_rules(&extra_toml)?);
+
+// Run the pipeline with extended rules
+let topology = assign_topology_with_rules(&graph, &all_rules)?;
 ```
 
 ## Documentation

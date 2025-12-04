@@ -5,7 +5,7 @@
 
 use super::model::{AnnotatedMolecule, Ring};
 use crate::core::error::PerceptionError;
-use crate::core::properties::BondOrder;
+use crate::core::properties::GraphBondOrder;
 use std::collections::{HashMap, VecDeque};
 
 /// Computes ring information for the supplied annotated molecule.
@@ -269,7 +269,7 @@ fn shortest_path_bfs(
 /// # Returns
 ///
 /// Count of disjoint components.
-fn count_components(num_atoms: usize, adjacency: &[Vec<(usize, BondOrder)>]) -> usize {
+fn count_components(num_atoms: usize, adjacency: &[Vec<(usize, GraphBondOrder)>]) -> usize {
     let mut visited = vec![false; num_atoms];
     let mut components = 0;
     for i in 0..num_atoms {
@@ -379,7 +379,7 @@ impl BitVec {
 mod tests {
     use super::*;
     use crate::core::graph::MolecularGraph;
-    use crate::core::properties::{BondOrder, Element};
+    use crate::core::properties::{Element, GraphBondOrder};
 
     fn chain_graph(len: usize) -> MolecularGraph {
         let mut graph = MolecularGraph::new();
@@ -388,7 +388,7 @@ mod tests {
         }
         for i in 0..len.saturating_sub(1) {
             graph
-                .add_bond(i, i + 1, BondOrder::Single)
+                .add_bond(i, i + 1, GraphBondOrder::Single)
                 .expect("valid bond");
         }
         graph
@@ -403,7 +403,7 @@ mod tests {
         for i in 0..len {
             let next = (i + 1) % len;
             graph
-                .add_bond(i, next, BondOrder::Single)
+                .add_bond(i, next, GraphBondOrder::Single)
                 .expect("valid cycle bond");
         }
         graph
@@ -460,10 +460,10 @@ mod tests {
     #[test]
     fn count_components_detects_disconnected_fragments() {
         let adjacency = vec![
-            vec![(1, BondOrder::Single)],
-            vec![(0, BondOrder::Single)],
-            vec![(3, BondOrder::Single)],
-            vec![(2, BondOrder::Single)],
+            vec![(1, GraphBondOrder::Single)],
+            vec![(0, GraphBondOrder::Single)],
+            vec![(3, GraphBondOrder::Single)],
+            vec![(2, GraphBondOrder::Single)],
         ];
 
         assert_eq!(count_components(4, &adjacency), 2);

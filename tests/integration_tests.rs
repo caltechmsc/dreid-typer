@@ -64,6 +64,7 @@ generate_molecule_test!(
     tryptophan_zwitterion_is_typed_correctly,
     TRYPTOPHAN_ZWITTERION
 );
+generate_molecule_test!(diglycine_peptide_is_typed_correctly, DIGLYCINE);
 
 generate_molecule_test!(uracil_is_typed_correctly, URACIL);
 generate_molecule_test!(thymine_is_typed_correctly, THYMINE);

@@ -20,7 +20,7 @@
 //! ```
 //! use dreid_typer::{
 //!     assign_topology, MolecularGraph, MolecularTopology,
-//!     Element, BondOrder,
+//!     Element, GraphBondOrder,
 //! };
 //!
 //! // 1. Define the molecule's connectivity using a `MolecularGraph`.
@@ -35,14 +35,14 @@
 //! let h_c2_2 = graph.add_atom(Element::H);
 //! let h_o = graph.add_atom(Element::H);
 //!
-//! graph.add_bond(c1, c2, BondOrder::Single).unwrap();
-//! graph.add_bond(c2, o, BondOrder::Single).unwrap();
-//! graph.add_bond(c1, h_c1_1, BondOrder::Single).unwrap();
-//! graph.add_bond(c1, h_c1_2, BondOrder::Single).unwrap();
-//! graph.add_bond(c1, h_c1_3, BondOrder::Single).unwrap();
-//! graph.add_bond(c2, h_c2_1, BondOrder::Single).unwrap();
-//! graph.add_bond(c2, h_c2_2, BondOrder::Single).unwrap();
-//! graph.add_bond(o, h_o, BondOrder::Single).unwrap();
+//! graph.add_bond(c1, c2, GraphBondOrder::Single).unwrap();
+//! graph.add_bond(c2, o, GraphBondOrder::Single).unwrap();
+//! graph.add_bond(c1, h_c1_1, GraphBondOrder::Single).unwrap();
+//! graph.add_bond(c1, h_c1_2, GraphBondOrder::Single).unwrap();
+//! graph.add_bond(c1, h_c1_3, GraphBondOrder::Single).unwrap();
+//! graph.add_bond(c2, h_c2_1, GraphBondOrder::Single).unwrap();
+//! graph.add_bond(c2, h_c2_2, GraphBondOrder::Single).unwrap();
+//! graph.add_bond(o, h_o, GraphBondOrder::Single).unwrap();
 //!
 //! // 2. Call the main function to perceive the topology using default rules.
 //! let topology: MolecularTopology = assign_topology(&graph).unwrap();
@@ -67,13 +67,21 @@ mod perception;
 mod typing;
 
 pub use crate::core::error::{AssignmentError, GraphValidationError, PerceptionError, TyperError};
-pub use crate::core::graph::{
-    Angle, Atom, Bond, ImproperDihedral, MolecularGraph, MolecularTopology, ProperDihedral,
+pub use crate::core::graph::{AtomNode, BondEdge, MolecularGraph};
+pub use crate::core::properties::{
+    Element, GraphBondOrder, Hybridization, ParseBondOrderError, ParseElementError,
+    ParseHybridizationError, TopologyBondOrder,
 };
-pub use crate::core::properties::{BondOrder, Element, Hybridization};
+pub use crate::core::topology::{
+    Angle, Atom, Bond, ImproperDihedral, MolecularTopology, ProperDihedral,
+};
 
+/// Rule parsing and customization utilities.
+///
+/// The core types needed to parse and inspect DREIDING
+/// atom-typing rules from TOML configuration files.
 pub mod rules {
-    pub use crate::typing::rules::{Rule, parse_rules};
+    pub use crate::typing::rules::{Conditions, Rule, get_default_rules, parse_rules};
 }
 
 /// Assigns a full molecular topology using the default embedded DREIDING ruleset.

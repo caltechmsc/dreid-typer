@@ -1,5 +1,5 @@
-use super::super::{AtomBlueprint, BondBlueprint, MoleculeTestCase};
-use dreid_typer::{BondOrder, Element};
+use super::super::{AtomBlueprint, InputBondBlueprint, MoleculeTestCase, OutputBondBlueprint};
+use dreid_typer::{Element, GraphBondOrder, TopologyBondOrder};
 
 pub const URACIL: MoleculeTestCase = MoleculeTestCase {
     name: "Uracil",
@@ -37,12 +37,12 @@ pub const URACIL: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_R",
+            expected_type: "O_2",
         },
         AtomBlueprint {
             label: "O4",
             element: Element::O,
-            expected_type: "O_R",
+            expected_type: "O_2",
         },
         AtomBlueprint {
             label: "H1",
@@ -66,65 +66,127 @@ pub const URACIL: MoleculeTestCase = MoleculeTestCase {
         },
     ],
     bonds: &[
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "C2",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "N3",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N3",
             atom2_label: "C4",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4",
             atom2_label: "C5",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "C6",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "N1",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "O2",
-            order: BondOrder::Double,
+            order: GraphBondOrder::Double,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4",
             atom2_label: "O4",
-            order: BondOrder::Double,
+            order: GraphBondOrder::Double,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "H1",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N3",
             atom2_label: "H3",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "H5",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "H6",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
+        },
+    ],
+    expected_bonds: &[
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "H1",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N3",
+            atom2_label: "H3",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "H5",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "H6",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "O2",
+            order: TopologyBondOrder::Double,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "O4",
+            order: TopologyBondOrder::Double,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "C2",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "N3",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N3",
+            atom2_label: "C4",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "C5",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C6",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "N1",
+            order: TopologyBondOrder::Resonant,
         },
     ],
 };
@@ -165,12 +227,12 @@ pub const THYMINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_R",
+            expected_type: "O_2",
         },
         AtomBlueprint {
             label: "O4",
             element: Element::O,
-            expected_type: "O_R",
+            expected_type: "O_2",
         },
         AtomBlueprint {
             label: "C7",
@@ -209,80 +271,157 @@ pub const THYMINE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
     bonds: &[
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "C2",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "N3",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N3",
             atom2_label: "C4",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4",
             atom2_label: "C5",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "C6",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "N1",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "O2",
-            order: BondOrder::Double,
+            order: GraphBondOrder::Double,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4",
             atom2_label: "O4",
-            order: BondOrder::Double,
+            order: GraphBondOrder::Double,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "C7",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "H1",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N3",
             atom2_label: "H3",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "H6",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C7",
             atom2_label: "H71",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C7",
             atom2_label: "H72",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C7",
             atom2_label: "H73",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
+        },
+    ],
+    expected_bonds: &[
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C7",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "H1",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N3",
+            atom2_label: "H3",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "H6",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "H71",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "H72",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C7",
+            atom2_label: "H73",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "O2",
+            order: TopologyBondOrder::Double,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "O4",
+            order: TopologyBondOrder::Double,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "C2",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "N3",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N3",
+            atom2_label: "C4",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "C5",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C6",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "N1",
+            order: TopologyBondOrder::Resonant,
         },
     ],
 };
@@ -323,7 +462,7 @@ pub const CYTOSINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O2",
             element: Element::O,
-            expected_type: "O_R",
+            expected_type: "O_2",
         },
         AtomBlueprint {
             label: "N4",
@@ -357,70 +496,137 @@ pub const CYTOSINE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
     bonds: &[
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "C2",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "N3",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N3",
             atom2_label: "C4",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4",
             atom2_label: "C5",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "C6",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "N1",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "O2",
-            order: BondOrder::Double,
+            order: GraphBondOrder::Double,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4",
             atom2_label: "N4",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "H1",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N4",
             atom2_label: "H41",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N4",
             atom2_label: "H42",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "H5",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "H6",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
+        },
+    ],
+    expected_bonds: &[
+        OutputBondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "N4",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "H1",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N4",
+            atom2_label: "H41",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N4",
+            atom2_label: "H42",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "H5",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "H6",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "O2",
+            order: TopologyBondOrder::Double,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "C2",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "N3",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N3",
+            atom2_label: "C4",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "C5",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C6",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "N1",
+            order: TopologyBondOrder::Resonant,
         },
     ],
 };
@@ -505,85 +711,167 @@ pub const ADENINE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
     bonds: &[
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N9",
             atom2_label: "C4",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4",
             atom2_label: "N3",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N3",
             atom2_label: "C2",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "N1",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "C6",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "C5",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "C4",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "N7",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N7",
             atom2_label: "C8",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C8",
             atom2_label: "N9",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "N6",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "H2",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C8",
             atom2_label: "H8",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N9",
             atom2_label: "H9",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N6",
             atom2_label: "H61",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N6",
             atom2_label: "H62",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
+        },
+    ],
+    expected_bonds: &[
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "N6",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "H2",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C8",
+            atom2_label: "H8",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N9",
+            atom2_label: "H9",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N6",
+            atom2_label: "H61",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N6",
+            atom2_label: "H62",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N9",
+            atom2_label: "C4",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "N3",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N3",
+            atom2_label: "C2",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "N1",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "C6",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "C5",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C4",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "N7",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N7",
+            atom2_label: "C8",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C8",
+            atom2_label: "N9",
+            order: TopologyBondOrder::Resonant,
         },
     ],
 };
@@ -639,7 +927,7 @@ pub const GUANINE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O6",
             element: Element::O,
-            expected_type: "O_R",
+            expected_type: "O_2",
         },
         AtomBlueprint {
             label: "N2",
@@ -673,90 +961,177 @@ pub const GUANINE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
     bonds: &[
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N9",
             atom2_label: "C4",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4",
             atom2_label: "N3",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N3",
             atom2_label: "C2",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "N1",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "C6",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "C5",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "C4",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "N7",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N7",
             atom2_label: "C8",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C8",
             atom2_label: "N9",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "O6",
-            order: BondOrder::Double,
+            order: GraphBondOrder::Double,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "N2",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "H1",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C8",
             atom2_label: "H8",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N9",
             atom2_label: "H9",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N2",
             atom2_label: "H21",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N2",
             atom2_label: "H22",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
+        },
+    ],
+    expected_bonds: &[
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "N2",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "H1",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C8",
+            atom2_label: "H8",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N9",
+            atom2_label: "H9",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N2",
+            atom2_label: "H21",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N2",
+            atom2_label: "H22",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "O6",
+            order: TopologyBondOrder::Double,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N9",
+            atom2_label: "C4",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "N3",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N3",
+            atom2_label: "C2",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "N1",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "C6",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "C5",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C4",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "N7",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N7",
+            atom2_label: "C8",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C8",
+            atom2_label: "N9",
+            order: TopologyBondOrder::Resonant,
         },
     ],
 };
@@ -921,170 +1296,337 @@ pub const DEOXYADENOSINE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
     bonds: &[
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N9",
             atom2_label: "C4",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4",
             atom2_label: "N3",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N3",
             atom2_label: "C2",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "N1",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N1",
             atom2_label: "C6",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "C5",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "C4",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C5",
             atom2_label: "N7",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N7",
             atom2_label: "C8",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C8",
             atom2_label: "N9",
-            order: BondOrder::Aromatic,
+            order: GraphBondOrder::Aromatic,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C6",
             atom2_label: "N6",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N6",
             atom2_label: "H61",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N6",
             atom2_label: "H62",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2",
             atom2_label: "H2",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C8",
             atom2_label: "H8",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "N9",
             atom2_label: "C1'",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C1'",
             atom2_label: "C2'",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C2'",
             atom2_label: "C3'",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C3'",
             atom2_label: "C4'",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C4'",
             atom2_label: "O4'",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "O4'",
             atom2_label: "C1'",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C3'",
             atom2_label: "O3'",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
-            atom1_label: "C4'",
-            atom2_label: "C5'",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C5'",
-            atom2_label: "O5'",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C1'",
-            atom2_label: "H1'",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C2'",
-            atom2_label: "H2'1",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C2'",
-            atom2_label: "H2'2",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C3'",
-            atom2_label: "H3'",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C4'",
-            atom2_label: "H4'",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C5'",
-            atom2_label: "H5'1",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
-            atom1_label: "C5'",
-            atom2_label: "H5'2",
-            order: BondOrder::Single,
-        },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "O3'",
             atom2_label: "H_O3'",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
+            atom1_label: "C4'",
+            atom2_label: "C5'",
+            order: GraphBondOrder::Single,
+        },
+        InputBondBlueprint {
+            atom1_label: "C5'",
+            atom2_label: "O5'",
+            order: GraphBondOrder::Single,
+        },
+        InputBondBlueprint {
             atom1_label: "O5'",
             atom2_label: "H_O5'",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
+        },
+        InputBondBlueprint {
+            atom1_label: "C1'",
+            atom2_label: "H1'",
+            order: GraphBondOrder::Single,
+        },
+        InputBondBlueprint {
+            atom1_label: "C2'",
+            atom2_label: "H2'1",
+            order: GraphBondOrder::Single,
+        },
+        InputBondBlueprint {
+            atom1_label: "C2'",
+            atom2_label: "H2'2",
+            order: GraphBondOrder::Single,
+        },
+        InputBondBlueprint {
+            atom1_label: "C3'",
+            atom2_label: "H3'",
+            order: GraphBondOrder::Single,
+        },
+        InputBondBlueprint {
+            atom1_label: "C4'",
+            atom2_label: "H4'",
+            order: GraphBondOrder::Single,
+        },
+        InputBondBlueprint {
+            atom1_label: "C5'",
+            atom2_label: "H5'1",
+            order: GraphBondOrder::Single,
+        },
+        InputBondBlueprint {
+            atom1_label: "C5'",
+            atom2_label: "H5'2",
+            order: GraphBondOrder::Single,
+        },
+    ],
+    expected_bonds: &[
+        OutputBondBlueprint {
+            atom1_label: "N9",
+            atom2_label: "C4",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4",
+            atom2_label: "N3",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N3",
+            atom2_label: "C2",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "N1",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N1",
+            atom2_label: "C6",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "C5",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "C4",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5",
+            atom2_label: "N7",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N7",
+            atom2_label: "C8",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C8",
+            atom2_label: "N9",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C6",
+            atom2_label: "N6",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N9",
+            atom2_label: "C1'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N6",
+            atom2_label: "H61",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "N6",
+            atom2_label: "H62",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2",
+            atom2_label: "H2",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C8",
+            atom2_label: "H8",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C1'",
+            atom2_label: "C2'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2'",
+            atom2_label: "C3'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C3'",
+            atom2_label: "C4'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4'",
+            atom2_label: "O4'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "O4'",
+            atom2_label: "C1'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C3'",
+            atom2_label: "O3'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "O3'",
+            atom2_label: "H_O3'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4'",
+            atom2_label: "C5'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5'",
+            atom2_label: "O5'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "O5'",
+            atom2_label: "H_O5'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C1'",
+            atom2_label: "H1'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2'",
+            atom2_label: "H2'1",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C2'",
+            atom2_label: "H2'2",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C3'",
+            atom2_label: "H3'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C4'",
+            atom2_label: "H4'",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5'",
+            atom2_label: "H5'1",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C5'",
+            atom2_label: "H5'2",
+            order: TopologyBondOrder::Single,
         },
     ],
 };
@@ -1110,12 +1652,12 @@ pub const DINUCLEOTIDE_BACKBONE: MoleculeTestCase = MoleculeTestCase {
         AtomBlueprint {
             label: "O1P",
             element: Element::O,
-            expected_type: "O_R",
+            expected_type: "O_2",
         },
         AtomBlueprint {
             label: "O2P",
             element: Element::O,
-            expected_type: "O_R",
+            expected_type: "O_2",
         },
         AtomBlueprint {
             label: "O5'_down",
@@ -1159,65 +1701,127 @@ pub const DINUCLEOTIDE_BACKBONE: MoleculeTestCase = MoleculeTestCase {
         },
     ],
     bonds: &[
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C_up",
             atom2_label: "O3'_up",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "O3'_up",
             atom2_label: "P",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "P",
             atom2_label: "O5'_down",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "O5'_down",
             atom2_label: "C_down",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "P",
             atom2_label: "O1P",
-            order: BondOrder::Double,
+            order: GraphBondOrder::Double,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "P",
             atom2_label: "O2P",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C_up",
             atom2_label: "H_up1",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C_up",
             atom2_label: "H_up2",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C_up",
             atom2_label: "H_up3",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C_down",
             atom2_label: "H_down1",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C_down",
             atom2_label: "H_down2",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
         },
-        BondBlueprint {
+        InputBondBlueprint {
             atom1_label: "C_down",
             atom2_label: "H_down3",
-            order: BondOrder::Single,
+            order: GraphBondOrder::Single,
+        },
+    ],
+    expected_bonds: &[
+        OutputBondBlueprint {
+            atom1_label: "C_up",
+            atom2_label: "O3'_up",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "O3'_up",
+            atom2_label: "P",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O5'_down",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "O5'_down",
+            atom2_label: "C_down",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C_up",
+            atom2_label: "H_up1",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C_up",
+            atom2_label: "H_up2",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C_up",
+            atom2_label: "H_up3",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C_down",
+            atom2_label: "H_down1",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C_down",
+            atom2_label: "H_down2",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "C_down",
+            atom2_label: "H_down3",
+            order: TopologyBondOrder::Single,
+        },
+        OutputBondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O1P",
+            order: TopologyBondOrder::Resonant,
+        },
+        OutputBondBlueprint {
+            atom1_label: "P",
+            atom2_label: "O2P",
+            order: TopologyBondOrder::Resonant,
         },
     ],
 };

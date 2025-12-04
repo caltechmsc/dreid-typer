@@ -36,7 +36,7 @@ Once a `MolecularGraph` enters the pipeline, it is immediately converted into an
     - Intrinsic properties (`element`, `formal_charge`).
     - Topological properties (`degree`, `is_in_ring`, `smallest_ring_size`).
     - Electronic properties (`lone_pairs`, `steric_number`, `hybridization`).
-    - Special properties (`is_aromatic`, `perception_source`).
+    - Aromaticity and resonance flags (`is_aromatic`, `is_anti_aromatic`, `is_resonant`).
   - An adjacency list for efficient neighbor traversal.
 - **Design Rationale:**
   - **Centralized Knowledge:** By pre-calculating and storing all relevant properties in one place, the subsequent typing and building phases can be implemented as efficient, stateless queries against this data structure. This avoids redundant calculations.

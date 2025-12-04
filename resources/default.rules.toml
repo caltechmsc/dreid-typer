@@ -1,6 +1,6 @@
 # ==============================================================================
 #  Official DREIDING Atom Typing Ruleset for dreid-typer
-#  Version: 2.0.0
+#  Version: 2.1.0
 #  Authors: Tony Kan, William A. Goddard III
 # ==============================================================================
 
@@ -20,6 +20,30 @@ conditions = { element = "H", degree = 2, neighbor_elements = { B = 2 } }
 #    `Hybridization::Resonant` is the most powerful classifier, capturing all
 #    atoms in delocalized pi-systems (aromatic, carboxylates, amides, etc.).
 # ------------------------------------------------------------------------------
+
+[[rule]]
+name = "C_Resonant_Terminal"
+priority = 401
+type = "C_2"
+conditions = { element = "C", hybridization = "Resonant", degree = 1 }
+
+[[rule]]
+name = "N_Resonant_Terminal"
+priority = 401
+type = "N_2"
+conditions = { element = "N", hybridization = "Resonant", degree = 1 }
+
+[[rule]]
+name = "O_Resonant_Terminal"
+priority = 401
+type = "O_2"
+conditions = { element = "O", hybridization = "Resonant", degree = 1 }
+
+[[rule]]
+name = "S_Resonant_Terminal"
+priority = 401
+type = "S_2"
+conditions = { element = "S", hybridization = "Resonant", degree = 1 }
 
 [[rule]]
 name = "C_Resonant"
@@ -219,13 +243,13 @@ conditions = { element = "F" }
 [[rule]]
 name = "Halogen_Cl"
 priority = 50
-type = "Cl_"
+type = "Cl"
 conditions = { element = "Cl" }
 
 [[rule]]
 name = "Halogen_Br"
 priority = 50
-type = "Br_"
+type = "Br"
 conditions = { element = "Br" }
 
 [[rule]]

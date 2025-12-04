@@ -5,7 +5,7 @@
 
 use crate::core::error::GraphValidationError;
 use crate::core::graph::{BondEdge, MolecularGraph};
-use crate::core::properties::{BondOrder, Element, Hybridization};
+use crate::core::properties::{Element, GraphBondOrder, Hybridization};
 
 /// Perception-friendly atom record that stores both graph identity and inferred properties.
 #[derive(Debug, Clone)]
@@ -32,10 +32,11 @@ pub struct AnnotatedAtom {
     /// Flag set for anti-aromatic atoms that should avoid resonance promotion.
     pub is_anti_aromatic: bool,
 
-    /// Indicates participation in any conjugated system detected by resonance perception.
-    pub is_in_conjugated_system: bool,
-    /// Marks atoms that can delocalize electrons even if not fully aromatic.
+    /// Marks atoms that participate in a resonance system (aromatic or functional group).
     pub is_resonant: bool,
+    /// Remembers whether the atom participated in any aromatic input bonds pre-Kekulé.
+    pub has_aromatic_edge: bool,
+
     /// Steric number derived from lone pairs and neighbors for VSEPR calculations.
     pub steric_number: u8,
     /// Current hybridization assignment, defaulting to [`Hybridization::Unknown`].
@@ -45,17 +46,33 @@ pub struct AnnotatedAtom {
 /// Convenience alias representing a ring as a list of atom identifiers.
 pub type Ring = Vec<usize>;
 
+/// Represents a subset of atoms and bonds that form a delocalized electron system.
+///
+/// This structure is populated by the `aromaticity` (for rings) and `resonance`
+/// (for linear conjugated groups like carboxylates) passes. It is used by the
+/// builder to identify which bonds should be emitted with `TopologyBondOrder::Resonant`.
+#[derive(Debug, Clone)]
+pub struct ResonanceSystem {
+    /// IDs of atoms participating in this resonance system.
+    #[allow(dead_code)]
+    pub atom_ids: Vec<usize>,
+    /// IDs of bonds (`BondEdge::id`) that are part of the delocalized system.
+    pub bond_ids: Vec<usize>,
+}
+
 /// Annotated molecular container combining atom metadata, bonds, adjacency, and ring sets.
 #[derive(Debug, Clone)]
 pub struct AnnotatedMolecule {
     /// All atoms with perception-specific annotations.
     pub atoms: Vec<AnnotatedAtom>,
-    /// Copy of the graph bonds for downstream trait implementations.
+    /// Copy of the graph bonds to provide stable IDs and connectivity.
     pub bonds: Vec<BondEdge>,
     /// Adjacency list capturing neighbor IDs and bond orders.
-    pub adjacency: Vec<Vec<(usize, BondOrder)>>,
+    pub adjacency: Vec<Vec<(usize, GraphBondOrder)>>,
     /// Collection of rings discovered during perception.
     pub rings: Vec<Ring>,
+    /// Collection of all identified resonance systems.
+    pub resonance_systems: Vec<ResonanceSystem>,
 }
 
 impl AnnotatedMolecule {
@@ -105,8 +122,8 @@ impl AnnotatedMolecule {
                 smallest_ring_size: None,
                 is_aromatic: false,
                 is_anti_aromatic: false,
-                is_in_conjugated_system: false,
                 is_resonant: false,
+                has_aromatic_edge: false,
                 steric_number: 0,
                 hybridization: Hybridization::Unknown,
             })
@@ -117,193 +134,8 @@ impl AnnotatedMolecule {
             bonds: graph.bonds.clone(),
             adjacency,
             rings: Vec::new(),
+            resonance_systems: Vec::new(),
         })
-    }
-}
-
-use pauling::{
-    AtomId as PaulingId, BondOrder as PaulingOrder, Element as PaulingElement, traits::AtomView,
-    traits::BondView, traits::MoleculeGraph,
-};
-
-impl From<Element> for PaulingElement {
-    fn from(element: Element) -> Self {
-        match element {
-            Element::H => PaulingElement::H,
-            Element::He => PaulingElement::He,
-            Element::Li => PaulingElement::Li,
-            Element::Be => PaulingElement::Be,
-            Element::B => PaulingElement::B,
-            Element::C => PaulingElement::C,
-            Element::N => PaulingElement::N,
-            Element::O => PaulingElement::O,
-            Element::F => PaulingElement::F,
-            Element::Ne => PaulingElement::Ne,
-            Element::Na => PaulingElement::Na,
-            Element::Mg => PaulingElement::Mg,
-            Element::Al => PaulingElement::Al,
-            Element::Si => PaulingElement::Si,
-            Element::P => PaulingElement::P,
-            Element::S => PaulingElement::S,
-            Element::Cl => PaulingElement::Cl,
-            Element::Ar => PaulingElement::Ar,
-            Element::K => PaulingElement::K,
-            Element::Ca => PaulingElement::Ca,
-            Element::Sc => PaulingElement::Sc,
-            Element::Ti => PaulingElement::Ti,
-            Element::V => PaulingElement::V,
-            Element::Cr => PaulingElement::Cr,
-            Element::Mn => PaulingElement::Mn,
-            Element::Fe => PaulingElement::Fe,
-            Element::Co => PaulingElement::Co,
-            Element::Ni => PaulingElement::Ni,
-            Element::Cu => PaulingElement::Cu,
-            Element::Zn => PaulingElement::Zn,
-            Element::Ga => PaulingElement::Ga,
-            Element::Ge => PaulingElement::Ge,
-            Element::As => PaulingElement::As,
-            Element::Se => PaulingElement::Se,
-            Element::Br => PaulingElement::Br,
-            Element::Kr => PaulingElement::Kr,
-            Element::Rb => PaulingElement::Rb,
-            Element::Sr => PaulingElement::Sr,
-            Element::Y => PaulingElement::Y,
-            Element::Zr => PaulingElement::Zr,
-            Element::Nb => PaulingElement::Nb,
-            Element::Mo => PaulingElement::Mo,
-            Element::Tc => PaulingElement::Tc,
-            Element::Ru => PaulingElement::Ru,
-            Element::Rh => PaulingElement::Rh,
-            Element::Pd => PaulingElement::Pd,
-            Element::Ag => PaulingElement::Ag,
-            Element::Cd => PaulingElement::Cd,
-            Element::In => PaulingElement::In,
-            Element::Sn => PaulingElement::Sn,
-            Element::Sb => PaulingElement::Sb,
-            Element::Te => PaulingElement::Te,
-            Element::I => PaulingElement::I,
-            Element::Xe => PaulingElement::Xe,
-            Element::Cs => PaulingElement::Cs,
-            Element::Ba => PaulingElement::Ba,
-            Element::La => PaulingElement::La,
-            Element::Ce => PaulingElement::Ce,
-            Element::Pr => PaulingElement::Pr,
-            Element::Nd => PaulingElement::Nd,
-            Element::Pm => PaulingElement::Pm,
-            Element::Sm => PaulingElement::Sm,
-            Element::Eu => PaulingElement::Eu,
-            Element::Gd => PaulingElement::Gd,
-            Element::Tb => PaulingElement::Tb,
-            Element::Dy => PaulingElement::Dy,
-            Element::Ho => PaulingElement::Ho,
-            Element::Er => PaulingElement::Er,
-            Element::Tm => PaulingElement::Tm,
-            Element::Yb => PaulingElement::Yb,
-            Element::Lu => PaulingElement::Lu,
-            Element::Hf => PaulingElement::Hf,
-            Element::Ta => PaulingElement::Ta,
-            Element::W => PaulingElement::W,
-            Element::Re => PaulingElement::Re,
-            Element::Os => PaulingElement::Os,
-            Element::Ir => PaulingElement::Ir,
-            Element::Pt => PaulingElement::Pt,
-            Element::Au => PaulingElement::Au,
-            Element::Hg => PaulingElement::Hg,
-            Element::Tl => PaulingElement::Tl,
-            Element::Pb => PaulingElement::Pb,
-            Element::Bi => PaulingElement::Bi,
-            Element::Po => PaulingElement::Po,
-            Element::At => PaulingElement::At,
-            Element::Rn => PaulingElement::Rn,
-            Element::Fr => PaulingElement::Fr,
-            Element::Ra => PaulingElement::Ra,
-            Element::Ac => PaulingElement::Ac,
-            Element::Th => PaulingElement::Th,
-            Element::Pa => PaulingElement::Pa,
-            Element::U => PaulingElement::U,
-            Element::Np => PaulingElement::Np,
-            Element::Pu => PaulingElement::Pu,
-            Element::Am => PaulingElement::Am,
-            Element::Cm => PaulingElement::Cm,
-            Element::Bk => PaulingElement::Bk,
-            Element::Cf => PaulingElement::Cf,
-            Element::Es => PaulingElement::Es,
-            Element::Fm => PaulingElement::Fm,
-            Element::Md => PaulingElement::Md,
-            Element::No => PaulingElement::No,
-            Element::Lr => PaulingElement::Lr,
-            Element::Rf => PaulingElement::Rf,
-            Element::Db => PaulingElement::Db,
-            Element::Sg => PaulingElement::Sg,
-            Element::Bh => PaulingElement::Bh,
-            Element::Hs => PaulingElement::Hs,
-            Element::Mt => PaulingElement::Mt,
-            Element::Ds => PaulingElement::Ds,
-            Element::Rg => PaulingElement::Rg,
-            Element::Cn => PaulingElement::Cn,
-            Element::Nh => PaulingElement::Nh,
-            Element::Fl => PaulingElement::Fl,
-            Element::Mc => PaulingElement::Mc,
-            Element::Lv => PaulingElement::Lv,
-            Element::Ts => PaulingElement::Ts,
-            Element::Og => PaulingElement::Og,
-        }
-    }
-}
-
-impl From<BondOrder> for PaulingOrder {
-    fn from(order: BondOrder) -> Self {
-        match order {
-            BondOrder::Single => PaulingOrder::Single,
-            BondOrder::Double => PaulingOrder::Double,
-            BondOrder::Triple => PaulingOrder::Triple,
-            BondOrder::Aromatic => PaulingOrder::Aromatic,
-        }
-    }
-}
-
-impl AtomView for AnnotatedAtom {
-    fn id(&self) -> PaulingId {
-        self.id
-    }
-
-    fn element(&self) -> PaulingElement {
-        self.element.into()
-    }
-
-    fn formal_charge(&self) -> i8 {
-        self.formal_charge
-    }
-}
-
-impl BondView for BondEdge {
-    fn id(&self) -> PaulingId {
-        self.id
-    }
-
-    fn order(&self) -> PaulingOrder {
-        self.order.into()
-    }
-
-    fn start_atom_id(&self) -> PaulingId {
-        self.atom_ids.0
-    }
-
-    fn end_atom_id(&self) -> PaulingId {
-        self.atom_ids.1
-    }
-}
-
-impl MoleculeGraph for AnnotatedMolecule {
-    type Atom = AnnotatedAtom;
-    type Bond = BondEdge;
-
-    fn atoms(&self) -> impl Iterator<Item = &Self::Atom> {
-        self.atoms.iter()
-    }
-
-    fn bonds(&self) -> impl Iterator<Item = &Self::Bond> {
-        self.bonds.iter()
     }
 }
 
@@ -311,7 +143,7 @@ impl MoleculeGraph for AnnotatedMolecule {
 mod tests {
     use super::*;
     use crate::core::graph::AtomNode;
-    use pauling::traits::{AtomView, BondView, MoleculeGraph};
+    use crate::core::properties::GraphBondOrder;
 
     fn water_like_graph() -> MolecularGraph {
         let mut graph = MolecularGraph::new();
@@ -320,10 +152,10 @@ mod tests {
         let hydrogen2 = graph.add_atom(Element::H);
 
         graph
-            .add_bond(oxygen, hydrogen1, BondOrder::Single)
+            .add_bond(oxygen, hydrogen1, GraphBondOrder::Single)
             .expect("valid bond should be created");
         graph
-            .add_bond(oxygen, hydrogen2, BondOrder::Single)
+            .add_bond(oxygen, hydrogen2, GraphBondOrder::Single)
             .expect("valid bond should be created");
 
         graph
@@ -342,8 +174,8 @@ mod tests {
         assert_eq!(adjacency_sizes, vec![2, 1, 1]);
 
         let oxygen_neighbors = &molecule.adjacency[0];
-        assert!(oxygen_neighbors.contains(&(1, BondOrder::Single)));
-        assert!(oxygen_neighbors.contains(&(2, BondOrder::Single)));
+        assert!(oxygen_neighbors.contains(&(1, GraphBondOrder::Single)));
+        assert!(oxygen_neighbors.contains(&(2, GraphBondOrder::Single)));
 
         let oxygen = &molecule.atoms[0];
         assert_eq!(oxygen.element, Element::O);
@@ -354,10 +186,10 @@ mod tests {
         assert_eq!(oxygen.smallest_ring_size, None);
         assert!(!oxygen.is_aromatic);
         assert!(!oxygen.is_anti_aromatic);
-        assert!(!oxygen.is_in_conjugated_system);
         assert!(!oxygen.is_resonant);
         assert_eq!(oxygen.steric_number, 0);
         assert_eq!(oxygen.hybridization, Hybridization::Unknown);
+        assert!(molecule.resonance_systems.is_empty());
     }
 
     #[test]
@@ -370,7 +202,7 @@ mod tests {
             bonds: vec![BondEdge {
                 id: 0,
                 atom_ids: (0, 2),
-                order: BondOrder::Single,
+                order: GraphBondOrder::Single,
             }],
         };
 
@@ -378,61 +210,7 @@ mod tests {
 
         match err {
             GraphValidationError::MissingAtom { atom_id } => assert_eq!(atom_id, 2),
-            other => panic!("unexpected error returned: {other:?}"),
+            _ => panic!("unexpected error returned: {err:?}"),
         }
-    }
-
-    #[test]
-    fn annotated_atom_satisfies_atom_view_contract() {
-        let atom = AnnotatedAtom {
-            id: 7,
-            element: Element::N,
-            formal_charge: -1,
-            lone_pairs: 2,
-            degree: 3,
-            is_in_ring: true,
-            smallest_ring_size: Some(5),
-            is_aromatic: true,
-            is_anti_aromatic: false,
-            is_in_conjugated_system: true,
-            is_resonant: true,
-            steric_number: 3,
-            hybridization: Hybridization::SP2,
-        };
-
-        assert_eq!(atom.id(), 7);
-        assert_eq!(atom.element(), pauling::Element::N);
-        assert_eq!(atom.formal_charge(), -1);
-    }
-
-    #[test]
-    fn bond_edge_satisfies_bond_view_contract() {
-        let bond = BondEdge {
-            id: 3,
-            atom_ids: (9, 4),
-            order: BondOrder::Aromatic,
-        };
-
-        assert_eq!(bond.id(), 3);
-        assert_eq!(bond.start_atom_id(), 9);
-        assert_eq!(bond.end_atom_id(), 4);
-        assert_eq!(bond.order(), pauling::BondOrder::Aromatic);
-    }
-
-    #[test]
-    fn annotated_molecule_molecule_graph_iterators_match_source_graph() {
-        let graph = water_like_graph();
-        let molecule = AnnotatedMolecule::new(&graph).unwrap();
-
-        let atom_ids: Vec<_> = molecule.atoms().map(|atom| atom.id()).collect();
-        assert_eq!(atom_ids, vec![0, 1, 2]);
-
-        let bond_pairs: Vec<_> = molecule
-            .bonds()
-            .map(|bond| (bond.id(), bond.start_atom_id(), bond.end_atom_id()))
-            .collect();
-        assert_eq!(bond_pairs.len(), 2);
-        assert!(bond_pairs.contains(&(0, 0, 1)));
-        assert!(bond_pairs.contains(&(1, 0, 2)));
     }
 }

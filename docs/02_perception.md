@@ -57,12 +57,10 @@ Each pass mutates the shared `AnnotatedMolecule`. Later stages can rely on the i
 ## 5. Resonance — `resonance::perceive`
 
 - **Goal:** Mark atoms that participate in conjugated systems, even when they are not part of a strictly aromatic ring.
-- **How it works:** The pass delegates to the external `pauling` crate to discover resonance systems, then overlays project-specific heuristics:
-  - Aromatic atoms are always marked conjugated.
-  - Amide/thioamide and sulfonamide motifs promote their heteroatom donors into conjugation when lone pairs are available.
-  - Hypervalent halogen oxyanions have their terminal oxygens demoted to avoid false conjugation.
-  - Purely σ-bound sulfurs that slipped through the previous steps are also demoted.
-- **Why it matters:** Conjugation flags feed hybridization inference and help the typing engine distinguish resonant atoms from plain sp² centers.
+- **How it works:** The pass uses strict substructure matching to detect chemically significant resonance motifs. It operates in two phases:
+  1. **Core functional group detection:** Pattern recognizers identify carboxylates, nitro groups, guanidinium ions, thiourea/thioamide fragments, amides, and phosphate groups. When a motif is found, all participating atoms are flagged as resonant, and the system (atoms + bonds) is recorded for later topology emission.
+  2. **Peripheral propagation:** Heteroatoms (O, N, S) with lone pairs that are adjacent to already-resonant atoms are themselves promoted to resonant.
+- **Why it matters:** Conjugation flags feed hybridization inference and help the typing engine distinguish resonant atoms from plain sp² centers. The recorded resonance systems inform the builder phase which bonds should receive the resonant bond order.
 
 ## 6. Hybridization — `hybridization::perceive`
 
@@ -70,7 +68,6 @@ Each pass mutates the shared `AnnotatedMolecule`. Later stages can rely on the i
 - **How it works:** For each atom:
   - Elements that never hybridize (alkali metals, halogens, most transition metals) are stamped as `Hybridization::None`.
   - Conjugated atoms that are not anti-aromatic collapse to `Hybridization::Resonant`, even when their raw steric number is four (lone-pair donation collapses the geometry to trigonal).
-  - Aromatic atoms default to `Hybridization::SP2`.
   - Remaining atoms fall back to VSEPR rules derived from `degree + lone_pairs`.
   - The stored `steric_number` is renormalized so downstream consumers can rely on 2/3/4 despite resonance collapsing a formal 4 to 3.
 - **Why it matters:** The typing rules operate primarily on the `hybridization`, aromatic flags, and neighbor information produced by this pass. The builder also copies the final hybridization into the emitted topology.
@@ -81,7 +78,7 @@ By the end of chemical perception every `AnnotatedAtom` contains:
 
 - identity (`element`, `id`, `degree`)
 - ring context (`is_in_ring`, `smallest_ring_size`)
-- electronic structure (`formal_charge`, `lone_pairs`, `is_resonant`, `is_in_conjugated_system`)
+- electronic structure (`formal_charge`, `lone_pairs`, `is_resonant`)
 - aromaticity flags (`is_aromatic`, `is_anti_aromatic`)
 - geometry (`hybridization`, normalized `steric_number`)
 
