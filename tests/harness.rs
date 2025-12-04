@@ -115,14 +115,14 @@ fn verify_atom_types(
     }
 
     for atom in &topology.atoms {
-        if atom.element != Element::H {
-            if !case.atoms.iter().any(|ab| molecule.id(ab.label) == atom.id) {
-                all_heavy_atoms_tested = false;
-                eprintln!(
-                    "Warning: Heavy atom with ID {} was not checked in test case '{}'",
-                    atom.id, case.name
-                );
-            }
+        if atom.element != Element::H
+            && !case.atoms.iter().any(|ab| molecule.id(ab.label) == atom.id)
+        {
+            all_heavy_atoms_tested = false;
+            eprintln!(
+                "Warning: Heavy atom with ID {} was not checked in test case '{}'",
+                atom.id, case.name
+            );
         }
     }
     assert!(
