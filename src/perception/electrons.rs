@@ -409,7 +409,11 @@ fn assign_ammonium_and_iminium(
             .iter()
             .any(|&(_, order)| order == GraphBondOrder::Double);
 
-        if degree == 4 || (degree == 3 && has_double_bond) {
+        let should_mark_iminium =
+            degree == 3 && has_double_bond && !molecule.atoms[n_idx].is_in_ring;
+        let should_mark_ammonium = degree == 4;
+
+        if should_mark_iminium || should_mark_ammonium {
             let atom = &mut molecule.atoms[n_idx];
             atom.formal_charge = 1;
             atom.lone_pairs = 0;
