@@ -41,6 +41,7 @@ fn detect_core_functional_groups(molecule: &mut AnnotatedMolecule) {
     detect_guanidinium_groups(molecule, &mut processed);
     detect_thiourea_groups(molecule, &mut processed);
     detect_amide_groups(molecule, &mut processed);
+    detect_phosphate_groups(molecule, &mut processed);
 }
 
 /// Propagates resonance flags to peripheral heteroatoms bonded to resonant systems.
@@ -253,6 +254,41 @@ fn detect_amide_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool])
                 processed[atom_id] = true;
             }
             push_resonance_system(molecule, &[c_idx, o, n], &[b_co, b_cn]);
+        }
+    }
+}
+
+/// Detects Phosphate groups: P(=O)(O-)
+fn detect_phosphate_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
+    for p_idx in 0..molecule.atoms.len() {
+        if molecule.atoms[p_idx].element != Element::P {
+            continue;
+        }
+
+        let mut terminal_oxygens = Vec::new();
+
+        for &(neighbor_id, _) in &molecule.adjacency[p_idx] {
+            if molecule.atoms[neighbor_id].element == Element::O
+                && molecule.atoms[neighbor_id].degree == 1
+            {
+                terminal_oxygens.push(neighbor_id);
+            }
+        }
+
+        if terminal_oxygens.len() >= 2 {
+            let o1 = terminal_oxygens[0];
+            let o2 = terminal_oxygens[1];
+
+            let b1 = find_bond_id(molecule, p_idx, o1);
+            let b2 = find_bond_id(molecule, p_idx, o2);
+
+            molecule.atoms[o1].is_resonant = true;
+            molecule.atoms[o2].is_resonant = true;
+            processed[o1] = true;
+            processed[o2] = true;
+            processed[p_idx] = true;
+
+            push_resonance_system(molecule, &[p_idx, o1, o2], &[b1, b2]);
         }
     }
 }
