@@ -39,6 +39,7 @@ fn detect_core_functional_groups(molecule: &mut AnnotatedMolecule) {
     detect_carboxylate_groups(molecule, &mut processed);
     detect_nitro_groups(molecule, &mut processed);
     detect_guanidinium_groups(molecule, &mut processed);
+    detect_thiourea_groups(molecule, &mut processed);
     detect_amide_groups(molecule, &mut processed);
 }
 
@@ -185,6 +186,40 @@ fn detect_guanidinium_groups(molecule: &mut AnnotatedMolecule, processed: &mut [
                 processed[atom_id] = true;
             }
             push_resonance_system(molecule, &atoms, &bonds);
+        }
+    }
+}
+
+/// Detects Thiourea cores: C(=S)(N)(N)
+fn detect_thiourea_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
+    for c_idx in 0..molecule.atoms.len() {
+        if processed[c_idx] || molecule.atoms[c_idx].element != Element::C {
+            continue;
+        }
+
+        let mut sulfur_neighbor = None;
+        let mut nitrogen_neighbors = Vec::new();
+
+        for &(neighbor_id, order) in &molecule.adjacency[c_idx] {
+            match (molecule.atoms[neighbor_id].element, order) {
+                (Element::S, GraphBondOrder::Double) => sulfur_neighbor = Some(neighbor_id),
+                (Element::N, GraphBondOrder::Single) => nitrogen_neighbors.push(neighbor_id),
+                _ => {}
+            }
+        }
+
+        if sulfur_neighbor.is_some() && nitrogen_neighbors.len() == 2 {
+            let n1 = nitrogen_neighbors[0];
+            let n2 = nitrogen_neighbors[1];
+            let b1 = find_bond_id(molecule, c_idx, n1);
+            let b2 = find_bond_id(molecule, c_idx, n2);
+
+            for &atom_id in &[c_idx, n1, n2] {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+
+            push_resonance_system(molecule, &[c_idx, n1, n2], &[b1, b2]);
         }
     }
 }
