@@ -263,12 +263,13 @@ fn assign_halogen_oxyanions(
             }
 
             let oxygen = &mut molecule.atoms[oxygen_idx];
-            oxygen.lone_pairs = 2;
-            oxygen.formal_charge = if order == GraphBondOrder::Single {
-                -1
+            if order == GraphBondOrder::Single {
+                oxygen.lone_pairs = 3;
+                oxygen.formal_charge = -1;
             } else {
-                0
-            };
+                oxygen.lone_pairs = 2;
+                oxygen.formal_charge = 0;
+            }
 
             processed[oxygen_idx] = true;
         }
