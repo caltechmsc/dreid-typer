@@ -70,18 +70,8 @@ fn propagate_resonance_to_periphery(molecule: &mut AnnotatedMolecule) {
     }
 }
 
-/// Helper to register a detected core system.
-fn register_core_system(
-    molecule: &mut AnnotatedMolecule,
-    atoms: &[usize],
-    bonds: &[usize],
-    processed: &mut [bool],
-) {
-    for &atom_id in atoms {
-        molecule.atoms[atom_id].is_resonant = true;
-        processed[atom_id] = true;
-    }
-
+/// Helper to record a detected resonance system for later topology emission.
+fn push_resonance_system(molecule: &mut AnnotatedMolecule, atoms: &[usize], bonds: &[usize]) {
     let mut sys_atoms = atoms.to_vec();
     let mut sys_bonds = bonds.to_vec();
     sys_atoms.sort_unstable();
@@ -130,7 +120,11 @@ fn detect_carboxylate_groups(molecule: &mut AnnotatedMolecule, processed: &mut [
         if let (Some(o1), Some(o2)) = (double_o, single_o) {
             let b1 = find_bond_id(molecule, c_idx, o1);
             let b2 = find_bond_id(molecule, c_idx, o2);
-            register_core_system(molecule, &[c_idx, o1, o2], &[b1, b2], processed);
+            for &atom_id in &[c_idx, o1, o2] {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+            push_resonance_system(molecule, &[c_idx, o1, o2], &[b1, b2]);
         }
     }
 }
@@ -154,7 +148,11 @@ fn detect_nitro_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool])
             let o2 = oxygen_neighbors[1];
             let b1 = find_bond_id(molecule, n_idx, o1);
             let b2 = find_bond_id(molecule, n_idx, o2);
-            register_core_system(molecule, &[n_idx, o1, o2], &[b1, b2], processed);
+            for &atom_id in &[n_idx, o1, o2] {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+            push_resonance_system(molecule, &[n_idx, o1, o2], &[b1, b2]);
         }
     }
 }
@@ -162,7 +160,10 @@ fn detect_nitro_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool])
 /// Detects Guanidinium groups: C(N)(N)N+
 fn detect_guanidinium_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool]) {
     for c_idx in 0..molecule.atoms.len() {
-        if processed[c_idx] || molecule.atoms[c_idx].element != Element::C {
+        if processed[c_idx]
+            || molecule.atoms[c_idx].element != Element::C
+            || molecule.atoms[c_idx].is_in_ring
+        {
             continue;
         }
 
@@ -179,7 +180,11 @@ fn detect_guanidinium_groups(molecule: &mut AnnotatedMolecule, processed: &mut [
                 .collect();
             let mut atoms = vec![c_idx];
             atoms.extend(n_neighbors);
-            register_core_system(molecule, &atoms, &bonds, processed);
+            for &atom_id in &atoms {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+            push_resonance_system(molecule, &atoms, &bonds);
         }
     }
 }
@@ -203,9 +208,16 @@ fn detect_amide_groups(molecule: &mut AnnotatedMolecule, processed: &mut [bool])
         }
 
         if let (Some(o), Some(n)) = (double_o, single_n) {
+            if molecule.atoms[c_idx].is_resonant || molecule.atoms[n].is_resonant {
+                continue;
+            }
             let b_co = find_bond_id(molecule, c_idx, o);
             let b_cn = find_bond_id(molecule, c_idx, n);
-            register_core_system(molecule, &[c_idx, o, n], &[b_co, b_cn], processed);
+            for &atom_id in &[c_idx, o, n] {
+                molecule.atoms[atom_id].is_resonant = true;
+                processed[atom_id] = true;
+            }
+            push_resonance_system(molecule, &[c_idx, o, n], &[b_co, b_cn]);
         }
     }
 }
