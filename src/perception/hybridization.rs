@@ -6,7 +6,7 @@
 
 use super::model::{AnnotatedAtom, AnnotatedMolecule};
 use crate::core::error::PerceptionError;
-use crate::core::properties::{Element, Hybridization};
+use crate::core::properties::{Element, GraphBondOrder, Hybridization};
 
 /// Updates every atom with its final hybridization and steric number assignments.
 ///
@@ -32,14 +32,11 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
         for i in 0..molecule.atoms.len() {
             if molecule.atoms[i].hybridization == Hybridization::SP3
                 && molecule.atoms[i].lone_pairs > 0
+                && matches!(molecule.atoms[i].element, Element::O | Element::N)
             {
-                let is_adjacent_to_pi_system =
-                    molecule.adjacency[i].iter().any(|&(neighbor_id, _)| {
-                        matches!(
-                            molecule.atoms[neighbor_id].hybridization,
-                            Hybridization::SP2 | Hybridization::SP | Hybridization::Resonant
-                        )
-                    });
+                let is_adjacent_to_pi_system = molecule.adjacency[i]
+                    .iter()
+                    .any(|&(neighbor_id, _)| supports_delocalization(molecule, neighbor_id));
 
                 if is_adjacent_to_pi_system {
                     molecule.atoms[i].hybridization = Hybridization::Resonant;
@@ -143,6 +140,35 @@ fn is_non_hybridized_element(element: Element) -> bool {
             | Element::Au
             | Element::Hg
     )
+}
+
+/// Checks whether a neighboring atom can participate in π-delocalization.
+///
+/// Atoms with SP2, SP, or Resonant hybridization can generally extend conjugation,
+/// except for carbonyl-like carbons (C=O or C=S) which do not promote adjacent
+/// heteroatoms to resonant hybridization.
+fn supports_delocalization(molecule: &AnnotatedMolecule, neighbor_id: usize) -> bool {
+    let neighbor = &molecule.atoms[neighbor_id];
+    if !matches!(
+        neighbor.hybridization,
+        Hybridization::SP2 | Hybridization::SP | Hybridization::Resonant
+    ) {
+        return false;
+    }
+
+    if neighbor.element == Element::C {
+        let is_carbonyl_like = molecule.adjacency[neighbor_id]
+            .iter()
+            .any(|&(other_id, order)| {
+                order == GraphBondOrder::Double
+                    && matches!(molecule.atoms[other_id].element, Element::O | Element::S)
+            });
+        if is_carbonyl_like {
+            return false;
+        }
+    }
+
+    true
 }
 
 #[cfg(test)]
