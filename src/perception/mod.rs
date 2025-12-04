@@ -179,6 +179,43 @@ mod tests {
         graph
     }
 
+    fn pyrimidine_aromatic_graph() -> MolecularGraph {
+        let mut graph = MolecularGraph::new();
+
+        let n1 = graph.add_atom(Element::N);
+        let c2 = graph.add_atom(Element::C);
+        let n3 = graph.add_atom(Element::N);
+        let c4 = graph.add_atom(Element::C);
+        let c5 = graph.add_atom(Element::C);
+        let c6 = graph.add_atom(Element::C);
+        let h2 = graph.add_atom(Element::H);
+        let h4 = graph.add_atom(Element::H);
+        let h5 = graph.add_atom(Element::H);
+        let h6 = graph.add_atom(Element::H);
+
+        let aromatic_edges = [(n1, c2), (c2, n3), (n3, c4), (c4, c5), (c5, c6), (c6, n1)];
+        for &(u, v) in &aromatic_edges {
+            graph
+                .add_bond(u, v, GraphBondOrder::Aromatic)
+                .expect("valid aromatic bond in pyrimidine ring");
+        }
+
+        graph
+            .add_bond(c2, h2, GraphBondOrder::Single)
+            .expect("C2-H bond");
+        graph
+            .add_bond(c4, h4, GraphBondOrder::Single)
+            .expect("C4-H bond");
+        graph
+            .add_bond(c5, h5, GraphBondOrder::Single)
+            .expect("C5-H bond");
+        graph
+            .add_bond(c6, h6, GraphBondOrder::Single)
+            .expect("C6-H bond");
+
+        graph
+    }
+
     #[test]
     fn perception_pipeline_assigns_benzene_properties() {
         let graph = benzene_graph();
@@ -324,6 +361,30 @@ mod tests {
                 }
             }
             other => panic!("expected PerceptionFailed error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn pyrimidine_aromatic_input_is_detected() {
+        let graph = pyrimidine_aromatic_graph();
+        let molecule = perceive(&graph).expect("perception pipeline should succeed");
+
+        let ring_atoms = [0usize, 1, 2, 3, 4, 5];
+
+        for &atom_id in &ring_atoms {
+            assert!(
+                molecule.atoms[atom_id].is_resonant,
+                "Ring atom {atom_id} should be resonant"
+            );
+            assert!(
+                molecule.atoms[atom_id].is_aromatic,
+                "Ring atom {atom_id} should be aromatic"
+            );
+            assert_eq!(
+                molecule.atoms[atom_id].hybridization,
+                Hybridization::Resonant,
+                "Ring atom {atom_id} should be classified as resonant"
+            );
         }
     }
 }
