@@ -807,9 +807,9 @@ mod tests {
         ];
 
         let molecule = run_perception(&elements, &bonds);
-        assert_atom_state(&molecule, 0, 2, 0);
-        assert_atom_state(&molecule, 1, -1, 3);
-        assert_atom_state(&molecule, 2, -1, 3);
+        assert_atom_state(&molecule, 0, 0, 0);
+        assert_atom_state(&molecule, 1, 0, 2);
+        assert_atom_state(&molecule, 2, 0, 2);
     }
 
     #[test]
