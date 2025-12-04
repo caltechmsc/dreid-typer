@@ -842,7 +842,7 @@ mod tests {
         for oxygen_idx in 1..4 {
             assert_atom_state(&molecule, oxygen_idx, 0, 2);
         }
-        assert_atom_state(&molecule, 4, -1, 2);
+        assert_atom_state(&molecule, 4, -1, 3);
     }
 
     #[test]
