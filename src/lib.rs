@@ -76,8 +76,12 @@ pub use crate::core::topology::{
     Angle, Atom, Bond, ImproperDihedral, MolecularTopology, ProperDihedral,
 };
 
+/// Rule parsing and customization utilities.
+///
+/// The core types needed to parse and inspect DREIDING
+/// atom-typing rules from TOML configuration files.
 pub mod rules {
-    pub use crate::typing::rules::{Conditions, Rule, parse_rules};
+    pub use crate::typing::rules::{Conditions, Rule, get_default_rules, parse_rules};
 }
 
 /// Assigns a full molecular topology using the default embedded DREIDING ruleset.
