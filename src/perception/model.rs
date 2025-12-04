@@ -34,6 +34,8 @@ pub struct AnnotatedAtom {
 
     /// Marks atoms that participate in a resonance system (aromatic or functional group).
     pub is_resonant: bool,
+    /// Remembers whether the atom participated in any aromatic input bonds pre-Kekulé.
+    pub has_aromatic_edge: bool,
 
     /// Steric number derived from lone pairs and neighbors for VSEPR calculations.
     pub steric_number: u8,
@@ -121,6 +123,7 @@ impl AnnotatedMolecule {
                 is_aromatic: false,
                 is_anti_aromatic: false,
                 is_resonant: false,
+                has_aromatic_edge: false,
                 steric_number: 0,
                 hybridization: Hybridization::Unknown,
             })
