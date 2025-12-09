@@ -22,7 +22,7 @@ Add the crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-dreid-typer = "0.3.0"
+dreid-typer = "0.4.0"
 ```
 
 Run the full pipeline from connectivity to topology:
