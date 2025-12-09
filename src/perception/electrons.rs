@@ -563,12 +563,16 @@ fn assign_general(
         }
         let element = molecule.atoms[i].element;
 
-        let valence = element.valence_electrons().ok_or_else(|| {
-            PerceptionError::Other(format!(
-                "valence electrons not defined for element {:?}",
-                element
-            ))
-        })?;
+        let valence = match element.valence_electrons() {
+            Some(v) => v,
+            None if molecule.atoms[i].degree == 0 => 0,
+            None => {
+                return Err(PerceptionError::Other(format!(
+                    "valence electrons not defined for element {:?}",
+                    element
+                )));
+            }
+        };
 
         let bonding_electrons: u8 = molecule.adjacency[i]
             .iter()
