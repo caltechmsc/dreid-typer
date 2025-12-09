@@ -1082,4 +1082,30 @@ mod tests {
         assert_atom_state(&molecule, 3, 0, 1);
         assert_atom_state(&molecule, 2, 0, 0);
     }
+
+    #[test]
+    fn isolated_unknown_valence_metal_defaults_to_zero() {
+        let elements = vec![Element::Au];
+        let bonds: Vec<(usize, usize, GraphBondOrder)> = vec![];
+
+        let molecule = run_perception(&elements, &bonds);
+
+        assert_atom_state(&molecule, 0, 0, 0);
+    }
+
+    #[test]
+    fn bonded_unknown_valence_metal_errors() {
+        let elements = vec![Element::Au, Element::H];
+        let bonds = vec![(0, 1, GraphBondOrder::Single)];
+
+        let mut molecule = build_molecule(&elements, &bonds);
+        let err = perceive(&mut molecule).expect_err("bonded unknown-valence metals should error");
+
+        match err {
+            PerceptionError::Other(msg) => {
+                assert!(msg.contains("valence electrons not defined"));
+            }
+            _ => panic!("unexpected error variant: {err:?}"),
+        }
+    }
 }
