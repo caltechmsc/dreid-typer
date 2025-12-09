@@ -45,7 +45,7 @@ Each pass mutates the shared `AnnotatedMolecule`. Later stages can rely on the i
 - **Goal:** Populate `formal_charge` and `lone_pairs` for every atom via a mixture of targeted functional-group heuristics and a general valence fallback.
 - **How it works:**
   - Pattern recognizers detect nitrones, nitro groups, sulfoxides/sulfones, halogen oxyanions, phosphoryl fragments, carboxylates, ammonium/iminium, onium/phosphonium ions, and enolate/phenate anions. When a pattern matches, the participating atoms are marked as processed and assigned the chemically expected charges/lone pairs.
-  - Atoms that remain unprocessed fall back to a valence-based routine that balances valence electrons, bond orders, and existing formal charges.
+  - Atoms that remain unprocessed fall back to a valence-based routine that balances valence electrons, bond orders, and existing formal charges. If an element lacks a `valence_electrons` entry and has degree 0 (isolated metal ions), the routine defaults to valence 0 without error; bonded cases continue to error to avoid masking incomplete element data.
 - **Why it matters:** Accurate charges and lone-pair counts underpin aromaticity checks, resonance detection, and hybridization inference.
 
 ## 4. Aromaticity — `aromaticity::perceive`
