@@ -101,6 +101,7 @@ struct RingCandidate {
 /// # Arguments
 ///
 /// * `molecule` - Annotated molecule whose adjacency and bonds will be analyzed.
+/// * `workspace` - Reusable BFS buffers to avoid per-bond allocations.
 ///
 /// # Returns
 ///
@@ -216,6 +217,7 @@ struct PathData {
 /// * `start_id` - Starting atom identifier.
 /// * `end_id` - Destination atom identifier.
 /// * `excluded_bond_id` - Optional bond ID to ignore, simulating its removal.
+/// * `workspace` - Reusable BFS buffers to avoid per-call allocations.
 ///
 /// # Returns
 ///
