@@ -1,6 +1,6 @@
 # ==============================================================================
 #  Official DREIDING Atom Typing Ruleset for dreid-typer
-#  Version: 2.1.0
+#  Version: 2.2.0
 #  Authors: Tony Kan, William A. Goddard III
 # ==============================================================================
 
@@ -264,10 +264,22 @@ conditions = { element = "I" }
 # ------------------------------------------------------------------------------
 
 [[rule]]
-name = "Metal_Na"
+name = "Metal_Ag"
 priority = 20
-type = "Na"
-conditions = { element = "Na" }
+type = "Ag"
+conditions = { element = "Ag" }
+
+[[rule]]
+name = "Metal_Au"
+priority = 20
+type = "Au"
+conditions = { element = "Au" }
+
+[[rule]]
+name = "Metal_Ba"
+priority = 20
+type = "Ba"
+conditions = { element = "Ba" }
 
 [[rule]]
 name = "Metal_Ca"
@@ -276,16 +288,52 @@ type = "Ca"
 conditions = { element = "Ca" }
 
 [[rule]]
+name = "Metal_Cd"
+priority = 20
+type = "Cd"
+conditions = { element = "Cd" }
+
+[[rule]]
+name = "Metal_Co"
+priority = 20
+type = "Co"
+conditions = { element = "Co" }
+
+[[rule]]
+name = "Metal_Cs"
+priority = 20
+type = "Cs"
+conditions = { element = "Cs" }
+
+[[rule]]
+name = "Metal_Cu"
+priority = 20
+type = "Cu"
+conditions = { element = "Cu" }
+
+[[rule]]
 name = "Metal_Fe"
 priority = 20
 type = "Fe"
 conditions = { element = "Fe" }
 
 [[rule]]
-name = "Metal_Zn"
+name = "Metal_Hg"
 priority = 20
-type = "Zn"
-conditions = { element = "Zn" }
+type = "Hg"
+conditions = { element = "Hg" }
+
+[[rule]]
+name = "Metal_K"
+priority = 20
+type = "K"
+conditions = { element = "K" }
+
+[[rule]]
+name = "Metal_Li"
+priority = 20
+type = "Li"
+conditions = { element = "Li" }
 
 [[rule]]
 name = "Metal_Mg"
@@ -300,16 +348,34 @@ type = "Mn"
 conditions = { element = "Mn" }
 
 [[rule]]
-name = "Metal_Ti"
+name = "Metal_Na"
 priority = 20
-type = "Ti"
-conditions = { element = "Ti" }
+type = "Na"
+conditions = { element = "Na" }
 
 [[rule]]
-name = "Metal_Tc"
+name = "Metal_Ni"
 priority = 20
-type = "Tc"
-conditions = { element = "Tc" }
+type = "Ni"
+conditions = { element = "Ni" }
+
+[[rule]]
+name = "Metal_Pd"
+priority = 20
+type = "Pd"
+conditions = { element = "Pd" }
+
+[[rule]]
+name = "Metal_Pt"
+priority = 20
+type = "Pt"
+conditions = { element = "Pt" }
+
+[[rule]]
+name = "Metal_Rb"
+priority = 20
+type = "Rb"
+conditions = { element = "Rb" }
 
 [[rule]]
 name = "Metal_Ru"
@@ -318,7 +384,25 @@ type = "Ru"
 conditions = { element = "Ru" }
 
 [[rule]]
-name = "Metal_Hg"
+name = "Metal_Sr"
 priority = 20
-type = "Hg"
-conditions = { element = "Hg" }
+type = "Sr"
+conditions = { element = "Sr" }
+
+[[rule]]
+name = "Metal_Tc"
+priority = 20
+type = "Tc"
+conditions = { element = "Tc" }
+
+[[rule]]
+name = "Metal_Ti"
+priority = 20
+type = "Ti"
+conditions = { element = "Ti" }
+
+[[rule]]
+name = "Metal_Zn"
+priority = 20
+type = "Zn"
+conditions = { element = "Zn" }
