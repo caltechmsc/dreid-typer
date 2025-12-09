@@ -3,7 +3,7 @@
 //! This module builds a minimal cycle basis from the molecular graph so aromaticity, resonance,
 //! and hybridization passes can quickly determine ring membership and sizes.
 
-use super::model::{AnnotatedMolecule, Ring};
+use super::model::{AnnotatedMolecule, NeighborBond, Ring};
 use crate::core::error::PerceptionError;
 use crate::core::properties::GraphBondOrder;
 use std::collections::{HashMap, VecDeque};
@@ -42,7 +42,8 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
         .map(|(i, id)| (id, i))
         .collect();
 
-    let candidates = enumerate_cycle_candidates(molecule);
+    let mut workspace = RingSearchWorkspace::new(num_atoms);
+    let candidates = enumerate_cycle_candidates(molecule, &mut workspace);
 
     let sssr_candidates =
         select_minimal_cycle_basis(candidates, cyclomatic_number as usize, &bond_id_to_index);
@@ -60,6 +61,29 @@ pub fn perceive(molecule: &mut AnnotatedMolecule) -> Result<(), PerceptionError>
     annotate_atoms_with_ring_info(molecule);
 
     Ok(())
+}
+
+/// Reusable scratch buffers to avoid per-bond allocations during ring search.
+struct RingSearchWorkspace {
+    queue: VecDeque<usize>,
+    visited: Vec<bool>,
+    parent: Vec<Option<(usize, usize)>>,
+}
+
+impl RingSearchWorkspace {
+    fn new(num_atoms: usize) -> Self {
+        Self {
+            queue: VecDeque::with_capacity(num_atoms),
+            visited: vec![false; num_atoms],
+            parent: vec![None; num_atoms],
+        }
+    }
+
+    fn reset(&mut self) {
+        self.queue.clear();
+        self.visited.fill(false);
+        self.parent.fill(None);
+    }
 }
 
 /// Cycle descriptor storing both atom and bond identifiers.
@@ -81,7 +105,10 @@ struct RingCandidate {
 /// # Returns
 ///
 /// Collection of candidate rings containing atom and bond identifiers.
-fn enumerate_cycle_candidates(molecule: &AnnotatedMolecule) -> Vec<RingCandidate> {
+fn enumerate_cycle_candidates(
+    molecule: &AnnotatedMolecule,
+    workspace: &mut RingSearchWorkspace,
+) -> Vec<RingCandidate> {
     let mut candidates = Vec::new();
 
     for bond_to_remove in &molecule.bonds {
@@ -90,6 +117,7 @@ fn enumerate_cycle_candidates(molecule: &AnnotatedMolecule) -> Vec<RingCandidate
             bond_to_remove.atom_ids.0,
             bond_to_remove.atom_ids.1,
             Some(bond_to_remove.id),
+            workspace,
         ) {
             let mut atom_ids = path.atom_ids;
             let mut bond_ids = path.bond_ids;
@@ -197,41 +225,42 @@ fn shortest_path_bfs(
     start_id: usize,
     end_id: usize,
     excluded_bond_id: Option<usize>,
+    workspace: &mut RingSearchWorkspace,
 ) -> Option<PathData> {
-    let mut queue = VecDeque::new();
-    let mut visited = vec![false; molecule.atoms.len()];
-    let mut parent: Vec<Option<(usize, usize)>> = vec![None; molecule.atoms.len()];
+    workspace.reset();
 
-    visited[start_id] = true;
-    queue.push_back(start_id);
+    if start_id >= molecule.adjacency_with_bonds.len()
+        || end_id >= molecule.adjacency_with_bonds.len()
+    {
+        return None;
+    }
 
-    'outer: while let Some(current_id) = queue.pop_front() {
-        for &(neighbor_id, _bond_order) in &molecule.adjacency[current_id] {
-            let bond = molecule
-                .bonds
-                .iter()
-                .find(|b| {
-                    (b.atom_ids.0 == current_id && b.atom_ids.1 == neighbor_id)
-                        || (b.atom_ids.0 == neighbor_id && b.atom_ids.1 == current_id)
-                })
-                .unwrap();
+    workspace.visited[start_id] = true;
+    workspace.queue.push_back(start_id);
 
-            if Some(bond.id) == excluded_bond_id {
+    'outer: while let Some(current_id) = workspace.queue.pop_front() {
+        for NeighborBond {
+            neighbor_id,
+            bond_id,
+            ..
+        } in &molecule.adjacency_with_bonds[current_id]
+        {
+            if Some(*bond_id) == excluded_bond_id {
                 continue;
             }
-            if !visited[neighbor_id] {
-                visited[neighbor_id] = true;
-                parent[neighbor_id] = Some((current_id, bond.id));
-                queue.push_back(neighbor_id);
+            if !workspace.visited[*neighbor_id] {
+                workspace.visited[*neighbor_id] = true;
+                workspace.parent[*neighbor_id] = Some((current_id, *bond_id));
+                workspace.queue.push_back(*neighbor_id);
 
-                if neighbor_id == end_id {
+                if *neighbor_id == end_id {
                     break 'outer;
                 }
             }
         }
     }
 
-    if !visited[end_id] {
+    if !workspace.visited[end_id] {
         return None;
     }
 
@@ -240,7 +269,7 @@ fn shortest_path_bfs(
     let mut len = 0;
     let mut cursor = end_id;
 
-    while let Some((prev_id, bond_id)) = parent[cursor] {
+    while let Some((prev_id, bond_id)) = workspace.parent[cursor] {
         atom_ids.push(prev_id);
         bond_ids.push(bond_id);
         len += 1;
@@ -409,6 +438,23 @@ mod tests {
         graph
     }
 
+    fn fused_square_graph() -> MolecularGraph {
+        let mut graph = MolecularGraph::new();
+        for _ in 0..6 {
+            graph.add_atom(Element::C);
+        }
+
+        let edges = [(0, 1), (1, 2), (2, 3), (3, 0), (2, 5), (5, 4), (4, 3)];
+
+        for (u, v) in edges {
+            graph
+                .add_bond(u, v, GraphBondOrder::Single)
+                .expect("valid edge");
+        }
+
+        graph
+    }
+
     #[test]
     fn perceive_skips_acyclic_molecules() {
         let chain = chain_graph(4);
@@ -438,9 +484,29 @@ mod tests {
     }
 
     #[test]
+    fn perceive_identifies_fused_squares_basis() {
+        let graph = fused_square_graph();
+        let mut molecule = AnnotatedMolecule::new(&graph).expect("graph is valid");
+
+        perceive(&mut molecule).expect("perception should succeed");
+
+        assert_eq!(molecule.rings.len(), 2, "expected two 4-cycles in basis");
+        for ring in &molecule.rings {
+            assert_eq!(ring.len(), 4, "each ring should have length 4");
+        }
+
+        for atom in &molecule.atoms {
+            assert!(atom.is_in_ring, "atom {} should be in a ring", atom.id);
+            assert_eq!(atom.smallest_ring_size, Some(4));
+        }
+    }
+
+    #[test]
     fn shortest_path_bfs_finds_alternative_route_when_edge_removed() {
         let triangle = cycle_graph(3);
         let molecule = AnnotatedMolecule::new(&triangle).expect("graph is valid");
+
+        let mut workspace = RingSearchWorkspace::new(molecule.atoms.len());
 
         let removed_bond_id = molecule
             .bonds
@@ -449,7 +515,7 @@ mod tests {
             .map(|bond| bond.id)
             .expect("triangle should contain 0-1 bond");
 
-        let path = shortest_path_bfs(&molecule, 0, 1, Some(removed_bond_id))
+        let path = shortest_path_bfs(&molecule, 0, 1, Some(removed_bond_id), &mut workspace)
             .expect("path exists through third atom");
 
         assert_eq!(path.len, 2);

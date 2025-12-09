@@ -31,7 +31,7 @@ Each pass mutates the shared `AnnotatedMolecule`. Later stages can rely on the i
 ## 1. Ring Detection — `rings::perceive`
 
 - **Goal:** Identify the Smallest Set of Smallest Rings (SSSR) so that downstream logic knows which atoms are cyclic and how large the ring is.
-- **How it works:** The pass enumerates candidates by temporarily removing bonds and searching for alternative paths, then selects a minimal cycle basis via bit-vector Gaussian elimination. Each ring is stored as a sorted list of atom IDs. Matching atoms are flagged with `is_in_ring = true` and `smallest_ring_size`.
+- **How it works:** The pass enumerates candidates by temporarily removing bonds and searching for alternative paths, then selects a minimal cycle basis via bit-vector Gaussian elimination. Each ring is stored as a sorted list of atom IDs. Matching atoms are flagged with `is_in_ring = true` and `smallest_ring_size`. The implementation uses a bond-aware adjacency (neighbor ID + bond ID + order) and reusable BFS buffers to avoid O(E×V) scans per edge on large graphs—algorithmically identical results with a much smaller constant factor.
 - **Why it matters:** Aromaticity, resonance, and hybridization all depend on knowing whether atoms participate in cyclic systems.
 
 ## 2. Kekulé Expansion — `kekulize::perceive`
