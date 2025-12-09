@@ -438,6 +438,23 @@ mod tests {
         graph
     }
 
+    fn fused_square_graph() -> MolecularGraph {
+        let mut graph = MolecularGraph::new();
+        for _ in 0..6 {
+            graph.add_atom(Element::C);
+        }
+
+        let edges = [(0, 1), (1, 2), (2, 3), (3, 0), (2, 5), (5, 4), (4, 3)];
+
+        for (u, v) in edges {
+            graph
+                .add_bond(u, v, GraphBondOrder::Single)
+                .expect("valid edge");
+        }
+
+        graph
+    }
+
     #[test]
     fn perceive_skips_acyclic_molecules() {
         let chain = chain_graph(4);
@@ -467,9 +484,29 @@ mod tests {
     }
 
     #[test]
+    fn perceive_identifies_fused_squares_basis() {
+        let graph = fused_square_graph();
+        let mut molecule = AnnotatedMolecule::new(&graph).expect("graph is valid");
+
+        perceive(&mut molecule).expect("perception should succeed");
+
+        assert_eq!(molecule.rings.len(), 2, "expected two 4-cycles in basis");
+        for ring in &molecule.rings {
+            assert_eq!(ring.len(), 4, "each ring should have length 4");
+        }
+
+        for atom in &molecule.atoms {
+            assert!(atom.is_in_ring, "atom {} should be in a ring", atom.id);
+            assert_eq!(atom.smallest_ring_size, Some(4));
+        }
+    }
+
+    #[test]
     fn shortest_path_bfs_finds_alternative_route_when_edge_removed() {
         let triangle = cycle_graph(3);
         let molecule = AnnotatedMolecule::new(&triangle).expect("graph is valid");
+
+        let mut workspace = RingSearchWorkspace::new(molecule.atoms.len());
 
         let removed_bond_id = molecule
             .bonds
@@ -478,7 +515,7 @@ mod tests {
             .map(|bond| bond.id)
             .expect("triangle should contain 0-1 bond");
 
-        let path = shortest_path_bfs(&molecule, 0, 1, Some(removed_bond_id))
+        let path = shortest_path_bfs(&molecule, 0, 1, Some(removed_bond_id), &mut workspace)
             .expect("path exists through third atom");
 
         assert_eq!(path.len, 2);
