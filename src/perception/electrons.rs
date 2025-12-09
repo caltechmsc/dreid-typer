@@ -563,12 +563,16 @@ fn assign_general(
         }
         let element = molecule.atoms[i].element;
 
-        let valence = element.valence_electrons().ok_or_else(|| {
-            PerceptionError::Other(format!(
-                "valence electrons not defined for element {:?}",
-                element
-            ))
-        })?;
+        let valence = match element.valence_electrons() {
+            Some(v) => v,
+            None if molecule.atoms[i].degree == 0 => 0,
+            None => {
+                return Err(PerceptionError::Other(format!(
+                    "valence electrons not defined for element {:?}",
+                    element
+                )));
+            }
+        };
 
         let bonding_electrons: u8 = molecule.adjacency[i]
             .iter()
@@ -1077,5 +1081,31 @@ mod tests {
         assert_atom_state(&molecule, 1, 0, 2);
         assert_atom_state(&molecule, 3, 0, 1);
         assert_atom_state(&molecule, 2, 0, 0);
+    }
+
+    #[test]
+    fn isolated_unknown_valence_metal_defaults_to_zero() {
+        let elements = vec![Element::Au];
+        let bonds: Vec<(usize, usize, GraphBondOrder)> = vec![];
+
+        let molecule = run_perception(&elements, &bonds);
+
+        assert_atom_state(&molecule, 0, 0, 0);
+    }
+
+    #[test]
+    fn bonded_unknown_valence_metal_errors() {
+        let elements = vec![Element::Au, Element::H];
+        let bonds = vec![(0, 1, GraphBondOrder::Single)];
+
+        let mut molecule = build_molecule(&elements, &bonds);
+        let err = perceive(&mut molecule).expect_err("bonded unknown-valence metals should error");
+
+        match err {
+            PerceptionError::Other(msg) => {
+                assert!(msg.contains("valence electrons not defined"));
+            }
+            _ => panic!("unexpected error variant: {err:?}"),
+        }
     }
 }
