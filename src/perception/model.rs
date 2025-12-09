@@ -7,6 +7,18 @@ use crate::core::error::GraphValidationError;
 use crate::core::graph::{BondEdge, MolecularGraph};
 use crate::core::properties::{Element, GraphBondOrder, Hybridization};
 
+/// Neighbor descriptor bundling atom connectivity with the originating bond ID.
+#[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
+pub struct NeighborBond {
+    /// Adjacent atom identifier.
+    pub neighbor_id: usize,
+    /// Source bond identifier matching [`BondEdge::id`].
+    pub bond_id: usize,
+    /// Bond order for the edge.
+    pub order: GraphBondOrder,
+}
+
 /// Perception-friendly atom record that stores both graph identity and inferred properties.
 #[derive(Debug, Clone)]
 pub struct AnnotatedAtom {
@@ -69,6 +81,8 @@ pub struct AnnotatedMolecule {
     pub bonds: Vec<BondEdge>,
     /// Adjacency list capturing neighbor IDs and bond orders.
     pub adjacency: Vec<Vec<(usize, GraphBondOrder)>>,
+    /// Adjacency list that also records the bond ID for each neighbor edge.
+    pub adjacency_with_bonds: Vec<Vec<NeighborBond>>,
     /// Collection of rings discovered during perception.
     pub rings: Vec<Ring>,
     /// Collection of all identified resonance systems.
@@ -95,6 +109,7 @@ impl AnnotatedMolecule {
     /// outside the graph's atom list.
     pub fn new(graph: &MolecularGraph) -> Result<Self, GraphValidationError> {
         let mut adjacency = vec![vec![]; graph.atoms.len()];
+        let mut adjacency_with_bonds = vec![vec![]; graph.atoms.len()];
         for bond in &graph.bonds {
             let (u, v) = bond.atom_ids;
 
@@ -107,6 +122,20 @@ impl AnnotatedMolecule {
 
             adjacency[u].push((v, bond.order));
             adjacency[v].push((u, bond.order));
+
+            let neighbor_entry_u = NeighborBond {
+                neighbor_id: v,
+                bond_id: bond.id,
+                order: bond.order,
+            };
+            let neighbor_entry_v = NeighborBond {
+                neighbor_id: u,
+                bond_id: bond.id,
+                order: bond.order,
+            };
+
+            adjacency_with_bonds[u].push(neighbor_entry_u);
+            adjacency_with_bonds[v].push(neighbor_entry_v);
         }
 
         let atoms = graph
@@ -133,6 +162,7 @@ impl AnnotatedMolecule {
             atoms,
             bonds: graph.bonds.clone(),
             adjacency,
+            adjacency_with_bonds,
             rings: Vec::new(),
             resonance_systems: Vec::new(),
         })
