@@ -203,9 +203,35 @@ mod tests {
             .collect();
         assert_eq!(adjacency_sizes, vec![2, 1, 1]);
 
+        let adjacency_with_bonds_sizes: Vec<_> = molecule
+            .adjacency_with_bonds
+            .iter()
+            .map(|neighbors| neighbors.len())
+            .collect();
+        assert_eq!(adjacency_with_bonds_sizes, vec![2, 1, 1]);
+
         let oxygen_neighbors = &molecule.adjacency[0];
         assert!(oxygen_neighbors.contains(&(1, GraphBondOrder::Single)));
         assert!(oxygen_neighbors.contains(&(2, GraphBondOrder::Single)));
+
+        let oxygen_neighbors_with_bonds = &molecule.adjacency_with_bonds[0];
+        assert_eq!(oxygen_neighbors_with_bonds.len(), 2);
+        for neighbor in oxygen_neighbors_with_bonds {
+            assert_eq!(neighbor.order, GraphBondOrder::Single);
+            assert!(neighbor.neighbor_id == 1 || neighbor.neighbor_id == 2);
+        }
+
+        let h1_neighbors_with_bonds = &molecule.adjacency_with_bonds[1];
+        assert_eq!(h1_neighbors_with_bonds.len(), 1);
+        let h1_neighbor = &h1_neighbors_with_bonds[0];
+        assert_eq!(h1_neighbor.neighbor_id, 0);
+        assert_eq!(h1_neighbor.order, GraphBondOrder::Single);
+
+        let h2_neighbors_with_bonds = &molecule.adjacency_with_bonds[2];
+        assert_eq!(h2_neighbors_with_bonds.len(), 1);
+        let h2_neighbor = &h2_neighbors_with_bonds[0];
+        assert_eq!(h2_neighbor.neighbor_id, 0);
+        assert_eq!(h2_neighbor.order, GraphBondOrder::Single);
 
         let oxygen = &molecule.atoms[0];
         assert_eq!(oxygen.element, Element::O);
