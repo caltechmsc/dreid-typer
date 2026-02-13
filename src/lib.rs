@@ -72,9 +72,7 @@ pub use crate::core::properties::{
     Element, GraphBondOrder, Hybridization, ParseBondOrderError, ParseElementError,
     ParseHybridizationError, TopologyBondOrder,
 };
-pub use crate::core::topology::{
-    Angle, Atom, Bond, ImproperDihedral, MolecularTopology, ProperDihedral,
-};
+pub use crate::core::topology::{Angle, Atom, Bond, Inversion, MolecularTopology, Torsion};
 
 /// Rule parsing and customization utilities.
 ///
