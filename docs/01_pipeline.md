@@ -46,13 +46,13 @@ Once a `MolecularGraph` enters the pipeline, it is immediately converted into an
 
 The `MolecularTopology` is the final product of the pipeline. It is a clean, structured representation tailored specifically for consumption by molecular simulation engines.
 
-- **Purpose:** To provide a complete list of all particles and interaction terms (bonds, angles, dihedrals) required to define a DREIDING force field model.
+- **Purpose:** To provide a complete list of all particles and interaction terms (bonds, angles, torsions, inversions) required to define a DREIDING force field model.
 - **Structure:**
   - A list of final `Atom`s, now including their assigned `atom_type`.
-  - Deduplicated lists of `Bond`s, `Angle`s, `ProperDihedral`s, and `ImproperDihedral`s.
+  - Deduplicated lists of `Bond`s, `Angle`s, `Torsion`s, and `Inversion`s.
 - **Design Rationale:**
   - **Simulation-Oriented:** The structure directly maps to the needs of a simulation setup. It discards intermediate perception data (like `lone_pairs` or `steric_number`) that is not directly part of the final force field definition.
-  - **Canonical Representation:** Each topological component (`Angle`, `Dihedral`) is stored in a canonical form (e.g., atom indices are sorted). This simplifies consumption by downstream tools, as it eliminates ambiguity and the need for further deduplication.
+  - **Canonical Representation:** Each topological component (`Angle`, `Torsion`, `Inversion`) is stored in a canonical form (e.g., atom indices are sorted). This simplifies consumption by downstream tools, as it eliminates ambiguity and the need for further deduplication.
 
 ## 2. The Data Flow: A Deterministic Transformation
 

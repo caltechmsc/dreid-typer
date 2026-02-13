@@ -6,13 +6,13 @@ At a high level the library walks through:
 
 1. **Perception:** six ordered passes (rings → Kekulé expansion → electron bookkeeping → aromaticity → resonance → hybridization) that upgrade raw connectivity into a rich `AnnotatedMolecule`.
 2. **Typing:** an iterative, priority-sorted rule engine that resolves the final DREIDING atom label for every atom.
-3. **Building:** a pure graph traversal that emits canonical bonds, angles, and torsions as a `MolecularTopology`.
+3. **Building:** a pure graph traversal that emits canonical bonds, angles, torsions, and inversions as a `MolecularTopology`.
 
 ## Features
 
 - **Chemically faithful perception:** built-in algorithms cover SSSR ring search, strict Kekulé expansion, charge/lone pair templates for heteroatoms, aromaticity categorization (including anti-aromatic detection), resonance propagation, and hybridization inference.
 - **Deterministic typing engine:** TOML rules are sorted by priority and evaluated until a fixed point, making neighbor-dependent rules (e.g., `H_HB`) converge without guesswork.
-- **Engine-agnostic topology:** outputs canonicalized bonds, angles, proper and improper dihedrals ready for any simulator that consumes DREIDING-style terms.
+- **Engine-agnostic topology:** outputs canonicalized bonds, angles, torsions, and inversions ready for any simulator that consumes DREIDING-style terms.
 - **Extensible ruleset:** ship with curated defaults (`resources/default.rules.toml`) and load or merge custom rule files at runtime.
 - **Rust-first ergonomics:** zero `unsafe`, comprehensive unit/integration tests, and precise error variants for validation, perception, and typing failures.
 

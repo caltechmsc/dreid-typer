@@ -46,14 +46,14 @@ graph TD
     Annotated -- "Provides geometry + resonance context" --> BuilderPhase;
     AtomTypes -- "Provides atom type info" --> BuilderPhase;
 
-    BuilderPhase -- "Generates bonds, angles, dihedrals" --> OutputTopology;
+    BuilderPhase -- "Generates bonds, angles, torsions, inversions" --> OutputTopology;
 ```
 
 - **Phase 1: Perception (`perception::perceive`):** Takes the raw `MolecularGraph` and emits an `AnnotatedMolecule`. Six ordered passes (rings, kekulization, electrons, aromaticity, resonance, hybridization) enrich each atom with bonding, charge, lone-pair, ring, and delocalization metadata. The output is immutable and shared with later stages.
 
 - **Phase 2: Typing (`typing::engine::assign_types`):** Runs a deterministic fixed-point solver over the `AnnotatedMolecule`. It evaluates TOML rules parsed via `typing::rules::parse_rules`, honoring priorities and neighbor-dependent constraints until every atom is assigned a DREIDING type.
 
-- **Phase 3: Building (`builder::build_topology`):** Consumes the annotated atoms plus the final type vector to produce a canonical `MolecularTopology`. Helper routines enumerate bonds, angles, proper/ improper dihedrals, and collapse duplicates using canonical ordering so downstream engines receive stable identifiers.
+- **Phase 3: Building (`builder::build_topology`):** Consumes the annotated atoms plus the final type vector to produce a canonical `MolecularTopology`. Helper routines enumerate bonds, angles, torsions, and inversions, and collapse duplicates using canonical ordering so downstream engines receive stable identifiers.
 
 ## Directory of Architectural Documents
 

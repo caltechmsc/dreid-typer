@@ -51,7 +51,7 @@
 //! assert_eq!(topology.atoms.len(), 9);
 //! assert_eq!(topology.bonds.len(), 8);
 //! assert_eq!(topology.angles.len(), 13);
-//! assert_eq!(topology.propers.len(), 12);
+//! assert_eq!(topology.torsions.len(), 12);
 //!
 //! // Check the assigned DREIDING atom types.
 //! assert_eq!(topology.atoms[c1].atom_type, "C_3");    // sp3 Carbon
@@ -72,9 +72,7 @@ pub use crate::core::properties::{
     Element, GraphBondOrder, Hybridization, ParseBondOrderError, ParseElementError,
     ParseHybridizationError, TopologyBondOrder,
 };
-pub use crate::core::topology::{
-    Angle, Atom, Bond, ImproperDihedral, MolecularTopology, ProperDihedral,
-};
+pub use crate::core::topology::{Angle, Atom, Bond, Inversion, MolecularTopology, Torsion};
 
 /// Rule parsing and customization utilities.
 ///

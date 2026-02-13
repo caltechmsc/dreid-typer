@@ -16,10 +16,10 @@ pub struct MolecularTopology {
     pub bonds: Vec<Bond>,
     /// A list of all three-atom angles.
     pub angles: Vec<Angle>,
-    /// A list of all proper dihedral angles (torsions).
-    pub propers: Vec<ProperDihedral>,
-    /// A list of all improper dihedral angles (out-of-plane bends).
-    pub impropers: Vec<ImproperDihedral>,
+    /// A list of all four-atom torsions around rotatable bonds.
+    pub torsions: Vec<Torsion>,
+    /// A list of all four-atom inversions for planar centers.
+    pub inversions: Vec<Inversion>,
 }
 
 /// Atom entry emitted in the final topology, combining identity and typing.
@@ -71,38 +71,44 @@ impl Angle {
     }
 }
 
-/// Proper dihedral entry emitted in the final topology.
+/// Torsion entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ProperDihedral {
-    /// The IDs of the four atoms (`a-b-c-d`), sorted lexicographically.
+pub struct Torsion {
+    /// The IDs of the four atoms (`i`, `j`, `k`, `l`) where `j-k` is the rotatable bond,
+    /// with `i-l` sorted.
     pub atom_ids: (usize, usize, usize, usize),
 }
 
-impl ProperDihedral {
-    /// Creates a new proper dihedral with atom IDs sorted lexicographically.
-    pub fn new(a: usize, b: usize, c: usize, d: usize) -> Self {
-        let fwd = (a, b, c, d);
-        let rev = (d, c, b, a);
+impl Torsion {
+    /// Creates a new torsion with terminal atoms sorted to a canonical order.
+    pub fn new(i: usize, j: usize, k: usize, l: usize) -> Self {
+        let fwd = (i, j, k, l);
+        let rev = (l, k, j, i);
         let atom_ids = if fwd <= rev { fwd } else { rev };
         Self { atom_ids }
     }
 }
 
-/// Improper dihedral entry emitted in the final topology.
+/// Inversion entry emitted in the final topology.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImproperDihedral {
-    /// The IDs of the four atoms (`plane1`, `plane2`, `center`, `plane3`),
-    /// with plane atoms sorted.
+pub struct Inversion {
+    /// The IDs of the four atoms (`center`, `axis`, `plane1`, `plane2`)
+    /// where `center` is the inversion center, `axis` is the unique neighbor
+    /// defining the axis, with `plane1` and `plane2` sorted.
     pub atom_ids: (usize, usize, usize, usize),
 }
 
-impl ImproperDihedral {
-    /// Creates a new improper dihedral with plane atoms sorted.
-    pub fn new(p1: usize, p2: usize, center: usize, p3: usize) -> Self {
-        let mut plane_ids = [p1, p2, p3];
-        plane_ids.sort_unstable();
-        let atom_ids = (plane_ids[0], plane_ids[1], center, plane_ids[2]);
-        Self { atom_ids }
+impl Inversion {
+    /// Creates a new inversion with plane atoms sorted to a canonical order.
+    pub fn new(center: usize, axis: usize, plane1: usize, plane2: usize) -> Self {
+        let (p1, p2) = if plane1 < plane2 {
+            (plane1, plane2)
+        } else {
+            (plane2, plane1)
+        };
+        Self {
+            atom_ids: (center, axis, p1, p2),
+        }
     }
 }
 
@@ -125,18 +131,37 @@ mod tests {
     }
 
     #[test]
-    fn proper_dihedral_new_canonicalizes_orientation() {
-        let forward = ProperDihedral::new(1, 2, 3, 4);
-        let reversed = ProperDihedral::new(4, 3, 2, 1);
+    fn torsion_new_canonicalizes_orientation() {
+        let forward = Torsion::new(1, 2, 3, 4);
+        let reversed = Torsion::new(4, 3, 2, 1);
 
         assert_eq!(forward.atom_ids, reversed.atom_ids);
         assert_eq!(forward.atom_ids, (1, 2, 3, 4));
     }
 
     #[test]
-    fn improper_dihedral_new_sorts_plane_atoms() {
-        let improper = ImproperDihedral::new(9, 1, 5, 4);
-        assert_eq!(improper.atom_ids, (1, 4, 5, 9));
+    fn inversion_new_sorts_only_plane_atoms() {
+        let inv = Inversion::new(5, 9, 4, 1);
+        assert_eq!(inv.atom_ids, (5, 9, 1, 4));
+
+        let inv2 = Inversion::new(5, 1, 9, 4);
+        assert_eq!(inv2.atom_ids, (5, 1, 4, 9));
+        assert_ne!(inv.atom_ids, inv2.atom_ids);
+    }
+
+    #[test]
+    fn inversion_three_terms_per_center_are_distinct() {
+        let inv1 = Inversion::new(0, 1, 2, 3);
+        let inv2 = Inversion::new(0, 2, 1, 3);
+        let inv3 = Inversion::new(0, 3, 1, 2);
+
+        assert_eq!(inv1.atom_ids, (0, 1, 2, 3));
+        assert_eq!(inv2.atom_ids, (0, 2, 1, 3));
+        assert_eq!(inv3.atom_ids, (0, 3, 1, 2));
+
+        assert_ne!(inv1, inv2);
+        assert_ne!(inv2, inv3);
+        assert_ne!(inv1, inv3);
     }
 
     #[test]
@@ -146,7 +171,7 @@ mod tests {
         assert!(topology.atoms.is_empty());
         assert!(topology.bonds.is_empty());
         assert!(topology.angles.is_empty());
-        assert!(topology.propers.is_empty());
-        assert!(topology.impropers.is_empty());
+        assert!(topology.torsions.is_empty());
+        assert!(topology.inversions.is_empty());
     }
 }
