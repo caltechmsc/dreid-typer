@@ -6,7 +6,7 @@ At a high level the library walks through:
 
 1. **Perception:** six ordered passes (rings → Kekulé expansion → electron bookkeeping → aromaticity → resonance → hybridization) that upgrade raw connectivity into a rich `AnnotatedMolecule`.
 2. **Typing:** an iterative, priority-sorted rule engine that resolves the final DREIDING atom label for every atom.
-3. **Building:** a pure graph traversal that emits canonical bonds, angles, and torsions as a `MolecularTopology`.
+3. **Building:** a pure graph traversal that emits canonical bonds, angles, torsions, and inversions as a `MolecularTopology`.
 
 ## Features
 
