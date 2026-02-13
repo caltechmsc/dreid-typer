@@ -1,13 +1,13 @@
 # Phase 3: The Topology Builder
 
-With atom types resolved, the builder translates the annotated molecule into a `MolecularTopology`. This stage is pure graph traversal — no additional chemistry is inferred — but it’s where canonical force-field terms emerge.
+With atom types resolved, the builder translates the annotated molecule into a `MolecularTopology`. This stage is pure graph traversal — no additional chemistry is inferred — but it's where canonical force-field terms emerge.
 
 `builder::build_topology` takes two inputs:
 
 1. The immutable `AnnotatedMolecule` output of perception.
 2. The `Vec<String>` of atom types returned by the typing engine.
 
-It produces `MolecularTopology { atoms, bonds, angles, propers, impropers }`, all deduplicated and ready for downstream MD engines.
+It produces `MolecularTopology { atoms, bonds, angles, torsions, inversions }`, all deduplicated and ready for downstream MD engines.
 
 ```mermaid
 graph TD
@@ -18,11 +18,11 @@ graph TD
 
 ## Atom Table
 
-`build_atoms` walks the annotated atoms and copies their element, hybridization, and ID while splicing in the final type string (`atom_types[ann_atom.id]`). This produces the topology’s `atoms` vector.
+`build_atoms` walks the annotated atoms and copies their element, hybridization, and ID while splicing in the final type string (`atom_types[ann_atom.id]`). This produces the topology's `atoms` vector.
 
 ## Connectivity Terms
 
-Every interaction term uses the molecule’s adjacency lists and bond table, which already reflect Kekulé-expanded bond orders.
+Every interaction term uses the molecule's adjacency lists and bond table, which already reflect Kekulé-expanded bond orders.
 
 ### Bonds
 
@@ -41,24 +41,32 @@ for center in atoms:
         angles.insert(Angle::new(i, center, k))
 ```
 
-### Proper Dihedrals (`build_propers`)
+### Torsions (`build_torsions`)
 
-Proper torsions are enumerated around each bond `j-k`:
+Torsions are enumerated around each bond `j-k`:
 
 1. Iterate over every stored bond.
-2. For each neighbor `i` of `j` (excluding `k`) and each neighbor `l` of `k` (excluding `j` and `i`), emit `ProperDihedral::new(i, j, k, l)`.
+2. For each neighbor `i` of `j` (excluding `k`) and each neighbor `l` of `k` (excluding `j` and `i`), emit `Torsion::new(i, j, k, l)`.
 3. The constructor compares `(i, j, k, l)` to its reverse `(l, k, j, i)` and keeps the lexicographically smaller tuple to guarantee uniqueness.
 
 This approach naturally covers both directions (i.e., `i-j-k-l` and `l-k-j-i`) without generating duplicates.
 
-### Improper Dihedrals (`build_impropers`)
+### Inversions (`build_inversions`)
 
-Improper torsions enforce planarity at trigonal centers. The builder scans every atom and checks two conditions:
+Inversions enforce planarity at trigonal centers. The builder scans every atom and checks two conditions:
 
 1. Degree equals 3.
 2. Hybridization equals `Hybridization::SP2` or `Hybridization::Resonant`.
 
-If satisfied, the atom’s three neighbors form the outer atoms while the center occupies the third index of `ImproperDihedral::new(p1, p2, center, p3)`. The constructor sorts the three peripheral atoms but keeps the central atom fixed, delivering a canonical key.
+Per the DREIDING paper, **each planar center generates three inversion terms**, with each neighbor taking turn as the "axis":
+
+For center I with neighbors {J, K, L}:
+
+- Inversion(center=I, axis=J, plane={K, L})
+- Inversion(center=I, axis=K, plane={J, L})
+- Inversion(center=I, axis=L, plane={J, K})
+
+The constructor `Inversion::new(center, axis, plane1, plane2)` sorts only the two plane atoms (not the axis), ensuring the three terms per center remain distinct.
 
 ## Why Canonical Forms Matter
 
