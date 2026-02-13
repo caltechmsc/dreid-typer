@@ -257,30 +257,35 @@ mod tests {
     }
 
     #[test]
-    fn build_propers_emits_all_valid_dihedrals() {
+    fn build_torsions_emits_all_valid_dihedrals() {
         let (molecule, _) = planar_fragment();
 
-        let propers = build_propers(&molecule);
+        let torsions = build_torsions(&molecule);
         let expected: HashSet<_> = vec![
-            ProperDihedral::new(0, 1, 2, 4),
-            ProperDihedral::new(3, 1, 2, 4),
-            ProperDihedral::new(1, 2, 4, 5),
+            Torsion::new(0, 1, 2, 4),
+            Torsion::new(3, 1, 2, 4),
+            Torsion::new(1, 2, 4, 5),
         ]
         .into_iter()
         .collect();
 
-        assert_eq!(propers, expected);
+        assert_eq!(torsions, expected);
     }
 
     #[test]
-    fn build_impropers_targets_planar_degree_three_centers() {
+    fn build_inversions_generates_three_per_planar_center() {
         let (molecule, _) = planar_fragment();
 
-        let impropers = build_impropers(&molecule);
-        let expected: HashSet<_> = vec![ImproperDihedral::new(0, 2, 1, 3)]
-            .into_iter()
-            .collect();
+        let inversions = build_inversions(&molecule);
+        let expected: HashSet<_> = vec![
+            Inversion::new(1, 0, 2, 3),
+            Inversion::new(1, 2, 0, 3),
+            Inversion::new(1, 3, 0, 2),
+        ]
+        .into_iter()
+        .collect();
 
-        assert_eq!(impropers, expected);
+        assert_eq!(inversions.len(), 3);
+        assert_eq!(inversions, expected);
     }
 }
