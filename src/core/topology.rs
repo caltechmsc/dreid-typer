@@ -80,7 +80,7 @@ pub struct Torsion {
 }
 
 impl Torsion {
-    /// Creates a new torsion with terminals atoms sorted to a canonical order.
+    /// Creates a new torsion with terminal atoms sorted to a canonical order.
     pub fn new(i: usize, j: usize, k: usize, l: usize) -> Self {
         let fwd = (i, j, k, l);
         let rev = (l, k, j, i);
