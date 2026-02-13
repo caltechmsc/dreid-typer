@@ -13,7 +13,7 @@ keywords = [
     "chemistry",
     "molecular-dynamics",
     "force-field",
-    "bioinformatics",
+    "cheminformatics",
     "dreiding",
 ]
 categories = ["science", "simulation"]
