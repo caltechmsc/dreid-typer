@@ -20,7 +20,7 @@ categories = ["science", "simulation"]
 readme = "README.md"
 
 [dependencies]
-thiserror = "2.0.17"
+thiserror = "2.0.18"
 toml = "0.9.7"
 serde = { version = "1.0.188", features = ["derive"] }
 
