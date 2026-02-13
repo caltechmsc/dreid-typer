@@ -131,18 +131,37 @@ mod tests {
     }
 
     #[test]
-    fn proper_dihedral_new_canonicalizes_orientation() {
-        let forward = ProperDihedral::new(1, 2, 3, 4);
-        let reversed = ProperDihedral::new(4, 3, 2, 1);
+    fn torsion_new_canonicalizes_orientation() {
+        let forward = Torsion::new(1, 2, 3, 4);
+        let reversed = Torsion::new(4, 3, 2, 1);
 
         assert_eq!(forward.atom_ids, reversed.atom_ids);
         assert_eq!(forward.atom_ids, (1, 2, 3, 4));
     }
 
     #[test]
-    fn improper_dihedral_new_sorts_plane_atoms() {
-        let improper = ImproperDihedral::new(9, 1, 5, 4);
-        assert_eq!(improper.atom_ids, (1, 4, 5, 9));
+    fn inversion_new_sorts_only_plane_atoms() {
+        let inv = Inversion::new(5, 9, 4, 1);
+        assert_eq!(inv.atom_ids, (5, 9, 1, 4));
+
+        let inv2 = Inversion::new(5, 1, 9, 4);
+        assert_eq!(inv2.atom_ids, (5, 1, 4, 9));
+        assert_ne!(inv.atom_ids, inv2.atom_ids);
+    }
+
+    #[test]
+    fn inversion_three_terms_per_center_are_distinct() {
+        let inv1 = Inversion::new(0, 1, 2, 3);
+        let inv2 = Inversion::new(0, 2, 1, 3);
+        let inv3 = Inversion::new(0, 3, 1, 2);
+
+        assert_eq!(inv1.atom_ids, (0, 1, 2, 3));
+        assert_eq!(inv2.atom_ids, (0, 2, 1, 3));
+        assert_eq!(inv3.atom_ids, (0, 3, 1, 2));
+
+        assert_ne!(inv1, inv2);
+        assert_ne!(inv2, inv3);
+        assert_ne!(inv1, inv3);
     }
 
     #[test]
@@ -152,7 +171,7 @@ mod tests {
         assert!(topology.atoms.is_empty());
         assert!(topology.bonds.is_empty());
         assert!(topology.angles.is_empty());
-        assert!(topology.propers.is_empty());
-        assert!(topology.impropers.is_empty());
+        assert!(topology.torsions.is_empty());
+        assert!(topology.inversions.is_empty());
     }
 }
