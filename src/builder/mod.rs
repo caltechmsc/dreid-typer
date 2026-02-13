@@ -1,12 +1,10 @@
 //! Converts annotated molecules and assigned atom types into a full molecular topology.
 //!
 //! The builder stage takes the perception output and typing assignments, emitting atoms, bonds,
-//! angles, proper dihedrals, and improper dihedrals expected by downstream force-field tooling.
+//! angles, torsions, and inversions expected by downstream force-field tooling.
 
 use crate::core::properties::{GraphBondOrder, Hybridization, TopologyBondOrder};
-use crate::core::topology::{
-    Angle, Atom, Bond, ImproperDihedral, MolecularTopology, ProperDihedral,
-};
+use crate::core::topology::{Angle, Atom, Bond, Inversion, MolecularTopology, Torsion};
 use crate::perception::{AnnotatedMolecule, ResonanceSystem};
 use std::collections::HashSet;
 
@@ -22,8 +20,7 @@ use std::collections::HashSet;
 ///
 /// # Returns
 ///
-/// A populated [`MolecularTopology`] containing atoms, bonds, angles, proper dihedrals, and
-/// improper dihedrals.
+/// A populated [`MolecularTopology`] containing atoms, bonds, angles, torsions, and inversions.
 pub fn build_topology(
     annotated_molecule: &AnnotatedMolecule,
     atom_types: &[String],
@@ -31,15 +28,15 @@ pub fn build_topology(
     let atoms = build_atoms(annotated_molecule, atom_types);
     let bonds = build_bonds(annotated_molecule);
     let angles = build_angles(annotated_molecule);
-    let propers = build_propers(annotated_molecule);
-    let impropers = build_impropers(annotated_molecule);
+    let torsions = build_torsions(annotated_molecule);
+    let inversions = build_inversions(annotated_molecule);
 
     MolecularTopology {
         atoms,
         bonds: bonds.into_iter().collect(),
         angles: angles.into_iter().collect(),
-        propers: propers.into_iter().collect(),
-        impropers: impropers.into_iter().collect(),
+        torsions: torsions.into_iter().collect(),
+        inversions: inversions.into_iter().collect(),
     }
 }
 
@@ -114,9 +111,9 @@ fn build_angles(annotated_molecule: &AnnotatedMolecule) -> HashSet<Angle> {
     angles
 }
 
-/// Builds proper dihedrals by extending each bond to its neighboring atoms.
-fn build_propers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ProperDihedral> {
-    let mut propers = HashSet::new();
+/// Builds torsions by extending each bond to its neighboring atoms.
+fn build_torsions(annotated_molecule: &AnnotatedMolecule) -> HashSet<Torsion> {
+    let mut torsions = HashSet::new();
     for bond_jk in &annotated_molecule.bonds {
         let (j, k) = bond_jk.atom_ids;
 
@@ -128,16 +125,17 @@ fn build_propers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ProperDihedr
                 if l == j || l == i {
                     continue;
                 }
-                propers.insert(ProperDihedral::new(i, j, k, l));
+                torsions.insert(Torsion::new(i, j, k, l));
             }
         }
     }
-    propers
+    torsions
 }
 
-/// Builds improper dihedrals for planar degree-three centers with SP2-like hybridization.
-fn build_impropers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ImproperDihedral> {
-    let mut impropers = HashSet::new();
+/// Builds inversions by identifying planar centers and generating three
+/// terms per center with each neighbor as axis.
+fn build_inversions(annotated_molecule: &AnnotatedMolecule) -> HashSet<Inversion> {
+    let mut inversions = HashSet::new();
     for atom in &annotated_molecule.atoms {
         if atom.degree == 3
             && matches!(
@@ -146,13 +144,19 @@ fn build_impropers(annotated_molecule: &AnnotatedMolecule) -> HashSet<ImproperDi
             )
         {
             let neighbors = &annotated_molecule.adjacency[atom.id];
-            let p1 = neighbors[0].0;
-            let p2 = neighbors[1].0;
-            let p3 = neighbors[2].0;
-            impropers.insert(ImproperDihedral::new(p1, p2, atom.id, p3));
+            let n0 = neighbors[0].0;
+            let n1 = neighbors[1].0;
+            let n2 = neighbors[2].0;
+
+            // Term 1: axis=n0, plane={n1, n2}
+            inversions.insert(Inversion::new(atom.id, n0, n1, n2));
+            // Term 2: axis=n1, plane={n0, n2}
+            inversions.insert(Inversion::new(atom.id, n1, n0, n2));
+            // Term 3: axis=n2, plane={n0, n1}
+            inversions.insert(Inversion::new(atom.id, n2, n0, n1));
         }
     }
-    impropers
+    inversions
 }
 
 #[cfg(test)]
