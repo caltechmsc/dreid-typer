@@ -16,7 +16,11 @@ keywords = [
     "cheminformatics",
     "dreiding",
 ]
-categories = ["science", "simulation"]
+categories = [
+    "science::computational-chemistry::molecular-simulation",
+    "science::computational-chemistry::cheminformatics",
+    "simulation",
+]
 readme = "README.md"
 
 [dependencies]
